@@ -149,7 +149,7 @@ export default function App() {
       mostrarMensaje(
         "error",
         "Datos Inválidos",
-        "Por favor, complete correctamente los campos marcados en color carmín."
+        "Por favor, complete correctamente los campos marcados."
       );
       return;
     }
