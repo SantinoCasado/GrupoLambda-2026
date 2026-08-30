@@ -8,16 +8,16 @@ import {
   ScrollView,
   Image,
   Vibration,
-  ActivityIndicator,
-  Alert,
   Modal,
-  SafeAreaView,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from "expo-camera";
 import { parseDniData } from "./src/utils/dniParser";
 import { validarFormEmpleado, FormErrors } from "./src/utils/validators";
 import { registrarEmpleadoMock } from "./src/services/empleadosService";
+import { FeedbackModal } from "./src/components/FeedbackModal";
+import { CompanySpinner } from "./src/components/CompanySpinner";
 
 export default function App() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -29,31 +29,66 @@ export default function App() {
   const [cuil, setCuil] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const perfil = "cocinero"; // Fijo según requerimiento
+  const perfil = "cocinero";
   const [fotoUri, setFotoUri] = useState<string | null>(null);
 
-  // Modales
+  // Modales de Hardware
   const [isQrScannerOpen, setIsQrScannerOpen] = useState(false);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
 
-  // Estado de carga y errores
+  // Estados de Validación y Envío
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Estado del Modal de Feedback (Reemplazo obligatorio de Alert)
+  const [modalFeedback, setModalFeedback] = useState<{
+    visible: boolean;
+    tipo: "exito" | "error" | "informacion";
+    titulo: string;
+    mensaje: string;
+    onAceptar?: () => void;
+  }>({
+    visible: false,
+    tipo: "informacion",
+    titulo: "",
+    mensaje: "",
+  });
+
   const cameraRef = useRef<CameraView | null>(null);
 
-  // Helper háptico
-  const triggerHaptic = (type: "tap" | "success" | "error") => {
-    if (type === "tap") Vibration.vibrate([0, 40, 0, 40]);
-    else if (type === "success") Vibration.vibrate([0, 80, 60, 150]);
-    else Vibration.vibrate([0, 100, 50, 100, 50, 200]);
+  // Control centralizado de vibración
+  const ejecutarVibracion = (tipo: "exito" | "error" | "toque") => {
+    if (tipo === "error") {
+      Vibration.vibrate([0, 100, 50, 100, 50, 200]);
+    } else if (tipo === "exito") {
+      Vibration.vibrate([0, 80, 60, 150]);
+    } else {
+      Vibration.vibrate([0, 40]);
+    }
   };
 
-  // Manejador del Escaneo QR
+  const mostrarMensaje = (
+    tipo: "exito" | "error" | "informacion",
+    titulo: string,
+    mensaje: string,
+    onAceptar?: () => void
+  ) => {
+    if (tipo === "error") ejecutarVibracion("error");
+    else if (tipo === "exito") ejecutarVibracion("exito");
+
+    setModalFeedback({
+      visible: true,
+      tipo,
+      titulo,
+      mensaje,
+      onAceptar,
+    });
+  };
+
+  // Manejo de lectura de código QR
   const handleBarCodeScanned = (result: BarcodeScanningResult) => {
     if (!result.data) return;
 
-    triggerHaptic("success");
     const parsed = parseDniData(result.data);
 
     if (parsed && (parsed.dni || parsed.apellidos)) {
@@ -62,35 +97,41 @@ export default function App() {
       if (parsed.dni) setDni(parsed.dni);
 
       setIsQrScannerOpen(false);
-      Alert.alert("DNI Leído", `Datos completados: ${parsed.apellidos}, ${parsed.nombres}`);
+      mostrarMensaje(
+        "exito",
+        "Documento Nacional de Identidad Leído",
+        `Datos cargados: ${parsed.apellidos}, ${parsed.nombres}`
+      );
     } else {
-      // Si el código no tenía el formato de DNI
       setIsQrScannerOpen(false);
-      triggerHaptic("error");
-      Alert.alert("Aviso", "El código escaneado no tiene formato de DNI argentino válido.");
+      mostrarMensaje(
+        "error",
+        "Lectura Fallida",
+        "El código escaneado no coincide con el formato oficial del DNI argentino."
+      );
     }
   };
 
-  // Manejador de la Captura de Foto
+  // Captura de foto con cámara física
   const handleTakePhoto = async () => {
     if (cameraRef.current) {
       try {
-        triggerHaptic("tap");
+        ejecutarVibracion("toque");
         const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
         if (photo?.uri) {
           setFotoUri(photo.uri);
           setIsCameraOpen(false);
-          triggerHaptic("success");
+          ejecutarVibracion("exito");
         }
-      } catch (err) {
-        Alert.alert("Error", "No se pudo capturar la foto.");
+      } catch {
+        mostrarMensaje("error", "Error de Hardware", "No se pudo realizar la captura fotográfica.");
       }
     }
   };
 
-  // Enviar el formulario
+  // Envío del Formulario
   const handleSubmit = async () => {
-    triggerHaptic("tap");
+    ejecutarVibracion("toque");
 
     const formValidation = validarFormEmpleado({
       nombres,
@@ -105,8 +146,11 @@ export default function App() {
     setErrors(formValidation);
 
     if (Object.keys(formValidation).length > 0) {
-      triggerHaptic("error");
-      Alert.alert("Validación", "Por favor corrige los campos marcados en rojo.");
+      mostrarMensaje(
+        "error",
+        "Datos Inválidos",
+        "Por favor, complete correctamente los campos marcados en color carmín."
+      );
       return;
     }
 
@@ -123,235 +167,235 @@ export default function App() {
         fotoUri: fotoUri!,
       });
 
-      triggerHaptic("success");
-      Alert.alert("¡Éxito!", "Empleado Cocinero registrado correctamente (dispositivo 1).", [
-        {
-          text: "OK",
-          onPress: () => {
-            // Limpiar formulario
-            setNombres("");
-            setApellidos("");
-            setDni("");
-            setCuil("");
-            setEmail("");
-            setPassword("");
-            setFotoUri(null);
-            setErrors({});
-          },
-        },
-      ]);
+      mostrarMensaje(
+        "exito",
+        "Registro Exitoso",
+        "El empleado cocinero ha sido registrado satisfactoriamente en el sistema.",
+        () => {
+          setNombres("");
+          setApellidos("");
+          setDni("");
+          setCuil("");
+          setEmail("");
+          setPassword("");
+          setFotoUri(null);
+          setErrors({});
+        }
+      );
     } catch (error: any) {
-      triggerHaptic("error");
-      Alert.alert("Error de Registro", error.message || "Ocurrió un error inesperado.");
+      mostrarMensaje("error", "Fallo de Registro", error.message || "Ocurrió un error inesperado.");
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-950">
+    <SafeAreaView className="flex-1 bg-stone-900">
       <StatusBar style="light" />
 
-      <ScrollView className="flex-1 px-5 pt-10" contentContainerStyle={{ paddingBottom: 60 }}>
-        {/* Cabecera */}
-        <View className="mb-6">
-          <Text className="text-2xl font-black text-teal-400">Alta de Empleado</Text>
-          <Text className="text-xs text-slate-400">
-            Perfil asignado: <Text className="font-bold text-teal-300 uppercase">Cocinero</Text> • Dueño / Supervisor
+      <ScrollView className="flex-1 px-5 pt-4" contentContainerStyle={{ paddingBottom: 60 }}>
+        {/* Cabecera sin fondos negros ni blancos */}
+        <View className="mb-5 rounded-2xl border border-amber-600/30 bg-stone-800 p-4 shadow-md">
+          <Text className="text-2xl font-black tracking-wider text-amber-400">
+            Alta de Empleado
+          </Text>
+          <Text className="mt-1 text-xs font-semibold text-stone-300">
+            Perfil asignado: <Text className="font-extrabold text-amber-200 uppercase">Cocinero</Text> • Dueño o Supervisor
           </Text>
         </View>
 
-        {/* Botón Escanear QR DNI */}
+        {/* Botón Lector QR DNI */}
         <TouchableOpacity
           onPress={async () => {
             if (!permission?.granted) await requestPermission();
-            triggerHaptic("tap");
+            ejecutarVibracion("toque");
             setIsQrScannerOpen(true);
           }}
-          className="mb-6 flex-row items-center justify-center rounded-2xl bg-indigo-600/30 border border-indigo-500/50 py-3.5 px-4 active:bg-indigo-600/40"
+          className="mb-5 flex-row items-center justify-center rounded-2xl border border-amber-500/60 bg-amber-700/40 py-3.5 px-4 shadow-sm active:bg-amber-700/60"
         >
-          <Text className="text-lg mr-2">📷</Text>
-          <Text className="font-bold text-indigo-200 text-sm">
+          <Text className="mr-2 text-lg">📷</Text>
+          <Text className="text-sm font-bold text-amber-100">
             Escanear Código QR de DNI
           </Text>
         </TouchableOpacity>
 
-        {/* Campos de texto */}
-        <View className="gap-y-4">
+        {/* Contenedor de Formularios */}
+        <View className="gap-y-4 rounded-2xl border border-stone-700 bg-stone-800/80 p-4 shadow-sm">
           {/* Nombres */}
           <View>
-            <Text className="text-xs font-semibold text-slate-300 mb-1">Nombres *</Text>
+            <Text className="mb-1 text-xs font-bold text-amber-200">Nombres *</Text>
             <TextInput
               value={nombres}
               onChangeText={setNombres}
-              placeholder="Ej: Juan Martín"
-              placeholderTextColor="#64748b"
-              className={`rounded-xl bg-slate-900 border px-4 py-3 text-slate-100 ${
-                errors.nombres ? "border-rose-500" : "border-slate-800"
+              placeholder="Ingrese los nombres"
+              placeholderTextColor="#a8a29e"
+              className={`rounded-xl border bg-stone-900 px-4 py-3 text-stone-100 ${
+                errors.nombres ? "border-rose-500" : "border-stone-700"
               }`}
             />
-            {errors.nombres && <Text className="text-rose-400 text-xs mt-1">{errors.nombres}</Text>}
+            {errors.nombres && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.nombres}</Text>}
           </View>
 
           {/* Apellidos */}
           <View>
-            <Text className="text-xs font-semibold text-slate-300 mb-1">Apellidos *</Text>
+            <Text className="mb-1 text-xs font-bold text-amber-200">Apellidos *</Text>
             <TextInput
               value={apellidos}
               onChangeText={setApellidos}
-              placeholder="Ej: Pérez"
-              placeholderTextColor="#64748b"
-              className={`rounded-xl bg-slate-900 border px-4 py-3 text-slate-100 ${
-                errors.apellidos ? "border-rose-500" : "border-slate-800"
+              placeholder="Ingrese los apellidos"
+              placeholderTextColor="#a8a29e"
+              className={`rounded-xl border bg-stone-900 px-4 py-3 text-stone-100 ${
+                errors.apellidos ? "border-rose-500" : "border-stone-700"
               }`}
             />
-            {errors.apellidos && <Text className="text-rose-400 text-xs mt-1">{errors.apellidos}</Text>}
+            {errors.apellidos && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.apellidos}</Text>}
           </View>
 
           {/* DNI */}
           <View>
-            <Text className="text-xs font-semibold text-slate-300 mb-1">Número de DNI *</Text>
+            <Text className="mb-1 text-xs font-bold text-amber-200">Número de DNI *</Text>
             <TextInput
               value={dni}
               onChangeText={setDni}
               keyboardType="numeric"
               maxLength={8}
-              placeholder="Ej: 38123456"
-              placeholderTextColor="#64748b"
-              className={`rounded-xl bg-slate-900 border px-4 py-3 text-slate-100 ${
-                errors.dni ? "border-rose-500" : "border-slate-800"
+              placeholder="Ejemplo: 38123456"
+              placeholderTextColor="#a8a29e"
+              className={`rounded-xl border bg-stone-900 px-4 py-3 text-stone-100 ${
+                errors.dni ? "border-rose-500" : "border-stone-700"
               }`}
             />
-            {errors.dni && <Text className="text-rose-400 text-xs mt-1">{errors.dni}</Text>}
+            {errors.dni && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.dni}</Text>}
           </View>
 
           {/* CUIL */}
           <View>
-            <Text className="text-xs font-semibold text-slate-300 mb-1">Número de CUIL *</Text>
+            <Text className="mb-1 text-xs font-bold text-amber-200">Número de CUIL *</Text>
             <TextInput
               value={cuil}
               onChangeText={setCuil}
               keyboardType="numeric"
               maxLength={11}
-              placeholder="Ej: 20381234562"
-              placeholderTextColor="#64748b"
-              className={`rounded-xl bg-slate-900 border px-4 py-3 text-slate-100 ${
-                errors.cuil ? "border-rose-500" : "border-slate-800"
+              placeholder="Ejemplo: 20381234562"
+              placeholderTextColor="#a8a29e"
+              className={`rounded-xl border bg-stone-900 px-4 py-3 text-stone-100 ${
+                errors.cuil ? "border-rose-500" : "border-stone-700"
               }`}
             />
-            {errors.cuil && <Text className="text-rose-400 text-xs mt-1">{errors.cuil}</Text>}
+            {errors.cuil && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.cuil}</Text>}
           </View>
 
           {/* Correo Electrónico */}
           <View>
-            <Text className="text-xs font-semibold text-slate-300 mb-1">Correo Electrónico *</Text>
+            <Text className="mb-1 text-xs font-bold text-amber-200">Correo Electrónico *</Text>
             <TextInput
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
-              placeholder="cocinero@restaurante.com"
-              placeholderTextColor="#64748b"
-              className={`rounded-xl bg-slate-900 border px-4 py-3 text-slate-100 ${
-                errors.email ? "border-rose-500" : "border-slate-800"
+              placeholder="empleado@restaurante.com"
+              placeholderTextColor="#a8a29e"
+              className={`rounded-xl border bg-stone-900 px-4 py-3 text-stone-100 ${
+                errors.email ? "border-rose-500" : "border-stone-700"
               }`}
             />
-            {errors.email && <Text className="text-rose-400 text-xs mt-1">{errors.email}</Text>}
+            {errors.email && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.email}</Text>}
           </View>
 
           {/* Contraseña */}
           <View>
-            <Text className="text-xs font-semibold text-slate-300 mb-1">Contraseña *</Text>
+            <Text className="mb-1 text-xs font-bold text-amber-200">Contraseña *</Text>
             <TextInput
               value={password}
               onChangeText={setPassword}
               secureTextEntry
-              placeholder="Mínimo 6 caracteres"
-              placeholderTextColor="#64748b"
-              className={`rounded-xl bg-slate-900 border px-4 py-3 text-slate-100 ${
-                errors.password ? "border-rose-500" : "border-slate-800"
+              placeholder="Mínimo seis caracteres"
+              placeholderTextColor="#a8a29e"
+              className={`rounded-xl border bg-stone-900 px-4 py-3 text-stone-100 ${
+                errors.password ? "border-rose-500" : "border-stone-700"
               }`}
             />
-            {errors.password && <Text className="text-rose-400 text-xs mt-1">{errors.password}</Text>}
+            {errors.password && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.password}</Text>}
           </View>
         </View>
 
-        {/* Sección Foto Personal (Cámara en Vivo Exclusiva) */}
-        <View className="mt-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <Text className="text-xs font-semibold text-slate-300 mb-2">
-            Foto Personal (Obligatoria desde la cámara) *
+        {/* Sección Fotografía Personal */}
+        <View className="mt-5 rounded-2xl border border-stone-700 bg-stone-800/80 p-4 shadow-sm">
+          <Text className="mb-2 text-xs font-bold text-amber-200">
+            Fotografía Personal (Captura exclusiva desde la cámara) *
           </Text>
 
           {fotoUri ? (
             <View className="items-center">
               <Image
                 source={{ uri: fotoUri }}
-                className="h-44 w-44 rounded-2xl border-2 border-teal-500"
+                className="h-44 w-44 rounded-2xl border-2 border-amber-500"
               />
               <TouchableOpacity
                 onPress={() => {
-                  triggerHaptic("tap");
+                  ejecutarVibracion("toque");
                   setIsCameraOpen(true);
                 }}
-                className="mt-3 rounded-xl bg-slate-800 px-4 py-2 active:bg-slate-700"
+                className="mt-3 rounded-xl bg-amber-700/60 px-5 py-2.5 active:bg-amber-700"
               >
-                <Text className="text-xs font-bold text-teal-400">Tomar otra foto</Text>
+                <Text className="text-xs font-bold text-amber-100">Tomar otra fotografía</Text>
               </TouchableOpacity>
             </View>
           ) : (
             <TouchableOpacity
               onPress={async () => {
                 if (!permission?.granted) await requestPermission();
-                triggerHaptic("tap");
+                ejecutarVibracion("toque");
                 setIsCameraOpen(true);
               }}
-              className="h-36 items-center justify-center rounded-xl border border-dashed border-slate-700 bg-slate-950/40 active:bg-slate-900"
+              className="h-36 items-center justify-center rounded-xl border border-dashed border-amber-600/50 bg-stone-900/60 active:bg-stone-900"
             >
-              <Text className="text-3xl mb-1">📸</Text>
-              <Text className="text-xs font-bold text-slate-300">Abrir Cámara en Vivo</Text>
-              <Text className="text-[10px] text-slate-500">Sin acceso a galería de fotos</Text>
+              <Text className="mb-1 text-3xl">📸</Text>
+              <Text className="text-xs font-bold text-amber-100">Activar Cámara en Vivo</Text>
+              <Text className="text-[10px] text-stone-400">Sin acceso a la galería de fotos</Text>
             </TouchableOpacity>
           )}
 
           {errors.fotoUri && (
-            <Text className="text-rose-400 text-xs mt-2 text-center">{errors.fotoUri}</Text>
+            <Text className="mt-2 text-center text-xs font-medium text-rose-400">{errors.fotoUri}</Text>
           )}
         </View>
 
-        {/* Botón Registrar */}
-        <TouchableOpacity
-          onPress={handleSubmit}
-          disabled={isSubmitting}
-          className="mt-8 rounded-2xl bg-teal-500 py-4 items-center active:bg-teal-600 disabled:opacity-50"
-        >
-          {isSubmitting ? (
-            <ActivityIndicator color="#020617" />
-          ) : (
-            <Text className="font-bold text-slate-950 text-base">Registrar Empleado</Text>
-          )}
-        </TouchableOpacity>
+        {/* Spinner o Botón de Acción */}
+        {isSubmitting ? (
+          <View className="mt-6">
+            <CompanySpinner mensaje="Registrando empleado cocinero..." />
+          </View>
+        ) : (
+          <TouchableOpacity
+            onPress={handleSubmit}
+            className="mt-6 rounded-2xl border border-amber-400/40 bg-amber-600 py-4 shadow-lg active:bg-amber-700"
+          >
+            <Text className="text-center text-base font-extrabold uppercase tracking-wider text-amber-50">
+              Registrar Empleado
+            </Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
 
       {/* MODAL 1: ESCÁNER QR DNI */}
       <Modal visible={isQrScannerOpen} animationType="slide">
-        <View className="flex-1 bg-black">
+        <View className="flex-1 bg-stone-950">
           <CameraView
             style={{ flex: 1 }}
             facing="back"
-            barcodeScannerSettings={{
-              barcodeTypes: ["qr", "pdf417"],
-            }}
+            barcodeScannerSettings={{ barcodeTypes: ["qr", "pdf417"] }}
             onBarcodeScanned={handleBarCodeScanned}
           />
-          <View className="absolute top-12 left-6 right-6 flex-row justify-between items-center bg-black/50 p-3 rounded-xl">
-            <Text className="text-white text-xs font-semibold">
-              Enfoca el código QR o PDF417 del DNI
+          <View className="absolute top-12 left-6 right-6 flex-row items-center justify-between rounded-xl border border-amber-500/40 bg-stone-900/90 p-3.5">
+            <Text className="text-xs font-bold text-amber-100">
+              Enfoque el código del documento
             </Text>
             <TouchableOpacity
               onPress={() => setIsQrScannerOpen(false)}
-              className="bg-rose-600 px-3 py-1.5 rounded-lg"
+              className="rounded-lg bg-rose-700 px-3 py-1.5 active:bg-rose-800"
             >
-              <Text className="text-white text-xs font-bold">Cerrar</Text>
+              <Text className="text-xs font-bold text-amber-50">Cerrar</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -359,30 +403,40 @@ export default function App() {
 
       {/* MODAL 2: CÁMARA PARA FOTO EN VIVO */}
       <Modal visible={isCameraOpen} animationType="slide">
-        <View className="flex-1 bg-black">
+        <View className="flex-1 bg-stone-950">
           <CameraView ref={cameraRef} style={{ flex: 1 }} facing="front" />
 
-          {/* Botón Cancelar arriba */}
           <View className="absolute top-12 right-6">
             <TouchableOpacity
               onPress={() => setIsCameraOpen(false)}
-              className="bg-black/60 px-4 py-2 rounded-full"
+              className="rounded-full border border-stone-600 bg-stone-900/80 px-4 py-2"
             >
-              <Text className="text-white text-xs font-bold">Cancelar</Text>
+              <Text className="text-xs font-bold text-amber-100">Cancelar</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Botón de disparo abajo */}
           <View className="absolute bottom-10 left-0 right-0 items-center">
             <TouchableOpacity
               onPress={handleTakePhoto}
-              className="h-20 w-20 items-center justify-center rounded-full border-4 border-white bg-white/20 active:bg-white/40"
+              className="h-20 w-20 items-center justify-center rounded-full border-4 border-amber-300 bg-amber-500/30 active:bg-amber-500/50"
             >
-              <View className="h-14 w-14 rounded-full bg-white" />
+              <View className="h-14 w-14 rounded-full bg-amber-400" />
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
+
+      {/* MODAL GENERAL DE RETROALIMENTACIÓN (SIN ALERT) */}
+      <FeedbackModal
+        visible={modalFeedback.visible}
+        tipo={modalFeedback.tipo}
+        titulo={modalFeedback.titulo}
+        mensaje={modalFeedback.mensaje}
+        onClose={() => {
+          setModalFeedback((prev) => ({ ...prev, visible: false }));
+          if (modalFeedback.onAceptar) modalFeedback.onAceptar();
+        }}
+      />
     </SafeAreaView>
   );
 }

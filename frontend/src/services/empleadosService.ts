@@ -30,7 +30,7 @@ export async function registrarEmpleadoMock(payload: EmpleadoPayload) {
 
 // BACKEND REAL (descomentar y configurar la URL de tu API para usarlo en producción)
 // // URL base de tu backend (o ngrok / Postman Mock Server en desarrollo)
-// const API_URL = "https://tu-servidor-o-api.com/api";
+// const API_URL = "https://servidor-o-api.com/api";
 
 // export async function registrarEmpleado(payload: EmpleadoPayload) {
 //   try {
@@ -49,10 +49,10 @@ export async function registrarEmpleadoMock(payload: EmpleadoPayload) {
 //       throw new Error(data.message || "Error al procesar el registro del empleado.");
 //     }
 
-//     // Retorna la respuesta real del servidor (con el ID de la base de datos)
+//     // Retorna la respuesta del servidor (con el ID de la base de datos)
 //     return data;
 //   } catch (error: any) {
-//     // Relanza el error para que el 'catch' de tu pantalla lo capture y muestre el Alert
+//     // Propaga el error hacia la pantalla para presentarlo en el modal visual con vibración
 //     throw new Error(error.message || "Error de conexión con el servidor.");
 //   }
 // }
