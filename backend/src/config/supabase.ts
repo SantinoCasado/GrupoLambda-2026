@@ -12,4 +12,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
 }
 
 // Inicializa el cliente con permisos de administrador (Service Role)
-export const supabase = createClient(supabaseUrl, supabaseServiceKey);
+export const supabase = createClient(
+    process.env.SUPABASE_URL as string,
+    process.env.SUPABASE_SERVICE_ROLE_KEY as string
+);
