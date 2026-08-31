@@ -1,19 +1,35 @@
-# Trabajo Final Integrador 2026 - Tecnicatura Universitaria en Programación
+# Trabajo Final Integrador 2026 - Tecnicatura Universitaria en Programación (UTN)
 
-Repositorio oficial del grupo para el Trabajo Final Integrador (TFI) de la materia. 
+<p align="center">
+  <img src="./assets/logo.png" alt="Logo Restaurante" width="150"/>
+</p>
+
+Repositorio oficial del grupo para el Trabajo Final Integrador (TFI) de la materia. El sistema gestiona el flujo completo de un restaurante de especialidad (Comida China), desde la reserva y asignación de mesas, hasta el flujo de cocina y encuestas de satisfacción.
+
+### 🎨 Identidad Visual del Proyecto
+
+- **Temática:** Restaurante de Comida China.
+- **Paleta de Colores:**
+  - 🔴 `#780116` (Rojo Oscuro / Principal)
+  - 🟡 `#F7B538` (Amarillo / Acentos)
+  - 🟠 `#DB7C26` (Naranja Suave)
+  - 🟧 `#D8572A` (Naranja Intenso)
+  - 🟥 `#C32F27` (Rojo Vibrante)
+
+---
 
 ## 🛠️ Stack Tecnológico del Proyecto
 
 Nuestra arquitectura simula un entorno laboral real, separando las responsabilidades de Frontend, Backend y Base de Datos:
 
-*   **Frontend (App Móvil):** React Native con Expo y TypeScript.
-*   **Estilos UI:** NativeWind (Tailwind CSS) garantizando contraste nítido y sin espacios neutros.
-*   **Backend (Servidor):** Node.js y Express con TypeScript.
-*   **Base de Datos y Auth:** PostgreSQL gestionado a través de Supabase.
-*   **Servicios Externos:** 
-    *   Resend/Brevo (Envío automático de correos electrónicos).
-    *   Firebase Cloud Messaging + Expo Notifications (Notificaciones Push).
-    *   Expo Camera / Barcode Scanner (Lectura de códigos QR).
+- **Frontend (App Móvil):** React Native con Expo y TypeScript.
+- **Estilos UI:** NativeWind (Tailwind CSS) garantizando contraste nítido y sin espacios neutros.
+- **Backend (Servidor):** Node.js y Express puro con TypeScript (Arquitectura Orientada al Dominio).
+- **Base de Datos y Auth:** PostgreSQL gestionado a través de Supabase y GoTrue.
+- **Servicios Externos:**
+  - Resend/Brevo (Envío automático de correos electrónicos).
+  - Firebase Cloud Messaging + Expo Notifications (Notificaciones Push).
+  - Expo Camera / Barcode Scanner (Lectura de códigos QR físicos).
 
 ---
 
@@ -21,48 +37,76 @@ Nuestra arquitectura simula un entorno laboral real, separando las responsabilid
 
 A continuación, se detallan las responsabilidades actuales de cada integrante del equipo, cumpliendo con el formato requerido para el seguimiento de tareas:
 
-### 1. Apellidos y nombres: Brazanovich, Valentín
-*   **Rol:** Frontend Lead & UX/UI.
-*   **Módulos (objetivos) a desarrollar:** Punto 1 (Alta de empleados), Punto 5 (Alta de cliente registrado), Punto 9 (Alta de cliente anónimo) y maquetación general de UI/UX.
-*   **Fecha de inicio de la tarea:** 25/08/2026
-*   **Fecha de finalización de la tarea:** 15/09/2026 (Estimado)
-*   **Branch:** `feature/valentin-auth-ui`
+### 1. Brazanovich, Valentín
 
-### 1. Apellidos y nombres: Andreozzi, Sebastián
-*   **Rol:** Frontend App Developer.
-*   **Módulos (objetivos) a desarrollar:** Punto 2 (Alta de plato), Punto 3 (Alta de bebida), Punto 11 (Menú y chat de consultas) y Punto 14 (Desarrollo de los 3 minijuegos).
-*   **Fecha de inicio de la tarea:** 25/08/2026
-*   **Fecha de finalización de la tarea:** 15/09/2026 (Estimado)
-*   **Branch:** `feature/sebastian-menu-juegos`
+- **Rol:** Frontend Lead & UX/UI.
+- **Módulos (objetivos) a desarrollar:** Punto 1 (Alta de empleados), Punto 5 (Alta de cliente registrado), Punto 9 (Alta de cliente anónimo) y maquetación general de UI/UX.
+- **Fecha de inicio de la tarea:** 25/08/2026
+- **Fecha de finalización de la tarea:** 15/09/2026 (Estimado)
+- **Branch:** `feature/valentin-auth-ui`
 
-### 1. Apellidos y nombres: Casado, Santino
-*   **Rol:** Backend & Integration Engineer.
-*   **Módulos (objetivos) a desarrollar:** Puntos 6, 7 y 8 (Aprobación/Rechazo de clientes y envíos de emails automáticos). Puntos 12, 13 y 14 (Flujo lógico de pedidos, cálculos y derivación mediante Push Notifications).
-*   **Fecha de inicio de la tarea:** 25/08/2026
-*   **Fecha de finalización de la tarea:** 15/09/2026 (Estimado)
-*   **Branch:** `feature/santino-server-setup`
+### 2. Andreozzi, Sebastián
 
-### 1. Apellidos y nombres: Sanchez, Rocío
-*   **Rol:** Database Admin & QA / DevOps.
-*   **Módulos (objetivos) a desarrollar:** Punto 4 (Alta y Gestión de Mesas y QRs), Puntos 9 y 10 (Lógica de lista de espera y asignación de mesas en base de datos).
-*   **Fecha de inicio de la tarea:** 25/08/2026
-*   **Fecha de finalización de la tarea:** 15/09/2026 (Estimado)
-*   **Branch:** `feature/rocio-supabase-db`
+- **Rol:** Frontend App Developer.
+- **Módulos (objetivos) a desarrollar:** Punto 2 (Alta de plato), Punto 3 (Alta de bebida), Punto 11 (Menú y chat de consultas) y Punto 14 (Desarrollo de los 3 minijuegos).
+- **Fecha de inicio de la tarea:** 25/08/2026
+- **Fecha de finalización de la tarea:** 15/09/2026 (Estimado)
+- **Branch:** `feature/sebastian-menu-juegos`
+
+### 3. Casado, Santino
+
+- **Rol:** Backend & Integration Engineer.
+- **Módulos (objetivos) a desarrollar:** Puntos 6, 7 y 8 (Aprobación/Rechazo de clientes y envíos de emails automáticos). Puntos 12, 13 y 14 (Flujo lógico de pedidos, cálculos y derivación mediante Push Notifications).
+- **Fecha de inicio de la tarea:** 25/08/2026
+- **Fecha de finalización de la tarea:** 15/09/2026 (Estimado)
+- **Branch:** `feature/santino-server-setup`
+
+### 4. Sanchez, Rocío
+
+- **Rol:** Database Admin & QA / DevOps.
+- **Módulos (objetivos) a desarrollar:** Punto 4 (Alta y Gestión de Mesas y QRs), Puntos 9 y 10 (Lógica de lista de espera y asignación de mesas en base de datos).
+- **Fecha de inicio de la tarea:** 25/08/2026
+- **Fecha de finalización de la tarea:** 15/09/2026 (Estimado)
+- **Branch:** `feature/rocio-supabase-db`
 
 > **Nota para el equipo:** Si algún integrante del equipo no logra terminar con la funcionalidad comprometida, se deberá cambiar el plazo o asignar ese módulo a otro integrante y esto debe quedar informado en esta sección del README.
 
 ---
 
-## 📸 Índice de Imágenes Asociadas al Proyecto
+## 🛡️ Seguridad y Validaciones de la API (Backend)
 
-*(Este apartado se irá actualizando a medida que se desarrollen las interfaces gráficas y se generen los recursos, tal como es requerido para las entregas)*
+Para proteger la integridad de los datos antes de que impacten en Supabase, el backend implementa una doble barrera de seguridad en la ruta de creación de perfiles de empleados (`/api/usuarios/empleados`):
 
-1.  `[Pendiente]` Ícono principal de la aplicación.
-2.  `[Pendiente]` Pantalla de presentación (Splash screen) animada con nombres del equipo.
-3.  `[Pendiente]` Códigos QR del proyecto (Ingreso al local, Mesas, Propinas).
-4.  `[Pendiente]` Formularios de ingreso (Login y Registro).
-5.  `[Pendiente]` Listados de productos y menú.
-6.  `[Pendiente]` Gráficos estadísticos de encuestas.
+1.  **Validación de Esquemas (Zod):** Rechaza peticiones malformadas (correos sin formato, contraseñas cortas o DNIs incompletos) arrojando un error `400 Bad Request`.
+2.  **Reglas de Negocio (Controlador):** Implementa control de acceso basado en roles (RBAC). Si un empleado intenta crear un rol superior a su jerarquía, el sistema interviene y arroja un error `403 Forbidden`.
 
 ---
-*Repositorio mantenido por el líder del grupo para la materia Trabajo Final Integrador.*
+
+## 📸 Índice de Imágenes y Mockups Asociados
+
+### 🧪 Pruebas del Backend (Postman)
+
+1.  **Validación de Esquemas (Zod - Error 400):**  
+    [Ver Captura](./assets/tests/PruebaValidacionZod.png)
+2.  **Control de Permisos y Reglas de Negocio (Error 403):**  
+    [Ver Captura](./assets/tests/PruebaReglasNegocio.png)
+3.  **Flujo Exitoso de Creación (201 Created):**  
+    [Ver Captura](./assets/tests/FlujoExitosoCreacion.png)
+
+### 📱 Mockups y Diseño UI (Frontend)
+
+4.  **Pantalla de Login:**  
+    [Ver Mockup](./assets/makeup/logIn.png)
+5.  **Pantalla de Registro:**  
+    [Ver Mockup](./assets/makeup/registro.png)
+6.  **Vista de Inicio:**  
+    [Ver Mockup](./assets/makeup/viewInicio.png)
+7.  **Pantalla de Bienvenida de Pedido:**  
+    [Ver Mockup](./assets/makeup/bienvenidaPedido.png)
+8.  `[Pendiente]` Códigos QR del proyecto (Ingreso al local, Mesas, Propinas).
+9.  `[Pendiente]` Listados de productos y menú.
+10. `[Pendiente]` Gráficos estadísticos de encuestas.
+
+---
+
+_Repositorio mantenido por el grupo para la materia Trabajo Final Integrador._
