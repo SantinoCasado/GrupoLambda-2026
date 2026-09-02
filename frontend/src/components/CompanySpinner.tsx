@@ -40,7 +40,7 @@ export function CompanySpinner({ mensaje = "Procesando información..." }: Compa
           resizeMode="contain"
         />
       </Animated.View>
-      <Text className="text-center text-sm font-bold tracking-wide text-amber-200">
+      <Text className="text-center text-sm font-bold tracking-wide text-terracota">
         {mensaje}
       </Text>
     </View>

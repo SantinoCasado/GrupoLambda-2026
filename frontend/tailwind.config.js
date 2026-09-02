@@ -8,7 +8,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        vino: "#780116",       // Fondo principal
+        vino: "#8f0018",       // Fondo principal
         mostaza: "#f7b538",    // Textos destacados, íconos, botones primarios
         caramelo: "#db7c26",   // Bordes activos, tarjetas secundarias
         calabaza: "#d8572a",   // Botones de acción, alertas medias

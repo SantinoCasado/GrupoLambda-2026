@@ -22,8 +22,8 @@ export function FeedbackModal({ visible, tipo, titulo, mensaje, onClose }: Feedb
   error: {
     borde: "border-terracota",
     fondoIcono: "bg-terracota",
-    colorIcono: "text-amber-100",
-    colorTitulo: "text-amber-100",
+    colorIcono: "text-terracota",
+    colorTitulo: "text-terracota",
     icono: "✕",
   },
   informacion: {
@@ -46,7 +46,7 @@ export function FeedbackModal({ visible, tipo, titulo, mensaje, onClose }: Feedb
             <Text className={`mb-2 text-center text-xl font-black tracking-wide ${estilos.colorTitulo}`}>
               {titulo}
             </Text>
-            <Text className="mb-6 text-center text-sm font-medium leading-5 text-amber-100">
+            <Text className="mb-6 text-center text-sm font-medium leading-5 text-terracota">
               {mensaje}
             </Text>
             <TouchableOpacity
