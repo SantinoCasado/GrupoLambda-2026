@@ -209,7 +209,7 @@ export default function App() {
         {/* Cabecera sin fondos negros ni blancos */}
         <View className="mb-5">
           <Image
-            source={require("./assets/images/logo-name-2.png")}
+            source={require("./assets/images/logo-name.png")}
             className="h-16 w-auto self-center"
             resizeMode="contain"
           />
@@ -237,16 +237,16 @@ export default function App() {
             ejecutarVibracion("toque");
             setIsQrScannerOpen(true);
           }}
-          className="mb-5 flex-row items-center justify-center rounded-2xl border border-[#d8572a] bg-[#FBE9DF] py-3.5 px-4 active:bg-[#f5dccb]"
+          className="mb-5 flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3.5 px-4 active:bg-[#f5dccb]"
         >
-          <Image source={require("./assets/images/dni.png")} className="mr-2 h-7 w-7" />
-          <Text className="text-sm font-bold text-[#d8572a]">
+          <Image source={require("./assets/images/dni.png")} className="mr-5 h-7 w-7" />
+          <Text className="text-sm font-bold text-calabaza">
             Escanear Código QR de DNI
           </Text>
         </TouchableOpacity>
 
         {/* Contenedor de Formularios */}
-        <View className="gap-y-4">
+        <View className="mx-6 gap-y-4">
           {/* Nombres */}
           <View>
             <Text className="mb-1 text-s font-bold text-vino">Nombres *</Text>
@@ -336,7 +336,7 @@ export default function App() {
               onChangeText={setPassword}
               secureTextEntry
               placeholder="Mínimo seis caracteres"
-              placeholderTextColor="mostaza"
+              placeholderTextColor="#a37e1f"
               className={`rounded-xl border px-4 py-3 text-stone-100 ${
                 errors.password ? "border-terracota" : "border-mostaza"
               }`}
@@ -346,7 +346,7 @@ export default function App() {
         </View>
 
         {/* Sección Fotografía Personal */}
-        <View className="mt-5 rounded-2xl border border-mostaza p-4">
+        <View className="mx-4 mt-5 rounded-2xl border border-mostaza p-4">
           <Text className="mb-2 text-s font-bold text-vino">
             Fotografía Personal*
           </Text>
@@ -395,11 +395,11 @@ export default function App() {
         ) : (
           <TouchableOpacity
             onPress={handleSubmit}
-            className="mt-6 flex-row items-center justify-center rounded-2xl border border-amber-400/40 bg-vino py-3 active:bg-terracota"
+            className=" mt-6 flex-row items-center justify-center rounded-2xl border border-amber-400/40 bg-vino py-3 active:bg-terracota"
           >
             <Image
               source={require("./assets/images/sello.png")}
-              className="h-5 w-5"
+              className="h-7 w-7"
               resizeMode="contain"
             />
             <Text className="mx-10 text-center text-base font-extrabold uppercase tracking-wider text-mostaza">
@@ -407,7 +407,7 @@ export default function App() {
             </Text>
             <Image
               source={require("./assets/images/sello.png")}
-              className="h-5 w-5"
+              className="h-7 w-7"
               resizeMode="contain"
             />
           </TouchableOpacity>
