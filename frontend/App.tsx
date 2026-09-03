@@ -235,7 +235,7 @@ export default function App() {
           />
           <ChineseFrame className="mt-2 bg-vino">
             <View className="items-center rounded-xl bg-mostaza/15 px-4 py-4">
-            <Text className="text-2xl font-black tracking-wider text-mostaza">
+            <Text style={{ fontFamily: "LaOriental" }} className="text-2xl  text-mostaza uppercase">
               Alta de Empleado
             </Text>
             <Text className="mt-1 text-xs font-semibold text-amber-100">
@@ -266,11 +266,11 @@ export default function App() {
               ejecutarVibracion("toque");
               setIsQrScannerOpen(true);
             }}
-            className="mb-5 flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3.5 px-4 active:bg-[#f5dccb]"
+            className="mb-5 flex-row items-center justify-center rounded-2xl border border-vino bg-mostaza py-3.5 px-4 active:bg-[#f5dccb]"
           >
-            <Image source={require("./assets/images/dni.png")} className="mr-5 h-7 w-7" />
-            <Text className="text-sm font-bold text-calabaza">
-              Escanear Código QR de DNI
+            <Image source={require("./assets/images/dni3.png")} className="mr-5 h-7 w-7" />
+            <Text style={{ fontFamily: "LaOriental" }} className="uppercase text-vino">
+              Escanear Código de DNI
             </Text>
           </TouchableOpacity>
 
@@ -298,7 +298,7 @@ export default function App() {
                 onChangeText={setApellidos}
                 placeholder="Ingrese los apellidos"
                 placeholderTextColor="#a37e1f"
-                className={`rounded-xl border px-4 py-3 text-stone-100 ${
+                className={`rounded-xl border px-4 py-3 text-stone-700 ${
                   errors.apellidos ? "border-terracota" : "border-mostaza"
                 }`}
               />
@@ -315,7 +315,7 @@ export default function App() {
                 maxLength={8}
                 placeholder="Ejemplo: 38123456"
                 placeholderTextColor="#a37e1f"
-                className={`rounded-xl border px-4 py-3 text-stone-100 ${
+                className={`rounded-xl border px-4 py-3 text-stone-700 ${
                   errors.dni ? "border-terracota" : "border-mostaza"
                 }`}
               />
@@ -332,7 +332,7 @@ export default function App() {
                 maxLength={11}
                 placeholder="Ejemplo: 20381234562"
                 placeholderTextColor="#a37e1f"
-                className={`rounded-xl border px-4 py-3 text-stone-100 ${
+                className={`rounded-xl border px-4 py-3 text-stone-700 ${
                   errors.cuil ? "border-terracota" : "border-mostaza"
                 }`}
               />
@@ -380,7 +380,7 @@ export default function App() {
                 autoCapitalize="none"
                 placeholder="empleado@restaurante.com"
                 placeholderTextColor="#a37e1f"
-                className={`rounded-xl border px-4 py-3 text-stone-100 ${
+                className={`rounded-xl border px-4 py-3 text-stone-700 ${
                   errors.email ? "border-terracota" : "border-mostaza"
                 }`}
               />
@@ -396,7 +396,7 @@ export default function App() {
                 secureTextEntry
                 placeholder="Mínimo seis caracteres"
                 placeholderTextColor="#a37e1f"
-                className={`rounded-xl border px-4 py-3 text-stone-100 ${
+                className={`rounded-xl border px-4 py-3 text-stone-700 ${
                   errors.password ? "border-terracota" : "border-mostaza"
                 }`}
               />
@@ -459,7 +459,7 @@ export default function App() {
                 className="h-7 w-7"
                 resizeMode="contain"
               />
-              <Text className="mx-10 text-center text-base font-extrabold uppercase tracking-wider text-mostaza">
+              <Text style={{ fontFamily: "LaOriental" }} className="mx-10 text-center text-base uppercase tracking-wider text-mostaza">
                 Registrar Empleado
               </Text>
               <Image
