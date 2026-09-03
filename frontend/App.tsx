@@ -106,8 +106,8 @@ export default function App() {
       setIsQrScannerOpen(false);
       mostrarMensaje(
         "exito",
-        "Documento Nacional de Identidad Leído",
-        `Datos cargados: ${parsed.apellidos}, ${parsed.nombres}`
+        "DNI Leído",
+        `Datos de: ${parsed.apellidos}, ${parsed.nombres}`
       );
     } else {
       setIsQrScannerOpen(false);
@@ -362,7 +362,7 @@ export default function App() {
               }}
               className="w-full flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
             >
-              <Text className="text-sm font-bold text-calabaza">Siguiente →</Text>
+              <Text style={{ fontFamily: "LaOriental" }}  className="text-s  text-calabaza">Siguiente</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -459,7 +459,7 @@ export default function App() {
                 className="h-7 w-7"
                 resizeMode="contain"
               />
-              <Text style={{ fontFamily: "LaOriental" }} className="mx-10 text-center text-base uppercase tracking-wider text-mostaza">
+              <Text style={{ fontFamily: "LaOriental" }} className="mx-10 text-center text-l uppercase tracking-wider text-mostaza">
                 Registrar Empleado
               </Text>
               <Image
@@ -492,7 +492,7 @@ export default function App() {
               }}
               className="w-full flex-row items-center justify-center rounded-2xl border border-mostaza/40 bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
             >
-              <Text className="text-sm font-bold text-calabaza">← Volver</Text>
+              <Text style={{ fontFamily: "LaOriental" }} className="text-s text-calabaza">Volver</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -507,16 +507,20 @@ export default function App() {
             barcodeScannerSettings={{ barcodeTypes: ["qr", "pdf417"] }}
             onBarcodeScanned={handleBarCodeScanned}
           />
-          <View className="absolute top-12 left-6 right-6 flex-row items-center justify-between rounded-xl border border-amber-500/40 bg-stone-900/90 p-3.5">
-            <Text className="text-xs font-bold text-terracota">
-              Enfoque el código del documento
-            </Text>
-            <TouchableOpacity
-              onPress={() => setIsQrScannerOpen(false)}
-              className="rounded-lg bg-rose-700 px-3 py-1.5 active:bg-rose-800"
-            >
-              <Text className="text-xs font-bold text-terracota">Cerrar</Text>
-            </TouchableOpacity>
+          <View className="absolute top-12 left-6 right-6">
+            <ChineseFrame className="bg-vino" >
+              <View className="flex-row items-center justify-evenly rounded-xl bg-mostaza/15 px-4 py-7">
+              <Text style={{ fontFamily: "LaOriental" }} className="text-xs text-mostaza">
+                Enfoque el código del documento
+              </Text>
+              <TouchableOpacity
+                onPress={() => setIsQrScannerOpen(false)}
+                className=" bg-mostaza px-2 py-1.5 active:bg-rose-800"
+              >
+                <Text style={{ fontFamily: "LaOriental" }}  className="text-xs text-terracota">Cerrar</Text>
+              </TouchableOpacity>
+            </View>
+          </ChineseFrame>
           </View>
         </View>
       </Modal>
