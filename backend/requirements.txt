@@ -1,0 +1,6 @@
+express
+typescript
+zod
+@supabase/supabase-js
+dotenv
+tsx
