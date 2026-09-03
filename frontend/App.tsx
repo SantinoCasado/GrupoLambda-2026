@@ -413,16 +413,16 @@ export default function App() {
               <View className="items-center">
                 <Image
                   source={{ uri: fotoUri }}
-                  className="h-44 w-44 rounded-2xl border-2 border-amber-500"
+                  className="h-44 w-44 rounded-2xl border border-calabaza"
                 />
                 <TouchableOpacity
                   onPress={() => {
                     ejecutarVibracion("toque");
                     setIsCameraOpen(true);
                   }}
-                  className="mt-3 rounded-xl bg-amber-700/60 px-5 py-2.5 active:bg-amber-700"
+                  className="mt-3 rounded-xl border-calabaza border bg-[#FBE9DF] px-5 py-2.5 active:bg-amber-700"
                 >
-                  <Text className="text-xs font-bold text-terracota">Tomar otra fotografía</Text>
+                  <Text className="text-xs font-bold text-calabaza">Tomar otra fotografía</Text>
                 </TouchableOpacity>
               </View>
             ) : (
@@ -533,9 +533,9 @@ export default function App() {
           <View className="absolute top-12 right-6">
             <TouchableOpacity
               onPress={() => setIsCameraOpen(false)}
-              className="rounded-full border border-stone-600 bg-stone-900/80 px-4 py-2"
+              className="border border-mostaza bg-vino px-4 py-2"
             >
-              <Text className="text-xs font-bold text-terracota">Cancelar</Text>
+              <Text style={{ fontFamily: "LaOriental" }} className="text-xs text-mostaza">Cerrar</Text>
             </TouchableOpacity>
           </View>
 
