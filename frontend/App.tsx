@@ -9,8 +9,9 @@ import {
   Image,
   Vibration,
   Modal,
+  Dimensions,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from "expo-camera";
 import { parseDniData } from "./src/utils/dniParser";
@@ -23,6 +24,7 @@ import { ChineseFrame } from "./src/components/ChineseFrame";
 
 export default function App() {
   const [permission, requestPermission] = useCameraPermissions();
+  const insets = useSafeAreaInsets();
 
   // Estados del Formulario
   const [nombres, setNombres] = useState("");
@@ -57,6 +59,9 @@ export default function App() {
   });
 
   const cameraRef = useRef<CameraView | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const [currentStep, setCurrentStep] = useState(0);
+  const screenWidth = Dimensions.get("window").width;
 
   // Control centralizado de vibración
   const ejecutarVibracion = (tipo: "exito" | "error" | "toque") => {
@@ -182,6 +187,8 @@ export default function App() {
           setPassword("");
           setFotoUri(null);
           setErrors({});
+          scrollRef.current?.scrollTo({ x: 0, animated: false });
+          setCurrentStep(0);
         }
       );
     } catch (error: any) {
@@ -205,9 +212,17 @@ export default function App() {
 
       <StatusBar style="light" />
 
-      <ScrollView className="flex-1 px-5 pt-4" contentContainerStyle={{ paddingBottom: 60 }}>
-        {/* Cabecera sin fondos negros ni blancos */}
-        <View className="mb-5">
+      {/* Nombres del equipo */}
+      <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + 16 }}>
+        <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
+        <Text className="text-[10px] text-vino/70">Santino Casado</Text>
+        <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
+        <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
+      </View>
+
+      {/* Cabecera */}
+      <View className="px-5 pt-4">
+        <View className="mb-4">
           <Image
             source={require("./assets/images/logo-name.png")}
             className="h-16 w-auto self-center"
@@ -229,189 +244,258 @@ export default function App() {
             </View>
           </ChineseFrame>
         </View>
+      </View>
 
-        {/* Botón Lector QR DNI */}
-        <TouchableOpacity
-          onPress={async () => {
-            if (!permission?.granted) await requestPermission();
-            ejecutarVibracion("toque");
-            setIsQrScannerOpen(true);
-          }}
-          className="mb-5 flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3.5 px-4 active:bg-[#f5dccb]"
-        >
-          <Image source={require("./assets/images/dni.png")} className="mr-5 h-7 w-7" />
-          <Text className="text-sm font-bold text-calabaza">
-            Escanear Código QR de DNI
-          </Text>
-        </TouchableOpacity>
+      {/* Carrusel de secciones */}
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        pagingEnabled
+        showsHorizontalScrollIndicator={false}
+        onMomentumScrollEnd={(e) => {
+          const step = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+          setCurrentStep(step);
+        }}
+        style={{ flex: 1 }}
+      >
+        {/* SECCIÓN 0: DNI e Información Personal */}
+        <View style={{ width: screenWidth }} className="px-5 pt-2">
+          <TouchableOpacity
+            onPress={async () => {
+              if (!permission?.granted) await requestPermission();
+              ejecutarVibracion("toque");
+              setIsQrScannerOpen(true);
+            }}
+            className="mb-5 flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3.5 px-4 active:bg-[#f5dccb]"
+          >
+            <Image source={require("./assets/images/dni.png")} className="mr-5 h-7 w-7" />
+            <Text className="text-sm font-bold text-calabaza">
+              Escanear Código QR de DNI
+            </Text>
+          </TouchableOpacity>
 
-        {/* Contenedor de Formularios */}
-        <View className="mx-6 gap-y-4">
-          {/* Nombres */}
-          <View>
-            <Text className="mb-1 text-s font-bold text-vino">Nombres *</Text>
-            <TextInput
-              value={nombres}
-              onChangeText={setNombres}
-              placeholder="Ingrese los nombres"
-              placeholderTextColor="#a37e1f"
-              className={`rounded-xl border px-4 py-3 text-stone-700 ${
-                errors.nombres ? "border-terracota" : "border-mostaza"
-              }`}
-            />
-            {errors.nombres && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.nombres}</Text>}
+          <View className="mx-6 gap-y-4">
+            {/* Nombres */}
+            <View>
+              <Text className="mb-1 text-s font-bold text-vino">Nombres *</Text>
+              <TextInput
+                value={nombres}
+                onChangeText={setNombres}
+                placeholder="Ingrese los nombres"
+                placeholderTextColor="#a37e1f"
+                className={`rounded-xl border px-4 py-3 text-stone-700 ${
+                  errors.nombres ? "border-terracota" : "border-mostaza"
+                }`}
+              />
+              {errors.nombres && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.nombres}</Text>}
+            </View>
+
+            {/* Apellidos */}
+            <View>
+              <Text className="mb-1 text-s font-bold text-vino">Apellidos *</Text>
+              <TextInput
+                value={apellidos}
+                onChangeText={setApellidos}
+                placeholder="Ingrese los apellidos"
+                placeholderTextColor="#a37e1f"
+                className={`rounded-xl border px-4 py-3 text-stone-100 ${
+                  errors.apellidos ? "border-terracota" : "border-mostaza"
+                }`}
+              />
+              {errors.apellidos && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.apellidos}</Text>}
+            </View>
+
+            {/* DNI */}
+            <View>
+              <Text className="mb-1 text-s font-bold text-vino">Número de DNI *</Text>
+              <TextInput
+                value={dni}
+                onChangeText={setDni}
+                keyboardType="numeric"
+                maxLength={8}
+                placeholder="Ejemplo: 38123456"
+                placeholderTextColor="#a37e1f"
+                className={`rounded-xl border px-4 py-3 text-stone-100 ${
+                  errors.dni ? "border-terracota" : "border-mostaza"
+                }`}
+              />
+              {errors.dni && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.dni}</Text>}
+            </View>
+
+            {/* CUIL */}
+            <View>
+              <Text className="mb-1 text-s font-bold text-vino">Número de CUIL *</Text>
+              <TextInput
+                value={cuil}
+                onChangeText={setCuil}
+                keyboardType="numeric"
+                maxLength={11}
+                placeholder="Ejemplo: 20381234562"
+                placeholderTextColor="#a37e1f"
+                className={`rounded-xl border px-4 py-3 text-stone-100 ${
+                  errors.cuil ? "border-terracota" : "border-mostaza"
+                }`}
+              />
+              {errors.cuil && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.cuil}</Text>}
+            </View>
           </View>
 
-          {/* Apellidos */}
-          <View>
-            <Text className="mb-1 text-s font-bold text-vino">Apellidos *</Text>
-            <TextInput
-              value={apellidos}
-              onChangeText={setApellidos}
-              placeholder="Ingrese los apellidos"
-              placeholderTextColor="#a37e1f"
-              className={`rounded-xl border px-4 py-3 text-stone-100 ${
-                errors.apellidos ? "border-terracota" : "border-mostaza"
-              }`}
-            />
-            {errors.apellidos && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.apellidos}</Text>}
-          </View>
-
-          {/* DNI */}
-          <View>
-            <Text className="mb-1 text-s font-bold text-vino">Número de DNI *</Text>
-            <TextInput
-              value={dni}
-              onChangeText={setDni}
-              keyboardType="numeric"
-              maxLength={8}
-              placeholder="Ejemplo: 38123456"
-              placeholderTextColor="#a37e1f"
-              className={`rounded-xl border px-4 py-3 text-stone-100 ${
-                errors.dni ? "border-terracota" : "border-mostaza"
-              }`}
-            />
-            {errors.dni && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.dni}</Text>}
-          </View>
-
-          {/* CUIL */}
-          <View>
-            <Text className="mb-1 text-s font-bold text-vino">Número de CUIL *</Text>
-            <TextInput
-              value={cuil}
-              onChangeText={setCuil}
-              keyboardType="numeric"
-              maxLength={11}
-              placeholder="Ejemplo: 20381234562"
-              placeholderTextColor="#a37e1f"
-              className={`rounded-xl border px-4 py-3 text-stone-100 ${
-                errors.cuil ? "border-terracota" : "border-mostaza"
-              }`}
-            />
-            {errors.cuil && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.cuil}</Text>}
-          </View>
-
-          {/* Correo Electrónico */}
-          <View>
-            <Text className="mb-1 text-s font-bold text-vino">Correo Electrónico *</Text>
-            <TextInput
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              placeholder="empleado@restaurante.com"
-              placeholderTextColor="#a37e1f"
-              className={`rounded-xl border px-4 py-3 text-stone-100 ${
-                errors.email ? "border-terracota" : "border-mostaza"
-              }`}
-            />
-            {errors.email && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.email}</Text>}
-          </View>
-
-          {/* Contraseña */}
-          <View>
-            <Text className="mb-1 text-s font-bold text-vino">Contraseña *</Text>
-            <TextInput
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              placeholder="Mínimo seis caracteres"
-              placeholderTextColor="#a37e1f"
-              className={`rounded-xl border px-4 py-3 text-stone-100 ${
-                errors.password ? "border-terracota" : "border-mostaza"
-              }`}
-            />
-            {errors.password && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.password}</Text>}
+          {/* Paginación + Siguiente */}
+          <View className="mx-6 mt-4 items-center">
+            <View className="flex-row items-center justify-center gap-2 py-1 mb-3">
+              {[0, 1].map((i) => (
+                <View
+                  key={i}
+                  className={`h-2 w-2 rotate-45 ${
+                    currentStep === i ? "bg-vino" : "bg-mostaza/30"
+                  }`}
+                />
+              ))}
+            </View>
+            <TouchableOpacity
+              onPress={() => {
+                ejecutarVibracion("toque");
+                scrollRef.current?.scrollTo({
+                  x: screenWidth,
+                  animated: true,
+                });
+              }}
+              className="w-full flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
+            >
+              <Text className="text-sm font-bold text-calabaza">Siguiente →</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
-        {/* Sección Fotografía Personal */}
-        <View className="mx-4 mt-5 rounded-2xl border border-mostaza p-4">
-          <Text className="mb-2 text-s font-bold text-vino">
-            Fotografía Personal*
-          </Text>
-
-          {fotoUri ? (
-            <View className="items-center">
-              <Image
-                source={{ uri: fotoUri }}
-                className="h-44 w-44 rounded-2xl border-2 border-amber-500"
+        {/* SECCIÓN 1: Cuenta, Foto y Registro */}
+        <View style={{ width: screenWidth }} className="px-5 pt-2">
+          <View className="mx-6 gap-y-4">
+            {/* Correo Electrónico */}
+            <View>
+              <Text className="mb-1 text-s font-bold text-vino">Correo Electrónico *</Text>
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                placeholder="empleado@restaurante.com"
+                placeholderTextColor="#a37e1f"
+                className={`rounded-xl border px-4 py-3 text-stone-100 ${
+                  errors.email ? "border-terracota" : "border-mostaza"
+                }`}
               />
+              {errors.email && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.email}</Text>}
+            </View>
+
+            {/* Contraseña */}
+            <View>
+              <Text className="mb-1 text-s font-bold text-vino">Contraseña *</Text>
+              <TextInput
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry
+                placeholder="Mínimo seis caracteres"
+                placeholderTextColor="#a37e1f"
+                className={`rounded-xl border px-4 py-3 text-stone-100 ${
+                  errors.password ? "border-terracota" : "border-mostaza"
+                }`}
+              />
+              {errors.password && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.password}</Text>}
+            </View>
+          </View>
+
+          <View className="mx-4 mt-5 rounded-2xl border border-mostaza p-4">
+            <Text className="mb-2 text-s font-bold text-vino">
+              Fotografía Personal*
+            </Text>
+
+            {fotoUri ? (
+              <View className="items-center">
+                <Image
+                  source={{ uri: fotoUri }}
+                  className="h-44 w-44 rounded-2xl border-2 border-amber-500"
+                />
+                <TouchableOpacity
+                  onPress={() => {
+                    ejecutarVibracion("toque");
+                    setIsCameraOpen(true);
+                  }}
+                  className="mt-3 rounded-xl bg-amber-700/60 px-5 py-2.5 active:bg-amber-700"
+                >
+                  <Text className="text-xs font-bold text-terracota">Tomar otra fotografía</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
               <TouchableOpacity
-                onPress={() => {
+                onPress={async () => {
+                  if (!permission?.granted) await requestPermission();
                   ejecutarVibracion("toque");
                   setIsCameraOpen(true);
                 }}
-                className="mt-3 rounded-xl bg-amber-700/60 px-5 py-2.5 active:bg-amber-700"
+                className="h-36 items-center justify-center rounded-xl border border-dashed border-amber-600/50"
               >
-                <Text className="text-xs font-bold text-terracota">Tomar otra fotografía</Text>
+                <Image source={require("./assets/images/camera.png")} className="mb-1 h-9 w-9" />
+                <Text className="text-xs font-bold text-terracota">Activar Cámara en Vivo</Text>
+                <Text className="text-[10px] text-stone-400">Sin acceso a la galería de fotos</Text>
               </TouchableOpacity>
+            )}
+
+            {errors.fotoUri && (
+              <Text className="mt-2 text-center text-xs font-medium text-rose-400">{errors.fotoUri}</Text>
+            )}
+          </View>
+
+          {isSubmitting ? (
+            <View className="mt-6">
+              <CompanySpinner mensaje="Registrando empleado cocinero..." />
             </View>
           ) : (
             <TouchableOpacity
-              onPress={async () => {
-                if (!permission?.granted) await requestPermission();
-                ejecutarVibracion("toque");
-                setIsCameraOpen(true);
-              }}
-              className="h-36 items-center justify-center rounded-xl border border-dashed border-amber-600/50"
+              onPress={handleSubmit}
+              className="mt-6 flex-row items-center justify-center rounded-2xl border border-amber-400/40 bg-vino py-3 active:bg-terracota"
             >
-              <Image source={require("./assets/images/camera.png")} className="mb-1 h-9 w-9" />
-              <Text className="text-xs font-bold text-terracota">Activar Cámara en Vivo</Text>
-              <Text className="text-[10px] text-stone-400">Sin acceso a la galería de fotos</Text>
+              <Image
+                source={require("./assets/images/sello.png")}
+                className="h-7 w-7"
+                resizeMode="contain"
+              />
+              <Text className="mx-10 text-center text-base font-extrabold uppercase tracking-wider text-mostaza">
+                Registrar Empleado
+              </Text>
+              <Image
+                source={require("./assets/images/sello.png")}
+                className="h-7 w-7"
+                resizeMode="contain"
+              />
             </TouchableOpacity>
           )}
 
-          {errors.fotoUri && (
-            <Text className="mt-2 text-center text-xs font-medium text-rose-400">{errors.fotoUri}</Text>
-          )}
-        </View>
-
-        {/* Spinner o Botón de Acción */}
-        {isSubmitting ? (
-          <View className="mt-6">
-            <CompanySpinner mensaje="Registrando empleado cocinero..." />
+          {/* Paginación + Volver */}
+          <View className="mx-6 mt-4 items-center">
+            <View className="flex-row items-center justify-center gap-2 py-1 mb-3">
+              {[0, 1].map((i) => (
+                <View
+                  key={i}
+                  className={`h-2 w-2 rotate-45 ${
+                    currentStep === i ? "bg-vino" : "bg-mostaza/30"
+                  }`}
+                />
+              ))}
+            </View>
+            <TouchableOpacity
+              onPress={() => {
+                ejecutarVibracion("toque");
+                scrollRef.current?.scrollTo({
+                  x: 0,
+                  animated: true,
+                });
+              }}
+              className="w-full flex-row items-center justify-center rounded-2xl border border-mostaza/40 bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
+            >
+              <Text className="text-sm font-bold text-calabaza">← Volver</Text>
+            </TouchableOpacity>
           </View>
-        ) : (
-          <TouchableOpacity
-            onPress={handleSubmit}
-            className=" mt-6 flex-row items-center justify-center rounded-2xl border border-amber-400/40 bg-vino py-3 active:bg-terracota"
-          >
-            <Image
-              source={require("./assets/images/sello.png")}
-              className="h-7 w-7"
-              resizeMode="contain"
-            />
-            <Text className="mx-10 text-center text-base font-extrabold uppercase tracking-wider text-mostaza">
-              Registrar Empleado
-            </Text>
-            <Image
-              source={require("./assets/images/sello.png")}
-              className="h-7 w-7"
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-        )}
+        </View>
       </ScrollView>
 
       {/* MODAL 1: ESCÁNER QR DNI */}
