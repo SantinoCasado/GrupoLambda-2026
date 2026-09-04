@@ -13,7 +13,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import * as ImagePicker from "expo-image-picker";
 import { validatePlatoForm, PlatoFormErrors } from "../utils/platoValidators";
-import { registrarPlatoMock } from "../services/platosService";
+import { registrarPlato } from "../services/platosService";
 import { FeedbackModal } from "../components/FeedbackModal";
 import { CompanySpinner } from "../components/CompanySpinner";
 
@@ -144,7 +144,7 @@ export default function App() {
 
     try {
       setIsSubmitting(true);
-      await registrarPlatoMock({
+      await registrarPlato({
         nombre: nombre.trim(),
         descripcion: descripcion.trim(),
         tiempoElaboracionMinutos: parseInt(tiempoElaboracion, 10),

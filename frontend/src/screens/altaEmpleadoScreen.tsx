@@ -15,7 +15,7 @@ import { StatusBar } from "expo-status-bar";
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from "expo-camera";
 import { parseDniData } from "../utils/dniParser";
 import { validarFormEmpleado, FormErrors } from "../utils/validators";
-import { registrarEmpleadoMock } from "../services/empleadosService";
+import { registrarEmpleado } from "../services/empleadosService";
 import { FeedbackModal } from "../components/FeedbackModal";
 import { CompanySpinner } from "../components/CompanySpinner";
 import { ChineseFrame } from "../components/ChineseFrame";
@@ -162,7 +162,7 @@ export default function App() {
 
     try {
       setIsSubmitting(true);
-      await registrarEmpleadoMock({
+      await registrarEmpleado({
         nombres: nombres.trim(),
         apellidos: apellidos.trim(),
         dni: dni.trim(),

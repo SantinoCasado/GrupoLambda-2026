@@ -1,3 +1,5 @@
+import { API_BASE_URL } from "./apiConfig";
+
 export interface PlatoPayload {
   nombre: string;
   descripcion: string;
@@ -6,34 +8,20 @@ export interface PlatoPayload {
   fotos: string[];
 }
 
-// Lista en memoria para simular la existencia previa en la carta (menú)
-const cartaPlatosRegistrados: string[] = [
-  "BIFE DE CHORIZO CON PAPAS",
-  "MILANESA NAPOLITANA",
-  "SORRENTINOS DE CALABAZA",
-];
+export async function registrarPlato(payload: PlatoPayload) {
+  const response = await fetch(`${API_BASE_URL}/platos`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(payload),
+  });
 
-export async function registrarPlatoMock(payload: PlatoPayload) {
-  await new Promise((resolve) => setTimeout(resolve, 1200));
+  const data = await response.json();
 
-  const nombreNormalizado = payload.nombre.trim().toUpperCase();
-
-  // Verificación de existencia en la carta
-  if (cartaPlatosRegistrados.includes(nombreNormalizado)) {
-    throw new Error("El plato ya se encuentra registrado en la carta del menú.");
+  if (!response.ok) {
+    throw new Error(data.message || data.error || "No se pudo registrar el plato en la carta.");
   }
 
-  // Se agrega a la lista simulada
-  cartaPlatosRegistrados.push(nombreNormalizado);
-
-  console.log("==========================================");
-  console.log("📦 PAYLOAD LISTO PARA POSTMAN [POST /api/platos]:");
-  console.log(JSON.stringify(payload, null, 2));
-  console.log("==========================================");
-
-  return {
-    success: true,
-    message: "Plato incorporado a la carta con éxito",
-    id: "plt_" + Date.now(),
-  };
+  return data;
 }

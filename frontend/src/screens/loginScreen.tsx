@@ -10,7 +10,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { USUARIOS_PRECARGADOS, UsuarioSeed } from "../data/usuariosPrecargados";
-import { loginMock } from "../services/authService";
+import { login } from "../services/authService";
 import { FeedbackModal } from "../components/FeedbackModal";
 import { CompanySpinner } from "../components/CompanySpinner";
 
@@ -57,7 +57,7 @@ export function LoginScreen({ onLoginSuccess, onNavigateRegistroCliente }: Login
 
     try {
       setCargando(true);
-      const usuario = await loginMock(correoAUsar, claveAUsar);
+      const usuario = await login(correoAUsar, claveAUsar);
       vibrar("exito");
       onLoginSuccess(usuario);
     } catch (error: any) {
