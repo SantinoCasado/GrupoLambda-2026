@@ -6,8 +6,9 @@ import {
   TouchableOpacity,
   ScrollView,
   Vibration,
+  Image,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { USUARIOS_PRECARGADOS, UsuarioSeed } from "../data/usuariosPrecargados";
 import { login } from "../services/authService";
@@ -20,6 +21,7 @@ interface LoginScreenProps {
 }
 
 export function LoginScreen({ onLoginSuccess, onNavigateRegistroCliente }: LoginScreenProps) {
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [clave, setClave] = useState("");
   const [cargando, setCargando] = useState(false);
@@ -81,48 +83,67 @@ export function LoginScreen({ onLoginSuccess, onNavigateRegistroCliente }: Login
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-vino">
-      <StatusBar style="light" />
+    <>
+      <View
+        style={{ position: "absolute", width: "100%", height: "100%", backgroundColor: "#FFF6EC" }}
+      />
+      <Image
+        source={require("../../assets/images/background-test-3.png")}
+        style={{ position: "absolute", width: "100%", height: "100%" }}
+        resizeMode="cover"
+      />
+      <SafeAreaView className="flex-1">
+        <StatusBar style="light" />
+
+        <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + 16 }}>
+          <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
+          <Text className="text-[10px] text-vino/70">Santino Casado</Text>
+          <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
+          <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
+        </View>
 
       <ScrollView className="flex-1 px-5 pt-4" contentContainerStyle={{ paddingBottom: 50 }}>
         {/* Encabezado */}
-        <View className="mb-5 rounded-3xl border-2 border-caramelo bg-vino p-5 shadow-lg">
-          <Text className="text-center text-3xl font-black tracking-wider text-mostaza">
-            RESTAURANTE
-          </Text>
-          <Text className="text-center text-xs font-bold uppercase tracking-widest text-amber-100 mt-1">
-            Sistema de Gestión Integral
-          </Text>
+        <View className="mb-5 items-center">
+          <Image
+            source={require("../../assets/images/logo-name2.png")}
+            className="mt-6 h-48 w-auto self-center"
+            resizeMode="contain"
+          />
+          <Image
+            source={require("../../assets/images/separator.png")}
+            className="mt-3 h-7 w-full"
+            resizeMode="contain"
+          />
         </View>
 
         {/* Formulario tradicional */}
-        <View className="gap-y-4 rounded-3xl border-2 border-caramelo bg-vino p-5 shadow-md">
-          <Text className="text-sm font-black uppercase tracking-wider text-mostaza">
+          <Text style={{ fontFamily: "LaOriental" }} className="text-center text-2xl uppercase tracking-wider text-vino mt-1 mb-3">
             Iniciar Sesión
           </Text>
-
-          <View>
-            <Text className="mb-1 text-xs font-bold text-amber-100">Correo Electrónico *</Text>
+        <View className="gap-y-4 p-5">
+          <View>  
+            <Text className="mb-1 text-s font-bold text-vino">Correo Electrónico *</Text>
             <TextInput
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
               placeholder="ejemplo@restaurante.com"
-              placeholderTextColor="#f7b53880"
-              className="rounded-2xl border-2 border-caramelo bg-vino px-4 py-3 text-amber-50"
+              placeholderTextColor="#a37e1f"
+              className="rounded-2xl border border-mostaza px-4 py-3 text-stone-700"
             />
           </View>
 
           <View>
-            <Text className="mb-1 text-xs font-bold text-amber-100">Contraseña *</Text>
+            <Text className="mb-1 text-s font-bold text-vino">Contraseña *</Text>
             <TextInput
               value={clave}
               onChangeText={setClave}
               secureTextEntry
               placeholder="••••••••"
-              placeholderTextColor="#f7b53880"
-              className="rounded-2xl border-2 border-caramelo bg-vino px-4 py-3 text-amber-50"
+              placeholderTextColor="#a37e1f"
+              className="rounded-xl border border-mostaza px-4 py-3 text-stone-700"
             />
           </View>
 
@@ -131,11 +152,21 @@ export function LoginScreen({ onLoginSuccess, onNavigateRegistroCliente }: Login
           ) : (
             <TouchableOpacity
               onPress={() => ejecutarLogin(email, clave)}
-              className="mt-2 rounded-2xl border-2 border-mostaza bg-mostaza py-4 active:bg-caramelo"
+              className="mt-6 flex-row items-center justify-center rounded-2xl bg-vino py-3 active:bg-terracota"
             >
-              <Text className="text-center text-base font-black uppercase tracking-wider text-vino">
-                Ingresar al Sistema
+              <Image
+                source={require("../../assets/images/sello.png")}
+                className="h-7 w-7"
+                resizeMode="contain"
+              />
+              <Text style={{ fontFamily: "LaOriental" }} className="text-center mx-10 uppercase tracking-wider text-mostaza">
+                Ingresar
               </Text>
+              <Image
+                source={require("../../assets/images/sello.png")}
+                className="h-7 w-7"
+                resizeMode="contain"
+              />
             </TouchableOpacity>
           )}
 
@@ -147,7 +178,7 @@ export function LoginScreen({ onLoginSuccess, onNavigateRegistroCliente }: Login
             }}
             className="mt-2 items-center py-2"
           >
-            <Text className="text-xs font-bold text-amber-200 underline">
+            <Text className="text-xs font-bold text-calabaza underline">
               ¿No tienes cuenta? Regístrate como cliente aquí
             </Text>
           </TouchableOpacity>
@@ -190,6 +221,7 @@ export function LoginScreen({ onLoginSuccess, onNavigateRegistroCliente }: Login
         mensaje={modalFeedback.mensaje}
         onClose={() => setModalFeedback((prev) => ({ ...prev, visible: false }))}
       />
-    </SafeAreaView>
+      </SafeAreaView>
+    </>
   );
 }

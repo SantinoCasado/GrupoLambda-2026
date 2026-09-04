@@ -250,7 +250,9 @@ export default function App() {
         ref={scrollRef}
         horizontal
         pagingEnabled
+        nestedScrollEnabled
         showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ flexGrow: 1 }}
         onMomentumScrollEnd={(e) => {
           const step = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
           setCurrentStep(step);
@@ -258,7 +260,12 @@ export default function App() {
         style={{ flex: 1 }}
       >
         {/* SECCIÓN 0: DNI e Información Personal */}
-        <View style={{ width: screenWidth }} className="px-5 pt-2">
+        <View style={{ width: screenWidth }} className="flex-1 px-5 pt-2">
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
+            contentContainerStyle={{ paddingBottom: 40 }}
+          >
           <TouchableOpacity
             onPress={async () => {
               if (!permission?.granted) await requestPermission();
@@ -364,10 +371,16 @@ export default function App() {
               <Text style={{ fontFamily: "LaOriental" }}  className="text-s  text-calabaza">Siguiente</Text>
             </TouchableOpacity>
           </View>
+          </ScrollView>
         </View>
 
         {/* SECCIÓN 1: Cuenta, Foto y Registro */}
-        <View style={{ width: screenWidth }} className="px-5 pt-2">
+        <View style={{ width: screenWidth }} className="flex-1 px-5 pt-2">
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
+            contentContainerStyle={{ paddingBottom: 40 }}
+          >
           <View className="mx-6 gap-y-4">
             {/* Correo Electrónico */}
             <View>
@@ -494,6 +507,7 @@ export default function App() {
               <Text style={{ fontFamily: "LaOriental" }} className="text-s text-calabaza">Volver</Text>
             </TouchableOpacity>
           </View>
+          </ScrollView>
         </View>
       </ScrollView>
 

@@ -29,10 +29,10 @@ export function CompanySpinner({ mensaje = "Procesando información..." }: Compa
   }, [escalaAnimada]);
 
   return (
-    <View className="items-center justify-center rounded-2xl border border-amber-600/40 bg-stone-800/95 p-6 shadow-lg">
+    <View className="items-center justify-center rounded-2xl border border-vino bg-[#FBE9DF] p-6">
       <Animated.View
         style={{ transform: [{ scale: escalaAnimada }] }}
-        className="mb-3 h-24 w-24 items-center justify-center rounded-2xl border-2 border-amber-500 bg-amber-600/20 p-2"
+        className="mb-3 h-24 w-24 items-center justify-center p-2"
       >
         <Image
           source={require("../../assets/logo.png")}
@@ -40,7 +40,7 @@ export function CompanySpinner({ mensaje = "Procesando información..." }: Compa
           resizeMode="contain"
         />
       </Animated.View>
-      <Text className="text-center text-sm font-bold tracking-wide text-terracota">
+      <Text className="text-center text-sm font-bold tracking-wide text-vino">
         {mensaje}
       </Text>
     </View>
