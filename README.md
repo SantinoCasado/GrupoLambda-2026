@@ -130,7 +130,7 @@ Para proteger la integridad de los datos antes de que impacten en Supabase, el b
 7.  **Pantalla de Bienvenida de Pedido:**  
     [Ver Mockup](./assets/makeup/bienvenidaPedido.png)
 8.  **Códigos QR del proyecto:**  
-    [Ingreso al Local](./assets/qrs/Qr_Ingreso.png) | [Mesa Asignada](./assets/qrs/Mesa1.PNG) | [Propinas](./assets/qrs/qr_propina20.PNG)
+    [Ingreso al Local](./assets/qrs/Qr_Ingreso.png) | [Mesa Asignada](./assets/qrs/Mesa_1.PNG) | [Propinas](./assets/qrs/qr_propina_20.PNG)
 9.  `[Pendiente]` Listados de productos y menú.
 10. `[Pendiente]` Gráficos estadísticos de encuestas.
 
