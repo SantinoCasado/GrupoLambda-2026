@@ -73,6 +73,32 @@ A continuación, se detallan las responsabilidades actuales de cada integrante d
 
 ---
 
+## 🏗️ Diagrama de Clases (UML)
+
+La arquitectura de datos se divide en tres módulos principales interconectados: Módulo de Usuarios y Accesos, Módulo del Restaurante y Módulo de Pedidos.
+
+![Diagrama UML del Sistema](./assets/umlTFI.png)
+
+---
+
+## 📋 Casos de Uso del Sistema
+
+El sistema contempla los siguientes flujos principales para la operatoria del restaurante:
+
+- **CU-01: Registrar Empleado (Cocinero)** - Permite a un Dueño o Supervisor registrar un empleado escaneando su DNI y tomando una foto en vivo.
+- **CU-02: Gestión de Platos (A, B, C)** - Permite al Cocinero agregar, modificar o eliminar mediante baja lógica platos del menú con fotografías.
+- **CU-03: Gestión de Bebidas (A, B, C)** - Permite al Cantinero agregar, modificar o dar de baja bebidas del menú.
+- **CU-04: Alta y Gestión de Mesas** - El Dueño o Supervisor registra nuevas mesas y el sistema genera automáticamente su código QR.
+- **CU-05: Crear Cliente Registrado** - Auto-registro de clientes validando identidad con foto obligatoria en vivo, quedando pendientes de aprobación.
+- **CU-06: Aprobación o Rechazo de Cliente Registrado** - Dueño o Supervisor evalúan clientes pendientes y disparan correos transaccionales.
+- **CU-09: Ingreso y Gestión de Cliente Anónimo** - Ingreso rápido mediante QR de entrada al local para listarse en espera.
+- **CU-10: Asignación de Mesa a Cliente** - El Metre vincula una mesa vacía al cliente en espera y notifica vía Push Notification.
+- **CU-11: Consulta QR de Mesa (A, B)** - El cliente escanea la mesa asignada para visualizar el menú y realizar consultas al mozo mediante chat en tiempo real.
+- **CU-12: Realización de Pedido por el Cliente** - Selección de productos con cálculo de importe y tiempo estimado, notificado directamente al Mozo.
+- **CU-13: Validación de Pedido y Derivación a Sectores** - El Mozo aprueba la solicitud derivando ítems simultáneamente a Cocina y Barra.
+
+---
+
 ## 🛡️ Seguridad y Validaciones de la API (Backend)
 
 Para proteger la integridad de los datos antes de que impacten en Supabase, el backend implementa una doble barrera de seguridad en la ruta de creación de perfiles de empleados (`/api/usuarios/empleados`):
@@ -103,7 +129,8 @@ Para proteger la integridad de los datos antes de que impacten en Supabase, el b
     [Ver Mockup](./assets/makeup/viewInicio.png)
 7.  **Pantalla de Bienvenida de Pedido:**  
     [Ver Mockup](./assets/makeup/bienvenidaPedido.png)
-8.  `[Pendiente]` Códigos QR del proyecto (Ingreso al local, Mesas, Propinas).
+8.  **Códigos QR del proyecto:**  
+    [Ingreso al Local](./assets/qrs/Qr_Ingreso.png) | [Mesa Asignada](./assets/qrs/Mesa_1.PNG) | [Propinas](./assets/qrs/qr_propina_20.PNG)
 9.  `[Pendiente]` Listados de productos y menú.
 10. `[Pendiente]` Gráficos estadísticos de encuestas.
 
