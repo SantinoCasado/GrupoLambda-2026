@@ -319,20 +319,15 @@ export default function App() {
         </View>
 
         {/* Spinner o Botón de Acción */}
-        {isSubmitting ? (
-          <View className="mt-6">
-            <CompanySpinner mensaje="Verificando carta y guardando plato..." />
-          </View>
-        ) : (
-          <TouchableOpacity
+        <TouchableOpacity
             onPress={handleSubmit}
+            disabled={isSubmitting}
             className="mt-6 rounded-2xl border-2 border-mostaza bg-mostaza py-4 shadow-lg active:bg-caramelo"
           >
             <Text className="text-center text-base font-black uppercase tracking-wider text-vino">
               Agregar Plato a la Carta
             </Text>
           </TouchableOpacity>
-        )}
       </ScrollView>
 
       {/* MODAL SELECTOR: CÁMARA O GALERÍA */}
@@ -366,6 +361,8 @@ export default function App() {
           </View>
         </View>
       </Modal>
+
+      <CompanySpinner visible={isSubmitting} mensaje="Verificando carta y guardando plato..." />
 
       {/* FEEDBACK MODAL PROPIO */}
       <FeedbackModal

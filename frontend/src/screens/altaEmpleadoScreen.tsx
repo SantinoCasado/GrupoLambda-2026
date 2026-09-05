@@ -457,13 +457,9 @@ export default function App() {
             )}
           </View>
 
-          {isSubmitting ? (
-            <View className="mt-6">
-              <CompanySpinner mensaje="Registrando empleado cocinero..." />
-            </View>
-          ) : (
-            <TouchableOpacity
+          <TouchableOpacity
               onPress={handleSubmit}
+              disabled={isSubmitting}
               className="mt-6 flex-row items-center justify-center rounded-2xl border border-amber-400/40 bg-vino py-3 active:bg-terracota"
             >
               <Image
@@ -480,7 +476,6 @@ export default function App() {
                 resizeMode="contain"
               />
             </TouchableOpacity>
-          )}
 
           {/* Paginación + Volver */}
           <View className="mx-6 mt-4 items-center">
@@ -562,6 +557,8 @@ export default function App() {
           </View>
         </View>
       </Modal>
+
+      <CompanySpinner visible={isSubmitting} mensaje="Registrando empleado cocinero..." />
 
       {/* MODAL GENERAL DE RETROALIMENTACIÓN (SIN ALERT) */}
       <FeedbackModal
