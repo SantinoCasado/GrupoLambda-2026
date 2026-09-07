@@ -1,4 +1,3 @@
-// App.tsx
 import "./global.css";
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, Vibration } from "react-native";
@@ -6,39 +5,52 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { UsuarioSeed } from "./src/data/usuariosPrecargados";
 import { LoginScreen } from "./src/screens/loginScreen";
 
-// Importamos las pantallas
+// Pantallas
 import AltaEmpleadoScreen from "./src/screens/altaEmpleadoScreen";
-import AltaPlatoScreen from "./src/screens/altaPlatoScreen";
+import AltaProductoScreen from "./src/screens/altaProducto";
+import AltaMesaScreen from "./src/screens/altaMesaScreen";
+import RegistroClienteScreen from "./src/screens/registroClienteScreen";
+import AprobacionClientesScreen from "./src/screens/aprobacionClientesScreen";
 
 export default function App() {
   const [usuarioActual, setUsuarioActual] = useState<UsuarioSeed | null>(null);
-  const [vistaActual, setVistaActual] = useState<string>("menu_principal");
+  const [subVistaAdmin, setSubVistaAdmin] = useState<"empleados" | "mesas" | "clientes">("empleados");
+  const [vistaPublica, setVistaPublica] = useState<"login" | "registro_cliente">("login");
 
   const cerrarSesion = () => {
     Vibration.vibrate([0, 50, 50, 50]);
     setUsuarioActual(null);
-    setVistaActual("menu_principal");
+    setSubVistaAdmin("empleados");
+    setVistaPublica("login");
   };
 
-  // Si no hay usuario logueado -> Mostramos Login
+  // Si no hay sesión iniciada (Público: Login o Auto-registro del Cliente)
   if (!usuarioActual) {
+    if (vistaPublica === "registro_cliente") {
+      return (
+        <RegistroClienteScreen
+          modo="cliente"
+          onVolverAlLogin={() => setVistaPublica("login")}
+        />
+      );
+    }
+
     return (
       <LoginScreen
         onLoginSuccess={(usuario) => {
           setUsuarioActual(usuario);
-          setVistaActual("menu_principal");
+          setSubVistaAdmin("empleados");
         }}
         onNavigateRegistroCliente={() => {
-          // Navegación al Punto 5 (cuando lo implementemos)
+          setVistaPublica("registro_cliente");
         }}
       />
     );
   }
 
-  // Si ya inició sesión, mostramos barra superior con botón de Cierre de Sesión obligatorio
   return (
     <SafeAreaView className="flex-1 bg-vino">
-      {/* Barra de Usuario y Cierre de Sesión */}
+      {/* 1. Barra Superior con Datos de Sesión */}
       <View className="flex-row items-center justify-between border-b-2 border-caramelo bg-vino px-5 py-3">
         <View className="flex-row items-center">
           <Text className="text-2xl mr-2">{usuarioActual.icono}</Text>
@@ -60,37 +72,135 @@ export default function App() {
         </TouchableOpacity>
       </View>
 
-      {/* Ruteo según el perfil del usuario */}
+      {/* 2. Contenido según Perfil */}
       <View className="flex-1">
-        {/* Caso 1: Dueño o Supervisor -> Pueden Agregar Empleados (Punto 1) */}
+        {/* DUEÑO O SUPERVISOR: 3 SOLAPAS */}
         {(usuarioActual.perfil === "dueño" || usuarioActual.perfil === "supervisor") && (
-          <AltaEmpleadoScreen />
-        )}
+          <View style={{ flex: 1 }}>
+            {/* Barra Selectora Superior de 3 Tareas */}
+            <View
+              style={{
+                flexDirection: "row",
+                backgroundColor: "#2b0f14",
+                paddingHorizontal: 8,
+                paddingVertical: 8,
+                borderBottomWidth: 1,
+                borderBottomColor: "#a37e1f",
+                zIndex: 50,
+                elevation: 10,
+              }}
+            >
+              {/* Solapa 1: Empleados */}
+              <TouchableOpacity
+                onPress={() => {
+                  Vibration.vibrate(30);
+                  setSubVistaAdmin("empleados");
+                }}
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  alignItems: "center",
+                  borderRadius: 10,
+                  backgroundColor: subVistaAdmin === "empleados" ? "#F59E0B" : "rgba(139, 26, 26, 0.4)",
+                  marginRight: 4,
+                  borderWidth: 1,
+                  borderColor: subVistaAdmin === "empleados" ? "#F59E0B" : "#a37e1f",
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontWeight: "bold",
+                    color: subVistaAdmin === "empleados" ? "#2b0f14" : "#FBE9DF",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  👤 Empleados
+                </Text>
+              </TouchableOpacity>
 
-        {/* Caso 2: Cocinero -> Puede Agregar Platos (Punto 2) */}
-        {usuarioActual.perfil === "cocinero" && <AltaPlatoScreen />}
+              {/* Solapa 2: Mesas */}
+              <TouchableOpacity
+                onPress={() => {
+                  Vibration.vibrate(30);
+                  setSubVistaAdmin("mesas");
+                }}
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  alignItems: "center",
+                  borderRadius: 10,
+                  backgroundColor: subVistaAdmin === "mesas" ? "#F59E0B" : "rgba(139, 26, 26, 0.4)",
+                  marginHorizontal: 2,
+                  borderWidth: 1,
+                  borderColor: subVistaAdmin === "mesas" ? "#F59E0B" : "#a37e1f",
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontWeight: "bold",
+                    color: subVistaAdmin === "mesas" ? "#2b0f14" : "#FBE9DF",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  🪑 Mesas / QR
+                </Text>
+              </TouchableOpacity>
 
-        {/* Casos siguientes (Cantinero, Metre, Mozo, Clientes) */}
-        {usuarioActual.perfil === "cantinero" && (
-          <View className="flex-1 items-center justify-center p-6">
-            <Text className="text-center text-lg font-black text-mostaza">
-              Panel del Cantinero
-            </Text>
-            <Text className="text-center text-xs text-amber-100 mt-2">
-              Próximo paso: Agregar Nueva Bebida (Punto 3).
-            </Text>
+              {/* Solapa 3: Clientes Pendientes */}
+              <TouchableOpacity
+                onPress={() => {
+                  Vibration.vibrate(30);
+                  setSubVistaAdmin("clientes");
+                }}
+                style={{
+                  flex: 1,
+                  paddingVertical: 8,
+                  alignItems: "center",
+                  borderRadius: 10,
+                  backgroundColor: subVistaAdmin === "clientes" ? "#F59E0B" : "rgba(139, 26, 26, 0.4)",
+                  marginLeft: 4,
+                  borderWidth: 1,
+                  borderColor: subVistaAdmin === "clientes" ? "#F59E0B" : "#a37e1f",
+                }}
+              >
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontWeight: "bold",
+                    color: subVistaAdmin === "clientes" ? "#2b0f14" : "#FBE9DF",
+                    textTransform: "uppercase",
+                  }}
+                >
+                  👥 Clientes
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Vista según la solapa seleccionada */}
+            <View style={{ flex: 1 }}>
+              {subVistaAdmin === "empleados" && <AltaEmpleadoScreen />}
+              {subVistaAdmin === "mesas" && <AltaMesaScreen />}
+              {subVistaAdmin === "clientes" && <AprobacionClientesScreen />}
+            </View>
           </View>
         )}
 
-        {(usuarioActual.perfil === "cliente_registrado" ||
-          usuarioActual.perfil === "cliente_anonimo") && (
-          <View className="flex-1 items-center justify-center p-6">
-            <Text className="text-center text-lg font-black text-mostaza">
-              Bienvenido al Restaurante
-            </Text>
-            <Text className="text-center text-xs text-amber-100 mt-2">
-              Escanee el código QR de ingreso o de su mesa.
-            </Text>
+        {/* COCINERO */}
+        {usuarioActual.perfil === "cocinero" && (
+          <AltaProductoScreen categoria="comida" />
+        )}
+
+        {/* CANTINERO */}
+        {usuarioActual.perfil === "cantinero" && (
+          <AltaProductoScreen categoria="bebida" />
+        )}
+
+        {/* METRE */}
+        {usuarioActual.perfil === "metre" && (
+          <View className="flex-1">
+            <RegistroClienteScreen modo="metre" />
           </View>
         )}
       </View>
