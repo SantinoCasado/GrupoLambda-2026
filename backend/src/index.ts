@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { supabase } from './config/supabase';
-import usuariosRoutes from './modules/usuarios/usuarios.routes';
+import usuariosRoutes from './modules/empleados/empleados.routes';
 
 dotenv.config();
 
