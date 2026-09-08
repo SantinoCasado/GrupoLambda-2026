@@ -1,11 +1,12 @@
 import { supabase } from '../../config/supabase';
+import { CrearEmpleadoDTO } from './schema/empleado.schema';
 
-export const crearEmpleadoService = async (datosEmpleado: any) => {
+export const registrarEmpleado = async (datos: CrearEmpleadoDTO) => {
     
     //  el usuario como Administrador (sin loguearlo)
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: datosEmpleado.email,
-        password: datosEmpleado.password,
+        email: datos.email,
+        password: datos.password,
         email_confirm: true // Confirmamos el mail automáticamente
     });
 
@@ -17,14 +18,14 @@ export const crearEmpleadoService = async (datosEmpleado: any) => {
         .from('users')
         .insert([
             {
-                id: authData.user.id,
-                first_name: datosEmpleado.first_name,
-                last_name: datosEmpleado.last_name,
-                dni: datosEmpleado.dni,
-                cuil: datosEmpleado.cuil, 
-                email: datosEmpleado.email,
-                role: datosEmpleado.role,
-                photo_url: datosEmpleado.photo_url || 'https://via.placeholder.com/150',
+                id: authData.user.id, // Vinculacion de la tabla publica con la autenticacion
+                first_name: datos.first_name,
+                last_name: datos.last_name,
+                dni: datos.dni,
+                cuil: datos.cuil, 
+                email: datos.email,
+                role: datos.role,
+                photo_url: datos.foto_url || 'https://via.placeholder.com/150',
                 status: 'approved'
             }
         ])
@@ -38,4 +39,14 @@ export const crearEmpleadoService = async (datosEmpleado: any) => {
     }
 
     return userData[0]; 
+};
+
+export const listarEmpleadosDb = async () => {
+    const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .in('role', ['owner', 'supervisor', 'metre', 'mozo', 'cocinero', 'cantinero']);
+
+    if (error) throw new Error(`Fallo al listar el staff: ${error.message}`);
+    return data;
 };

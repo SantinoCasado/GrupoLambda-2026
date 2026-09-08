@@ -24,10 +24,17 @@ Nuestra arquitectura simula un entorno laboral real, separando las responsabilid
 
 - **Frontend (App Móvil):** React Native con Expo y TypeScript.
 - **Estilos UI:** NativeWind (Tailwind CSS) garantizando contraste nítido y sin espacios neutros.
-- **Backend (Servidor):** Node.js y Express puro con TypeScript (Arquitectura Orientada al Dominio).
+- **Backend (Servidor):** Node.js y Express con TypeScript, utilizando una arquitectura modular orientada a servicios.
+- **Librerías del Servidor:**
+  - `typescript` & `tsx` (Compilación y ejecución en tiempo real)
+  - `express` (Framework web y enrutamiento)
+  - `zod` (Validación y sanitización estricta de esquemas)
+  - `@supabase/supabase-js` (Cliente de base de datos y autenticación con Service Role / Anon Keys)
+  - `multer` & `@types/multer` (Gestión eficiente de archivos e imágenes en memoria)
+  - `resend` (Envío automatizado de correos electrónicos transaccionales)
+  - `dotenv` (Gestión segura de variables de entorno)
 - **Base de Datos y Auth:** PostgreSQL gestionado a través de Supabase y GoTrue.
-- **Servicios Externos:**
-  - Resend/Brevo (Envío automático de correos electrónicos).
+- **Servicios Externos Adicionales:**
   - Firebase Cloud Messaging + Expo Notifications (Notificaciones Push).
   - Expo Camera / Barcode Scanner (Lectura de códigos QR físicos).
 
@@ -90,7 +97,7 @@ El sistema contempla los siguientes flujos principales para la operatoria del re
 - **CU-03: Gestión de Bebidas (A, B, C)** - Permite al Cantinero agregar, modificar o dar de baja bebidas del menú.
 - **CU-04: Alta y Gestión de Mesas** - El Dueño o Supervisor registra nuevas mesas y el sistema genera automáticamente su código QR.
 - **CU-05: Crear Cliente Registrado** - Auto-registro de clientes validando identidad con foto obligatoria en vivo, quedando pendientes de aprobación.
-- **CU-06: Aprobación o Rechazo de Cliente Registrado** - Dueño o Supervisor evalúan clientes pendientes y disparan correos transaccionales.
+- **CU-06: Aprobación o Rechazo de Cliente Registrado** - Dueño o Supervisor evalúan clientes pendientes y disparan correos transaccionales automáticos vía Resend.
 - **CU-09: Ingreso y Gestión de Cliente Anónimo** - Ingreso rápido mediante QR de entrada al local para listarse en espera.
 - **CU-10: Asignación de Mesa a Cliente** - El Metre vincula una mesa vacía al cliente en espera y notifica vía Push Notification.
 - **CU-11: Consulta QR de Mesa (A, B)** - El cliente escanea la mesa asignada para visualizar el menú y realizar consultas al mozo mediante chat en tiempo real.
@@ -99,12 +106,15 @@ El sistema contempla los siguientes flujos principales para la operatoria del re
 
 ---
 
-## 🛡️ Seguridad y Validaciones de la API (Backend)
+## 🛡️ Seguridad, Autenticación y Validaciones de la API (Backend)
 
-Para proteger la integridad de los datos antes de que impacten en Supabase, el backend implementa una doble barrera de seguridad en la ruta de creación de perfiles de empleados (`/api/usuarios/empleados`):
+Para proteger la integridad de los datos, el servidor implementa un conjunto robusto de mecanismos de control de acceso y validación:
 
-1.  **Validación de Esquemas (Zod):** Rechaza peticiones malformadas (correos sin formato, contraseñas cortas o DNIs incompletos) arrojando un error `400 Bad Request`.
-2.  **Reglas de Negocio (Controlador):** Implementa control de acceso basado en roles (RBAC). Si un empleado intenta crear un rol superior a su jerarquía, el sistema interviene y arroja un error `403 Forbidden`.
+1. **Gestión de Archivos Multer y Storage:** Middleware de subida en memoria que procesa las imágenes y las almacena de forma segura en los buckets de Supabase.
+2. **Validación de Esquemas (Zod):** Rechaza de forma instantánea peticiones malformadas o incompletas devolviendo errores tipados con formato claro para el frontend (`400 Bad Request`).
+3. **Autenticación Centralizada y Middleware ("Patovica"):** Valida tokens JWT emitidos por Supabase Auth combinados con el estado (`status`) y rol de la tabla pública `users`. Las rutas protegidas exigen la cabecera `Authorization: Bearer <TOKEN>` y permisos específicos por rol (RBAC).
+4. **Reglas de Negocio Jerárquicas:** Control de privilegios estrictos donde solo roles autorizados (Dueño/Supervisor) pueden aprobar cuentas o dar de alta perfiles de jerarquía superior (`403 Forbidden`).
+5. **Notificaciones Transaccionales (Resend):** Envío automático de correos de confirmación o rechazo adaptados mediante dominios verificados.
 
 ---
 
@@ -112,26 +122,26 @@ Para proteger la integridad de los datos antes de que impacten en Supabase, el b
 
 ### 🧪 Pruebas del Backend (Postman)
 
-1.  **Validación de Esquemas (Zod - Error 400):**  
-    [Ver Captura](./assets/tests/PruebaValidacionZod.png)
-2.  **Control de Permisos y Reglas de Negocio (Error 403):**  
-    [Ver Captura](./assets/tests/PruebaReglasNegocio.png)
-3.  **Flujo Exitoso de Creación (201 Created):**  
-    [Ver Captura](./assets/tests/FlujoExitosoCreacion.png)
+1. **Validación de Esquemas (Zod - Error 400):**  
+   [Ver Captura](./assets/tests/PruebaValidacionZod.png)
+2. **Control de Permisos y Reglas de Negocio (Error 403):**  
+   [Ver Captura](./assets/tests/PruebaReglasNegocio.png)
+3. **Flujo Exitoso de Creación (201 Created):**  
+   [Ver Captura](./assets/tests/FlujoExitosoCreacion.png)
 
 ### 📱 Mockups y Diseño UI (Frontend)
 
-4.  **Pantalla de Login:**  
-    [Ver Mockup](./assets/makeup/logIn.png)
-5.  **Pantalla de Registro:**  
-    [Ver Mockup](./assets/makeup/registro.png)
-6.  **Vista de Inicio:**  
-    [Ver Mockup](./assets/makeup/viewInicio.png)
-7.  **Pantalla de Bienvenida de Pedido:**  
-    [Ver Mockup](./assets/makeup/bienvenidaPedido.png)
-8.  **Códigos QR del proyecto:**  
-    [Ingreso al Local](./assets/qrs/Qr_Ingreso.png) | [Mesa Asignada](./assets/qrs/Mesa_1.PNG) | [Propinas](./assets/qrs/qr_propina_20.PNG)
-9.  `[Pendiente]` Listados de productos y menú.
+4. **Pantalla de Login:**  
+   [Ver Mockup](./assets/makeup/logIn.png)
+5. **Pantalla de Registro:**  
+   [Ver Mockup](./assets/makeup/registro.png)
+6. **Vista de Inicio:**  
+   [Ver Mockup](./assets/makeup/viewInicio.png)
+7. **Pantalla de Bienvenida de Pedido:**  
+   [Ver Mockup](./assets/makeup/bienvenidaPedido.png)
+8. **Códigos QR del proyecto:**  
+   [Ingreso al Local](./assets/qrs/Qr_Ingreso.png) | [Mesa Asignada](./assets/qrs/Mesa_1.PNG) | [Propinas](./assets/qrs/qr_propina_20.PNG)
+9. `[Pendiente]` Listados de productos y menú.
 10. `[Pendiente]` Gráficos estadísticos de encuestas.
 
 ---
