@@ -4,3 +4,6 @@ zod
 @supabase/supabase-js
 dotenv
 tsx
+multer
+@types/multer
+resend

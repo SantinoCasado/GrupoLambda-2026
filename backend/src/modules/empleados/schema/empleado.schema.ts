@@ -9,5 +9,8 @@ export const crearEmpleadoSchema = z.object({
     dni: z.string().length(8),
     cuil: z.string().length(11),
     role: z.enum(['owner', 'supervisor', 'cook', 'bartender', 'waiter', 'maitre', 'delivery']),
+    foto_url: z.string().url("La URL de la foto es obligatoria y debe ser válida"),
     rol_creador: z.string()
 });
+
+export type CrearEmpleadoDTO = z.infer<typeof crearEmpleadoSchema>;
