@@ -289,7 +289,7 @@ export default function AltaEmpleadoScreen() {
               <View className="flex-row flex-wrap gap-2">
                 {[
                   { id: "cocinero", label: "🍳 Cocinero" },
-                  { id: "cantinero", label: "🍸 Bartender" },
+                  { id: "cantinero", label: "🍸 Cantinero" },
                   { id: "mozo", label: "🤵 Mozo" },
                   { id: "metre", label: "📋 Metre" },
                   { id: "supervisor", label: "👔 Supervisor" },

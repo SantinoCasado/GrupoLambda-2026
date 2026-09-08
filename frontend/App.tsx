@@ -4,6 +4,7 @@ import { View, Text, TouchableOpacity, Vibration } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { UsuarioSeed } from "./src/data/usuariosPrecargados";
 import { LoginScreen } from "./src/screens/loginScreen";
+import HomeScreen, { HomeDestino } from "./src/screens/homeScreen";
 
 // Pantallas
 import AltaEmpleadoScreen from "./src/screens/altaEmpleadoScreen";
@@ -12,16 +13,33 @@ import AltaMesaScreen from "./src/screens/altaMesaScreen";
 import RegistroClienteScreen from "./src/screens/registroClienteScreen";
 import AprobacionClientesScreen from "./src/screens/aprobacionClientesScreen";
 
+type VistaPrivada =
+  | "home"
+  | "empleados"
+  | "mesas"
+  | "clientes"
+  | "producto"
+  | "registro_metre";
+
 export default function App() {
   const [usuarioActual, setUsuarioActual] = useState<UsuarioSeed | null>(null);
-  const [subVistaAdmin, setSubVistaAdmin] = useState<"empleados" | "mesas" | "clientes">("empleados");
+  const [vistaPrivada, setVistaPrivada] = useState<VistaPrivada>("home");
   const [vistaPublica, setVistaPublica] = useState<"login" | "registro_cliente">("login");
 
   const cerrarSesion = () => {
     Vibration.vibrate([0, 50, 50, 50]);
     setUsuarioActual(null);
-    setSubVistaAdmin("empleados");
+    setVistaPrivada("home");
     setVistaPublica("login");
+  };
+
+  const irA = (destino: HomeDestino) => {
+    setVistaPrivada(destino);
+  };
+
+  const volverAlInicio = () => {
+    Vibration.vibrate([0, 40]);
+    setVistaPrivada("home");
   };
 
   // Si no hay sesión iniciada (Público: Login o Auto-registro del Cliente)
@@ -39,7 +57,7 @@ export default function App() {
       <LoginScreen
         onLoginSuccess={(usuario) => {
           setUsuarioActual(usuario);
-          setSubVistaAdmin("empleados");
+          setVistaPrivada("home");
         }}
         onNavigateRegistroCliente={() => {
           setVistaPublica("registro_cliente");
@@ -48,11 +66,71 @@ export default function App() {
     );
   }
 
+  // Clasificación de rol
+  const esAdmin = usuarioActual.perfil === "dueño" || usuarioActual.perfil === "supervisor";
+  const esProducto =
+    usuarioActual.perfil === "cocinero" || usuarioActual.perfil === "cantinero";
+
+  // Si estamos en la Home, renderizamos el menú de inicio
+  if (vistaPrivada === "home") {
+    return (
+      <SafeAreaView className="flex-1 bg-vino">
+        {/* Barra superior con datos de sesión */}
+        <View className="flex-row items-center justify-between border-b-2 border-caramelo bg-vino px-5 py-3">
+          <View className="flex-row items-center flex-1">
+            <Text className="text-2xl mr-2">{usuarioActual.icono}</Text>
+            <View>
+              <Text className="text-xs font-black text-mostaza uppercase">
+                {usuarioActual.nombres} {usuarioActual.apellidos}
+              </Text>
+              <Text className="text-[10px] font-bold text-amber-200 uppercase">
+                {usuarioActual.tituloVisual}
+              </Text>
+            </View>
+          </View>
+
+          <TouchableOpacity
+            onPress={cerrarSesion}
+            className="rounded-xl border border-terracota bg-terracota/40 px-3 py-1.5 active:bg-terracota"
+          >
+            <Text className="text-xs font-bold text-amber-100">Cerrar Sesión</Text>
+          </TouchableOpacity>
+        </View>
+
+        <HomeScreen usuario={usuarioActual} onNavigate={irA} />
+      </SafeAreaView>
+    );
+  }
+
+  // Si el usuario intenta acceder a una vista que no le corresponde, se le devuelve a la Home
+  const accesoValido =
+    vistaPrivada === "empleados" ||
+    vistaPrivada === "mesas" ||
+    vistaPrivada === "clientes"
+      ? esAdmin
+      : vistaPrivada === "producto"
+      ? esProducto
+      : vistaPrivada === "registro_metre"
+      ? usuarioActual.perfil === "metre"
+      : true;
+
+  if (!accesoValido) {
+    return (
+      <SafeAreaView className="flex-1 bg-vino">
+        <HomeScreen
+          usuario={usuarioActual}
+          onNavigate={irA}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  // Renderizado de la vista privada elegida
   return (
     <SafeAreaView className="flex-1 bg-vino">
-      {/* 1. Barra Superior con Datos de Sesión */}
+      {/* Barra superior con datos de sesión + botón Volver */}
       <View className="flex-row items-center justify-between border-b-2 border-caramelo bg-vino px-5 py-3">
-        <View className="flex-row items-center">
+        <View className="flex-row items-center flex-1">
           <Text className="text-2xl mr-2">{usuarioActual.icono}</Text>
           <View>
             <Text className="text-xs font-black text-mostaza uppercase">
@@ -64,145 +142,32 @@ export default function App() {
           </View>
         </View>
 
-        <TouchableOpacity
-          onPress={cerrarSesion}
-          className="rounded-xl border border-terracota bg-terracota/40 px-3 py-1.5 active:bg-terracota"
-        >
-          <Text className="text-xs font-bold text-amber-100">Cerrar Sesión</Text>
-        </TouchableOpacity>
+        <View className="flex-row items-center gap-2">
+          <TouchableOpacity
+            onPress={volverAlInicio}
+            className="rounded-xl border border-mostaza bg-mostaza/30 px-3 py-1.5 active:bg-mostaza/60"
+          >
+            <Text className="text-xs font-bold text-mostaza">← Inicio</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={cerrarSesion}
+            className="rounded-xl border border-terracota bg-terracota/40 px-3 py-1.5 active:bg-terracota"
+          >
+            <Text className="text-xs font-bold text-amber-100">Salir</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
-      {/* 2. Contenido según Perfil */}
       <View className="flex-1">
-        {/* DUEÑO O SUPERVISOR: 3 SOLAPAS */}
-        {(usuarioActual.perfil === "dueño" || usuarioActual.perfil === "supervisor") && (
-          <View style={{ flex: 1 }}>
-            {/* Barra Selectora Superior de 3 Tareas */}
-            <View
-              style={{
-                flexDirection: "row",
-                backgroundColor: "#2b0f14",
-                paddingHorizontal: 8,
-                paddingVertical: 8,
-                borderBottomWidth: 1,
-                borderBottomColor: "#a37e1f",
-                zIndex: 50,
-                elevation: 10,
-              }}
-            >
-              {/* Solapa 1: Empleados */}
-              <TouchableOpacity
-                onPress={() => {
-                  Vibration.vibrate(30);
-                  setSubVistaAdmin("empleados");
-                }}
-                style={{
-                  flex: 1,
-                  paddingVertical: 8,
-                  alignItems: "center",
-                  borderRadius: 10,
-                  backgroundColor: subVistaAdmin === "empleados" ? "#F59E0B" : "rgba(139, 26, 26, 0.4)",
-                  marginRight: 4,
-                  borderWidth: 1,
-                  borderColor: subVistaAdmin === "empleados" ? "#F59E0B" : "#a37e1f",
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 10,
-                    fontWeight: "bold",
-                    color: subVistaAdmin === "empleados" ? "#2b0f14" : "#FBE9DF",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  👤 Empleados
-                </Text>
-              </TouchableOpacity>
-
-              {/* Solapa 2: Mesas */}
-              <TouchableOpacity
-                onPress={() => {
-                  Vibration.vibrate(30);
-                  setSubVistaAdmin("mesas");
-                }}
-                style={{
-                  flex: 1,
-                  paddingVertical: 8,
-                  alignItems: "center",
-                  borderRadius: 10,
-                  backgroundColor: subVistaAdmin === "mesas" ? "#F59E0B" : "rgba(139, 26, 26, 0.4)",
-                  marginHorizontal: 2,
-                  borderWidth: 1,
-                  borderColor: subVistaAdmin === "mesas" ? "#F59E0B" : "#a37e1f",
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 10,
-                    fontWeight: "bold",
-                    color: subVistaAdmin === "mesas" ? "#2b0f14" : "#FBE9DF",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  🪑 Mesas / QR
-                </Text>
-              </TouchableOpacity>
-
-              {/* Solapa 3: Clientes Pendientes */}
-              <TouchableOpacity
-                onPress={() => {
-                  Vibration.vibrate(30);
-                  setSubVistaAdmin("clientes");
-                }}
-                style={{
-                  flex: 1,
-                  paddingVertical: 8,
-                  alignItems: "center",
-                  borderRadius: 10,
-                  backgroundColor: subVistaAdmin === "clientes" ? "#F59E0B" : "rgba(139, 26, 26, 0.4)",
-                  marginLeft: 4,
-                  borderWidth: 1,
-                  borderColor: subVistaAdmin === "clientes" ? "#F59E0B" : "#a37e1f",
-                }}
-              >
-                <Text
-                  style={{
-                    fontSize: 10,
-                    fontWeight: "bold",
-                    color: subVistaAdmin === "clientes" ? "#2b0f14" : "#FBE9DF",
-                    textTransform: "uppercase",
-                  }}
-                >
-                  👥 Clientes
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Vista según la solapa seleccionada */}
-            <View style={{ flex: 1 }}>
-              {subVistaAdmin === "empleados" && <AltaEmpleadoScreen />}
-              {subVistaAdmin === "mesas" && <AltaMesaScreen />}
-              {subVistaAdmin === "clientes" && <AprobacionClientesScreen />}
-            </View>
-          </View>
+        {vistaPrivada === "empleados" && <AltaEmpleadoScreen />}
+        {vistaPrivada === "mesas" && <AltaMesaScreen />}
+        {vistaPrivada === "clientes" && <AprobacionClientesScreen />}
+        {vistaPrivada === "producto" && (
+          <AltaProductoScreen
+            categoria={usuarioActual.perfil === "cocinero" ? "comida" : "bebida"}
+          />
         )}
-
-        {/* COCINERO */}
-        {usuarioActual.perfil === "cocinero" && (
-          <AltaProductoScreen categoria="comida" />
-        )}
-
-        {/* CANTINERO */}
-        {usuarioActual.perfil === "cantinero" && (
-          <AltaProductoScreen categoria="bebida" />
-        )}
-
-        {/* METRE */}
-        {usuarioActual.perfil === "metre" && (
-          <View className="flex-1">
-            <RegistroClienteScreen modo="metre" />
-          </View>
-        )}
+        {vistaPrivada === "registro_metre" && <RegistroClienteScreen modo="metre" />}
       </View>
     </SafeAreaView>
   );

@@ -21,6 +21,69 @@ export interface UsuarioSeed {
   icono: string;
 }
 
+// Estructura ligera para el acceso rápido (solo email y contraseña).
+// El resto del perfil (nombres, apellidos, perfil, dni, foto) se obtiene
+// desde la base de datos al iniciar sesión (loginConSupabase).
+export interface AccesoRapido {
+  id: string;
+  tituloVisual: string;
+  icono: string;
+  email: string;
+  clave: string;
+}
+
+export const ACCESOS_RAPIDOS: AccesoRapido[] = [
+  {
+    id: "acceso_dueno",
+    tituloVisual: "Dueño",
+    icono: "👑",
+    email: "santino@lambda.com",
+    clave: "password123",
+  },
+  {
+    id: "acceso_supervisor",
+    tituloVisual: "Supervisor",
+    icono: "📋",
+    email: "supervisorTest@lambda.com",
+    clave: "supervisor1",
+  },
+  {
+    id: "acceso_metre",
+    tituloVisual: "Metre",
+    icono: "🛎️",
+    email: "EMAIL_METRE_AQUI",
+    clave: "CONTRASENA_AQUI",
+  },
+  {
+    id: "acceso_mozo",
+    tituloVisual: "Mozo",
+    icono: "🍽️",
+    email: "EMAIL_MOZO_AQUI",
+    clave: "CONTRASENA_AQUI",
+  },
+  {
+    id: "acceso_cocinero",
+    tituloVisual: "Cocinero",
+    icono: "👨‍🍳",
+    email: "EMAIL_COCINERO_AQUI",
+    clave: "CONTRASENA_AQUI",
+  },
+  {
+    id: "acceso_cantinero",
+    tituloVisual: "Cantinero",
+    icono: "🍸",
+    email: "EMAIL_CANTINERO_AQUI",
+    clave: "CONTRASENA_AQUI",
+  },
+  {
+    id: "acceso_cliente",
+    tituloVisual: "Cliente Registrado",
+    icono: "👤",
+    email: "EMAIL_CLIENTE_AQUI",
+    clave: "CONTRASENA_AQUI",
+  },
+];
+
 export const USUARIOS_PRECARGADOS: UsuarioSeed[] = [
   {
     id: "usr_dueno",

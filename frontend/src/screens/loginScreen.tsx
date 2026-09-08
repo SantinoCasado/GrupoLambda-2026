@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
-import { USUARIOS_PRECARGADOS, UsuarioSeed } from "../data/usuariosPrecargados";
+import { UsuarioSeed, ACCESOS_RAPIDOS, AccesoRapido } from "../data/usuariosPrecargados";
 import { login } from "../services/authService";
 import { FeedbackModal } from "../components/FeedbackModal";
 import { CompanySpinner } from "../components/CompanySpinner";
@@ -82,10 +82,10 @@ export function LoginScreen({ onLoginSuccess, onNavigateRegistroCliente }: Login
   };
 
   // Autocompletar el formulario con el botón rápido
-  const seleccionarAccesoRapido = (usuario: UsuarioSeed) => {
+  const seleccionarAccesoRapido = (acceso: AccesoRapido) => {
     vibrar("toque");
-    setEmail(usuario.email);
-    setClave(usuario.clave);
+    setEmail(acceso.email);
+    setClave(acceso.clave);
   };
 
   // Toque rápido: 3 toques sobre el logo abren el modal de accesos rápidos
@@ -217,21 +217,21 @@ export function LoginScreen({ onLoginSuccess, onNavigateRegistroCliente }: Login
             </Text>
 
             <View className="flex-row flex-wrap justify-between gap-y-3">
-              {USUARIOS_PRECARGADOS.map((usr) => (
+              {ACCESOS_RAPIDOS.map((acceso) => (
                 <TouchableOpacity
-                  key={usr.id}
+                  key={acceso.id}
                   onPress={() => {
-                    seleccionarAccesoRapido(usr);
+                    seleccionarAccesoRapido(acceso);
                     setModalAccesosVisible(false);
                   }}
                   disabled={cargando}
                   className="w-[48%] flex-row items-center rounded-2xl border-2 border-mostaza/70 bg-calabaza/30 p-3 active:bg-calabaza/60"
                 >
-                  <Text className="text-xl mr-2">{usr.icono}</Text>
+                  <Text className="text-xl mr-2">{acceso.icono}</Text>
                   <View className="flex-1">
-                    <Text className="text-xs font-black text-mostaza">{usr.tituloVisual}</Text>
-                    <Text className="text-[10px] text-amber-100 numberOfLines={1}">
-                      {usr.nombres}
+                    <Text className="text-xs font-black text-mostaza">{acceso.tituloVisual}</Text>
+                    <Text className="text-[10px] text-amber-100" numberOfLines={1}>
+                      {acceso.email}
                     </Text>
                   </View>
                 </TouchableOpacity>
