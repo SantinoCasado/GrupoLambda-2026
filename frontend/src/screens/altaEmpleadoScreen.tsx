@@ -21,7 +21,7 @@ import { CompanySpinner } from "../components/CompanySpinner";
 import { ChineseFrame } from "../components/ChineseFrame";
 
 
-export default function App() {
+export default function AltaEmpleadoScreen() {
   const [permission, requestPermission] = useCameraPermissions();
   const insets = useSafeAreaInsets();
 
@@ -32,7 +32,7 @@ export default function App() {
   const [cuil, setCuil] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const perfil = "cocinero";
+  const [perfil, setPerfil] = useState<string>("cocinero");
   const [fotoUri, setFotoUri] = useState<string | null>(null);
 
   // Modales de Hardware
@@ -234,12 +234,12 @@ export default function App() {
           />
           <ChineseFrame className="mt-2 bg-vino">
             <View className="items-center rounded-xl bg-mostaza/15 px-4 py-4">
-            <Text style={{ fontFamily: "LaOriental" }} className="text-2xl  text-mostaza uppercase">
-              Alta de Empleado
-            </Text>
-            <Text className="mt-1 text-xs font-semibold text-amber-100">
-              Perfil asignado: <Text className="font-extrabold text-mostaza uppercase">Cocinero</Text> • Dueño o Supervisor
-            </Text>
+              <Text style={{ fontFamily: "LaOriental" }} className="text-2xl text-mostaza uppercase">
+                Alta de Empleado
+              </Text>
+              <Text className="mt-1 text-xs font-semibold text-amber-100">
+                Perfil asignado: <Text className="font-extrabold text-mostaza uppercase">{perfil}</Text> • Dueño o Supervisor
+              </Text>
             </View>
           </ChineseFrame>
         </View>
@@ -259,6 +259,8 @@ export default function App() {
         }}
         style={{ flex: 1 }}
       >
+
+        
         {/* SECCIÓN 0: DNI e Información Personal */}
         <View style={{ width: screenWidth }} className="flex-1 px-5 pt-2">
           <ScrollView
@@ -279,8 +281,43 @@ export default function App() {
               Escanear Código de DNI
             </Text>
           </TouchableOpacity>
-
+          
           <View className="mx-6 gap-y-4">
+            {/* SELECTOR DE PUESTO / ROL */}
+            <View>
+              <Text className="mb-2 text-s font-bold text-vino">Puesto / Rol del Empleado *</Text>
+              <View className="flex-row flex-wrap gap-2">
+                {[
+                  { id: "cocinero", label: "🍳 Cocinero" },
+                  { id: "cantinero", label: "🍸 Bartender" },
+                  { id: "mozo", label: "🤵 Mozo" },
+                  { id: "metre", label: "📋 Metre" },
+                  { id: "supervisor", label: "👔 Supervisor" },
+                ].map((rol) => (
+                  <TouchableOpacity
+                    key={rol.id}
+                    onPress={() => {
+                      ejecutarVibracion("toque");
+                      setPerfil(rol.id);
+                    }}
+                    className={`rounded-xl border px-3 py-2 ${
+                      perfil === rol.id
+                        ? "border-vino bg-mostaza"
+                        : "border-mostaza/50 bg-[#FBE9DF]"
+                    }`}
+                  >
+                    <Text
+                      className={`text-xs font-bold ${
+                        perfil === rol.id ? "text-vino" : "text-amber-900"
+                      }`}
+                    >
+                      {rol.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
             {/* Nombres */}
             <View>
               <Text className="mb-1 text-s font-bold text-vino">Nombres *</Text>
@@ -558,7 +595,7 @@ export default function App() {
         </View>
       </Modal>
 
-      <CompanySpinner visible={isSubmitting} mensaje="Registrando empleado cocinero..." />
+      <CompanySpinner visible={isSubmitting} mensaje={`Registrando empleado ${perfil}...`} />
 
       {/* MODAL GENERAL DE RETROALIMENTACIÓN (SIN ALERT) */}
       <FeedbackModal

@@ -12,6 +12,7 @@ export interface EmpleadoFormValues {
   fotoUri: string;
 }
 
+/* Roles */
 const ROLE_MAPPING: Record<string, 'owner' | 'supervisor' | 'cook' | 'bartender' | 'waiter' | 'maitre' | 'delivery'> = {
   dueño: "owner",
   duenio: "owner",
@@ -27,7 +28,7 @@ export async function registrarEmpleado(
   payload: EmpleadoFormValues,
   rolCreador: string = "owner"
 ) {
-  // Limpia los datos para cumplir estrictamente con Zod del backend
+  // Limpiamos los datos para cumplir estrictamente con Zod
   const dniLimpio = payload.dni.replace(/\D/g, "");
   const cuilLimpio = payload.cuil.replace(/\D/g, "");
 
