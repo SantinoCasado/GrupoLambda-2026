@@ -30,8 +30,9 @@ Nuestra arquitectura simula un entorno laboral real, separando las responsabilid
   - `express` (Framework web y enrutamiento)
   - `zod` (Validación y sanitización estricta de esquemas)
   - `@supabase/supabase-js` (Cliente de base de datos y autenticación con Service Role / Anon Keys)
-  - `multer` & `@types/multer` (Gestión eficiente de archivos e imágenes en memoria)
-  - `resend` (Envío automatizado de correos electrónicos transaccionales)
+  - `multer` & `@types/multer` (Gestión eficiente de archivos e imágenes en memoria para Supabase Storage)
+  - `nodemailer` (Envío automatizado de correos electrónicos transaccionales mediante SMTP y App Passwords)
+  - `jsonwebtoken` & `bcrypt` (Autenticación y seguridad de credenciales)
   - `dotenv` (Gestión segura de variables de entorno)
 - **Base de Datos y Auth:** PostgreSQL gestionado a través de Supabase y GoTrue.
 - **Servicios Externos Adicionales:**
@@ -97,7 +98,7 @@ El sistema contempla los siguientes flujos principales para la operatoria del re
 - **CU-03: Gestión de Bebidas (A, B, C)** - Permite al Cantinero agregar, modificar o dar de baja bebidas del menú.
 - **CU-04: Alta y Gestión de Mesas** - El Dueño o Supervisor registra nuevas mesas y el sistema genera automáticamente su código QR.
 - **CU-05: Crear Cliente Registrado** - Auto-registro de clientes validando identidad con foto obligatoria en vivo, quedando pendientes de aprobación.
-- **CU-06: Aprobación o Rechazo de Cliente Registrado** - Dueño o Supervisor evalúan clientes pendientes y disparan correos transaccionales automáticos vía Resend.
+- **CU-06: Aprobación o Rechazo de Cliente Registrado** - Dueño o Supervisor evalúan clientes pendientes y disparan correos transaccionales automáticos vía Nodemailer.
 - **CU-09: Ingreso y Gestión de Cliente Anónimo** - Ingreso rápido mediante QR de entrada al local para listarse en espera.
 - **CU-10: Asignación de Mesa a Cliente** - El Metre vincula una mesa vacía al cliente en espera y notifica vía Push Notification.
 - **CU-11: Consulta QR de Mesa (A, B)** - El cliente escanea la mesa asignada para visualizar el menú y realizar consultas al mozo mediante chat en tiempo real.
@@ -110,11 +111,11 @@ El sistema contempla los siguientes flujos principales para la operatoria del re
 
 Para proteger la integridad de los datos, el servidor implementa un conjunto robusto de mecanismos de control de acceso y validación:
 
-1. **Gestión de Archivos Multer y Storage:** Middleware de subida en memoria que procesa las imágenes y las almacena de forma segura en los buckets de Supabase.
+1. **Gestión de Archivos Multer y Storage:** Middleware de subida en memoria que procesa las imágenes y las almacena de forma segura en los buckets de Supabase Storage.
 2. **Validación de Esquemas (Zod):** Rechaza de forma instantánea peticiones malformadas o incompletas devolviendo errores tipados con formato claro para el frontend (`400 Bad Request`).
-3. **Autenticación Centralizada y Middleware ("Patovica"):** Valida tokens JWT emitidos por Supabase Auth combinados con el estado (`status`) y rol de la tabla pública `users`. Las rutas protegidas exigen la cabecera `Authorization: Bearer <TOKEN>` y permisos específicos por rol (RBAC).
+3. **Autenticación Centralizada y Middleware ("Patovica"):** Valida tokens JWT combinados con el estado (`status`) y rol de la tabla pública `users`. Las rutas protegidas exigen la cabecera `Authorization: Bearer <TOKEN>` y permisos específicos por rol (RBAC).
 4. **Reglas de Negocio Jerárquicas:** Control de privilegios estrictos donde solo roles autorizados (Dueño/Supervisor) pueden aprobar cuentas o dar de alta perfiles de jerarquía superior (`403 Forbidden`).
-5. **Notificaciones Transaccionales (Resend):** Envío automático de correos de confirmación o rechazo adaptados mediante dominios verificados.
+5. **Notificaciones Transaccionales (Nodemailer):** Envío automatizado de correos HTML personalizados mediante autenticación SMTP segura y App Passwords de Gmail.
 
 ---
 
