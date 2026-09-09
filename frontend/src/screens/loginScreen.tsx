@@ -122,7 +122,7 @@ export function LoginScreen({ onLoginSuccess, onNavigateRegistroCliente }: Login
           <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
         </View>
 
-      <ScrollView className="flex-1 px-5 pt-4" contentContainerStyle={{ paddingBottom: 50 }}>
+      <ScrollView className="flex-1 px-5 pt-20" contentContainerStyle={{ paddingBottom: 50 }}>
         {/* Encabezado */}
         <View className="mb-5 items-center">
           <TouchableOpacity onPress={manejarToqueLogo} activeOpacity={0.8}>

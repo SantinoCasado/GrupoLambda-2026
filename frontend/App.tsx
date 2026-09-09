@@ -1,6 +1,6 @@
 import "./global.css";
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Vibration } from "react-native";
+import { View, Text, Image, TouchableOpacity, Vibration } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { UsuarioSeed } from "./src/data/usuariosPrecargados";
 import { LoginScreen } from "./src/screens/loginScreen";
@@ -25,6 +25,7 @@ export default function App() {
   const [usuarioActual, setUsuarioActual] = useState<UsuarioSeed | null>(null);
   const [vistaPrivada, setVistaPrivada] = useState<VistaPrivada>("home");
   const [vistaPublica, setVistaPublica] = useState<"login" | "registro_cliente">("login");
+  const [perfilAltaEmpleado, setPerfilAltaEmpleado] = useState<string | null>(null);
 
   const cerrarSesion = () => {
     Vibration.vibrate([0, 50, 50, 50]);
@@ -33,8 +34,9 @@ export default function App() {
     setVistaPublica("login");
   };
 
-  const irA = (destino: HomeDestino) => {
+  const irA = (destino: HomeDestino, perfil?: string) => {
     setVistaPrivada(destino);
+    if (destino === "empleados" && perfil) setPerfilAltaEmpleado(perfil);
   };
 
   const volverAlInicio = () => {
@@ -97,7 +99,9 @@ export default function App() {
           </TouchableOpacity>
         </View>
 
-        <HomeScreen usuario={usuarioActual} onNavigate={irA} />
+        <View className="flex-1">
+          <HomeScreen usuario={usuarioActual} onNavigate={irA} />
+        </View>
       </SafeAreaView>
     );
   }
@@ -147,19 +151,21 @@ export default function App() {
             onPress={volverAlInicio}
             className="rounded-xl border border-mostaza bg-mostaza/30 px-3 py-1.5 active:bg-mostaza/60"
           >
-            <Text className="text-xs font-bold text-mostaza">← Inicio</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={cerrarSesion}
-            className="rounded-xl border border-terracota bg-terracota/40 px-3 py-1.5 active:bg-terracota"
-          >
-            <Text className="text-xs font-bold text-amber-100">Salir</Text>
+            <Image
+              source={require("./assets/images/left-arrow-y.png")}
+              className="h-6 w-6 mr-0.5"
+              resizeMode="contain"
+              accessible
+              accessibilityLabel="Volver al inicio"
+            />
           </TouchableOpacity>
         </View>
       </View>
 
       <View className="flex-1">
-        {vistaPrivada === "empleados" && <AltaEmpleadoScreen />}
+        {vistaPrivada === "empleados" && (
+          <AltaEmpleadoScreen perfilInicial={perfilAltaEmpleado ?? "cocinero"} />
+        )}
         {vistaPrivada === "mesas" && <AltaMesaScreen />}
         {vistaPrivada === "clientes" && <AprobacionClientesScreen />}
         {vistaPrivada === "producto" && (

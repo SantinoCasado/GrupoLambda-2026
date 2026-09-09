@@ -1,5 +1,5 @@
-import React from "react";
-import { View, Text, TouchableOpacity, ScrollView, Image, Vibration } from "react-native";
+import React, { useState } from "react";
+import { View, Text, TouchableOpacity, ScrollView, Image, Vibration, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { UsuarioSeed } from "../data/usuariosPrecargados";
@@ -12,13 +12,22 @@ export type HomeDestino =
   | "producto"
   | "registro_metre";
 
+const PERFILES_EMPLEADO = [
+  { id: "cocinero", label: "Cocinero", imagen: require("../../assets/images/chef-y.png") },
+  { id: "cantinero", label: "Cantinero", imagen: require("../../assets/images/martini-glass-y.png") },
+  { id: "mozo", label: "Mozo", imagen: require("../../assets/images/serving-y.png") },
+  { id: "metre", label: "Metre", imagen: require("../../assets/images/bow-y.png") },
+  { id: "supervisor", label: "Supervisor", imagen: require("../../assets/images/supervisor-y.png") },
+];
+
 interface Props {
   usuario: UsuarioSeed;
-  onNavigate: (destino: HomeDestino) => void;
+  onNavigate: (destino: HomeDestino, perfil?: string) => void;
 }
 
 export default function HomeScreen({ usuario, onNavigate }: Props) {
   const insets = useSafeAreaInsets();
+  const [modalPerfilVisible, setModalPerfilVisible] = useState(false);
 
   const navegar = (destino: HomeDestino) => {
     Vibration.vibrate([0, 40]);
@@ -30,6 +39,7 @@ export default function HomeScreen({ usuario, onNavigate }: Props) {
   // ---- Configuración de botones según rol ----
   const esAdmin = perfil === "dueño" || perfil === "supervisor";
   const esProducto = perfil === "cocinero" || perfil === "cantinero";
+  const esCliente = perfil === "cliente_registrado" || perfil === "cliente_anonimo";
 
   return (
     <>
@@ -50,21 +60,23 @@ export default function HomeScreen({ usuario, onNavigate }: Props) {
 
         {/* Saludo */}
         <View className="px-6 pt-5">
-          <View className="mb-1 flex-row items-center">
-            <Text className="text-3xl mr-3">{usuario.icono}</Text>
-            <View className="flex-1">
-              <Text className="text-2xl font-black text-mostaza uppercase">
-                Hola, {usuario.nombres}
-              </Text>
-              <Text className="text-xs font-bold text-vino uppercase">
-                {usuario.tituloVisual}
-              </Text>
+          {esCliente && (
+            <View className="mb-1 flex-row items-center">
+              <Text className="text-3xl mr-3">{usuario.icono}</Text>
+              <View className="flex-1">
+                <Text className="text-2xl font-black text-mostaza uppercase">
+                  Hola, {usuario.nombres}
+                </Text>
+                <Text className="text-xs font-bold text-vino uppercase">
+                  {usuario.tituloVisual}
+                </Text>
+              </View>
             </View>
-          </View>
+          )}
 
           <Image
             source={require("../../assets/images/logo-name.png")}
-            className="my-3 h-16 w-auto self-center"
+            className="mt-6 h-20 w-auto self-center"
             resizeMode="contain"
           />
           <Image
@@ -91,42 +103,45 @@ export default function HomeScreen({ usuario, onNavigate }: Props) {
               <Text className="mb-1 text-xs font-bold text-vino uppercase">Gestión Restaurante</Text>
 
               <TouchableOpacity
-                onPress={() => navegar("empleados")}
+                onPress={() => {
+                  Vibration.vibrate([0, 40]);
+                  setModalPerfilVisible(true);
+                }}
                 className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota"
               >
-                <Text className="text-2xl mr-3">👤</Text>
+                <Image source={require("../../assets/images/employeeRegistration-y.png")} className="h-7 w-7 mr-3" resizeMode="contain"/>
                 <View className="flex-1">
                   <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
                     Alta de Empleados
                   </Text>
                   <Text className="text-[11px] font-semibold text-amber-100">
-                    Registrar nuevo personal del restaurante
+                    Registrar nuevo personal
                   </Text>
                 </View>
-                <Text className="text-mostaza text-xl">›</Text>
+                <Image source={require("../../assets/images/right-arrow-y.png")} className="h-7 w-7" resizeMode="contain"/>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => navegar("mesas")}
                 className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota"
               >
-                <Text className="text-2xl mr-3">🪑</Text>
+                <Image source={require("../../assets/images/table-y.png")} className="h-7 w-7 mr-3" resizeMode="contain"/>
                 <View className="flex-1">
                   <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
-                    Mesas / QR
+                    Mesas Y QR
                   </Text>
                   <Text className="text-[11px] font-semibold text-amber-100">
-                    Alta y gestión de mesas con código QR
+                    Gestionar mesas y código QR
                   </Text>
                 </View>
-                <Text className="text-mostaza text-xl">›</Text>
+                <Image source={require("../../assets/images/right-arrow-y.png")} className="h-7 w-7" resizeMode="contain"/>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => navegar("clientes")}
                 className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota"
               >
-                <Text className="text-2xl mr-3">👥</Text>
+                <Image source={require("../../assets/images/userAprovation-y.png")} className="h-7 w-7 mr-3" resizeMode="contain"/>
                 <View className="flex-1">
                   <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
                     Aprobación de Clientes
@@ -135,7 +150,7 @@ export default function HomeScreen({ usuario, onNavigate }: Props) {
                     Revisar solicitudes pendientes de clientes
                   </Text>
                 </View>
-                <Text className="text-mostaza text-xl">›</Text>
+                <Image source={require("../../assets/images/right-arrow-y.png")} className="h-7 w-7" resizeMode="contain"/>
               </TouchableOpacity>
             </View>
           )}
@@ -198,6 +213,62 @@ export default function HomeScreen({ usuario, onNavigate }: Props) {
           )}
         </View>
       </ScrollView>
+
+      {/* Nombres del equipo */}
+      <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + 16 }}>
+        <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
+        <Text className="text-[10px] text-vino/70">Santino Casado</Text>
+        <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
+        <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
+      </View>
+
+      {/* MODAL: Selección de Puesto / Rol antes del Alta de Empleado */}
+      <Modal visible={modalPerfilVisible} transparent animationType="fade">
+        <View className="flex-1 items-center justify-center bg-black/50 px-6">
+          <ChineseFrame className="w-full max-w-sm bg-vino shadow-2xl p-3">
+            <View className="px-2 pb-3 pt-5">
+              <Text
+                style={{ fontFamily: "LaOriental" }}
+                className="mb-1 text-xl uppercase tracking-wider text-mostaza text-center"
+              >
+                Nuevo Empleado
+              </Text>
+              <Text className="mb-5 text-center text-sm font-semibold text-amber-100">
+                Seleccione el puesto que ocupará el empleado:
+              </Text>
+
+              <View className="flex-row flex-wrap justify-between gap-y-5">
+                {PERFILES_EMPLEADO.map((rol) => (
+                  <TouchableOpacity
+                    key={rol.id}
+                    onPress={() => {
+                      Vibration.vibrate([0, 40]);
+                      setModalPerfilVisible(false);
+                      onNavigate("empleados", rol.id);
+                    }}
+                    className="w-[48%] items-center rounded-2xl border-2 border-mostaza/70 bg-calabaza/30 p-3 active:bg-calabaza/60"
+                  >
+                    <Image source={rol.imagen} className="mb-1 h-9 w-9" resizeMode="contain" />
+                    <Text className="text-sm font-extrabold text-mostaza">{rol.label.toUpperCase()}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              <TouchableOpacity
+                onPress={() => setModalPerfilVisible(false)}
+                className="mt-5 rounded-2xl bg-mostaza py-2.5 active:bg-calabaza/60"
+              >
+                <Text
+                  style={{ fontFamily: "LaOriental" }}
+                  className="text-center uppercase tracking-wider text-vino"
+                >
+                  Cancelar
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </ChineseFrame>
+        </View>
+      </Modal>
     </>
   );
 }

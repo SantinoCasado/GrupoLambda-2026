@@ -1,16 +1,5 @@
 import { API_BASE_URL } from "./apiConfig";
 
-export interface ClientePayload {
-  nombres: string;
-  apellidos: string;
-  dni: string;
-  email: string;
-  password?: string;
-  fotoUri: string;
-  perfil: "cliente_registrado";
-  estado: "pendiente" | "aprobado" | "rechazado";
-}
-
 export interface ClienteFormErrors {
   nombres?: string;
   apellidos?: string;
@@ -85,17 +74,26 @@ export async function registrarCliente(payload: {
   password: string;
   fotoUri: string;
 }) {
-  const cliente: ClientePayload = {
-    ...payload,
-    perfil: "cliente_registrado",
-    estado: "pendiente", // Clave: queda pendiente de aprobación por Dueño/Supervisor
-  };
+  // Armamos la foto como archivo multipart en el campo "foto" (multer)
+  const formData = new FormData();
+  formData.append("email", payload.email.trim().toLowerCase());
+  formData.append("password", payload.password);
+  formData.append("first_name", payload.nombres.trim());
+  formData.append("last_name", payload.apellidos.trim());
+  formData.append("dni", payload.dni.trim());
+  formData.append(
+    "foto",
+    {
+      uri: payload.fotoUri,
+      name: fileNameFromUri(payload.fotoUri),
+      type: mimeFromUri(payload.fotoUri),
+    } as any
+  );
 
   try {
-    const response = await fetch(`${API_BASE_URL}/clientes/registro`, {
+    const response = await fetch(`${API_BASE_URL}/clientes/register`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(cliente),
+      body: formData,
     });
 
     const data = await response.json();
@@ -104,11 +102,25 @@ export async function registrarCliente(payload: {
     }
     return data;
   } catch (error: any) {
-    console.warn("Backend /clientes/registro no disponible, guardado simulado:", error.message);
+    console.warn("Backend /clientes/register no disponible, guardado simulado:", error.message);
     // Simulación local exitosa para pruebas de UI y hardware
     return {
       status: "OK",
       mensaje: "Registro completado. Su cuenta se encuentra pendiente de aprobación.",
     };
   }
+}
+
+// Deriva un nombre de archivo con extensión correcta desde la URI local
+function fileNameFromUri(uri: string): string {
+  const original = uri.split("/").pop() || "foto.jpg";
+  if (/\.(jpg|jpeg|png|webp)$/i.test(original)) return original;
+  return `${original.split(".")[0] || "foto"}.jpg`;
+}
+
+function mimeFromUri(uri: string): string {
+  const nombre = fileNameFromUri(uri).toLowerCase();
+  if (nombre.endsWith(".png")) return "image/png";
+  if (nombre.endsWith(".webp")) return "image/webp";
+  return "image/jpeg";
 }

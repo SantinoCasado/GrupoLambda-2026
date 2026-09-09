@@ -19,9 +19,14 @@ import { registrarEmpleado } from "../services/empleadosService";
 import { FeedbackModal } from "../components/FeedbackModal";
 import { CompanySpinner } from "../components/CompanySpinner";
 import { ChineseFrame } from "../components/ChineseFrame";
+import { ConfirmModal } from "../components/ConfirmModal";
 
 
-export default function AltaEmpleadoScreen() {
+interface Props {
+  perfilInicial?: string;
+}
+
+export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props) {
   const [permission, requestPermission] = useCameraPermissions();
   const insets = useSafeAreaInsets();
 
@@ -32,7 +37,7 @@ export default function AltaEmpleadoScreen() {
   const [cuil, setCuil] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [perfil, setPerfil] = useState<string>("cocinero");
+  const [perfil] = useState<string>(perfilInicial);
   const [fotoUri, setFotoUri] = useState<string | null>(null);
 
   // Modales de Hardware
@@ -42,6 +47,7 @@ export default function AltaEmpleadoScreen() {
   // Estados de Validación y Envío
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmacionVisible, setConfirmacionVisible] = useState(false);
 
   // Estado del Modal de Feedback (Reemplazo obligatorio de Alert)
   const [modalFeedback, setModalFeedback] = useState<{
@@ -136,7 +142,7 @@ export default function AltaEmpleadoScreen() {
   };
 
   // Envío del Formulario
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     ejecutarVibracion("toque");
 
     const formValidation = validarFormEmpleado({
@@ -160,6 +166,12 @@ export default function AltaEmpleadoScreen() {
       return;
     }
 
+    setConfirmacionVisible(true);
+  };
+
+  const ejecutarEnvioEmpleado = async () => {
+    setConfirmacionVisible(false);
+
     try {
       setIsSubmitting(true);
       await registrarEmpleado({
@@ -176,7 +188,7 @@ export default function AltaEmpleadoScreen() {
       mostrarMensaje(
         "exito",
         "Registro Exitoso",
-        "El empleado cocinero ha sido registrado satisfactoriamente en el sistema.",
+        `El empleado ${perfil} ha sido registrado satisfactoriamente en el sistema.`,
         () => {
           setNombres("");
           setApellidos("");
@@ -283,41 +295,6 @@ export default function AltaEmpleadoScreen() {
           </TouchableOpacity>
           
           <View className="mx-6 gap-y-4">
-            {/* SELECTOR DE PUESTO / ROL */}
-            <View>
-              <Text className="mb-2 text-s font-bold text-vino">Puesto / Rol del Empleado *</Text>
-              <View className="flex-row flex-wrap gap-2">
-                {[
-                  { id: "cocinero", label: "🍳 Cocinero" },
-                  { id: "cantinero", label: "🍸 Cantinero" },
-                  { id: "mozo", label: "🤵 Mozo" },
-                  { id: "metre", label: "📋 Metre" },
-                  { id: "supervisor", label: "👔 Supervisor" },
-                ].map((rol) => (
-                  <TouchableOpacity
-                    key={rol.id}
-                    onPress={() => {
-                      ejecutarVibracion("toque");
-                      setPerfil(rol.id);
-                    }}
-                    className={`rounded-xl border px-3 py-2 ${
-                      perfil === rol.id
-                        ? "border-vino bg-mostaza"
-                        : "border-mostaza/50 bg-[#FBE9DF]"
-                    }`}
-                  >
-                    <Text
-                      className={`text-xs font-bold ${
-                        perfil === rol.id ? "text-vino" : "text-amber-900"
-                      }`}
-                    >
-                      {rol.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
             {/* Nombres */}
             <View>
               <Text className="mb-1 text-s font-bold text-vino">Nombres *</Text>
@@ -594,6 +571,20 @@ export default function AltaEmpleadoScreen() {
           </View>
         </View>
       </Modal>
+
+      <ConfirmModal
+        visible={confirmacionVisible}
+        titulo="Confirmar Registro"
+        mensaje="¿Está seguro de que desea registrar este empleado en el sistema?"
+        textoConfirmar="Confirmar"
+        textoCancelar="Cancelar"
+        cargando={isSubmitting}
+        onConfirm={ejecutarEnvioEmpleado}
+        onCancel={() => {
+          ejecutarVibracion("toque");
+          setConfirmacionVisible(false);
+        }}
+      />
 
       <CompanySpinner visible={isSubmitting} mensaje={`Registrando empleado ${perfil}...`} />
 

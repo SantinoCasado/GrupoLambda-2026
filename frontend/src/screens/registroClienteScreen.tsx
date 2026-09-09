@@ -254,12 +254,14 @@ export default function RegistroClienteScreen({ onVolverAlLogin, modo = "cliente
             <Text className="text-xs font-bold text-mostaza">← Volver al Login</Text>
           </TouchableOpacity>
         )}
+      </View>
 
-        {/* Nombres del equipo */}
-        <View className="items-end">
-          <Text className="text-[9px] text-vino/70">Rocío Sanchez • Santino Casado</Text>
-          <Text className="text-[9px] text-vino/70">Sebastián Andreozzi • Valentín Brazanovich</Text>
-        </View>
+      {/* Nombres del equipo */}
+      <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + 16 }}>
+        <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
+        <Text className="text-[10px] text-vino/70">Santino Casado</Text>
+        <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
+        <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
       </View>
 
       {/* Cabecera */}
