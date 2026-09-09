@@ -6,4 +6,5 @@ dotenv
 tsx
 multer
 @types/multer
-resend
+nodemailer
+@types/nodemailer
