@@ -5,6 +5,7 @@ import { supabase } from './config/supabase';
 import empleadosRoutes from './modules/empleados/empleados.routes';
 import clientesRoutes from './modules/cliente/cliente.routes';
 import authRoutes from './modules/auth/auth.routes';
+import productosRoutes from './modules/productos/productos.routes';
 
 dotenv.config();
 
@@ -24,7 +25,8 @@ app.use(cors(corsOptions));
 app.use(express.json()); // Equivalente ligero al ValidationPipe para parsear JSON
 app.use('/api/empleados', empleadosRoutes);
 app.use('/api/clientes', clientesRoutes);
-app.use('/api/auth', authRoutes); 
+app.use('/api/auth', authRoutes);
+app.use('/api/productos', productosRoutes);
 
 // Ruta base
 app.get('/', (req: Request, res: Response) => {

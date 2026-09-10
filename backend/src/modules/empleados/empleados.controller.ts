@@ -22,7 +22,7 @@ export const crearEmpleado = async (req: Request, res: Response): Promise<Respon
 
     const datosParaValidar = {
         ...req.body,
-        photo_url: photoUrl
+        foto_url: photoUrl
     };
     
     const validacion = crearEmpleadoSchema.safeParse(datosParaValidar);
