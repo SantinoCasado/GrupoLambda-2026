@@ -94,8 +94,8 @@ La arquitectura de datos se divide en tres módulos principales interconectados:
 El sistema contempla los siguientes flujos principales para la operatoria del restaurante:
 
 - **CU-01: Registrar Empleado (Cocinero)** - Permite a un Dueño o Supervisor registrar un empleado escaneando su DNI y tomando una foto en vivo.
-- **CU-02: Gestión de Platos (A, B, C)** - Permite al Cocinero agregar, modificar o eliminar mediante baja lógica platos del menú con fotografías.
-- **CU-03: Gestión de Bebidas (A, B, C)** - Permite al Cantinero agregar, modificar o dar de baja bebidas del menú.
+- **CU-02: Gestión de Platos (Alta, Modificación y Baja Lógica)** - Permite al Cocinero o Dueño agregar, modificar o dar de baja lógica platos y postres del menú utilizando un array de fotografías optimizadas.
+- **CU-03: Gestión de Bebidas (Alta, Modificación y Baja Lógica)** - Permite al Cantinero o Dueño agregar, modificar o dar de baja lógica bebidas del menú con control estricto de roles.
 - **CU-04: Alta y Gestión de Mesas** - El Dueño o Supervisor registra nuevas mesas y el sistema genera automáticamente su código QR.
 - **CU-05: Crear Cliente Registrado** - Auto-registro de clientes validando identidad con foto obligatoria en vivo, quedando pendientes de aprobación.
 - **CU-06: Aprobación o Rechazo de Cliente Registrado** - Dueño o Supervisor evalúan clientes pendientes y disparan correos transaccionales automáticos vía Nodemailer.
@@ -111,11 +111,12 @@ El sistema contempla los siguientes flujos principales para la operatoria del re
 
 Para proteger la integridad de los datos, el servidor implementa un conjunto robusto de mecanismos de control de acceso y validación:
 
-1. **Gestión de Archivos Multer y Storage:** Middleware de subida en memoria que procesa las imágenes y las almacena de forma segura en los buckets de Supabase Storage.
-2. **Validación de Esquemas (Zod):** Rechaza de forma instantánea peticiones malformadas o incompletas devolviendo errores tipados con formato claro para el frontend (`400 Bad Request`).
-3. **Autenticación Centralizada y Middleware ("Patovica"):** Valida tokens JWT combinados con el estado (`status`) y rol de la tabla pública `users`. Las rutas protegidas exigen la cabecera `Authorization: Bearer <TOKEN>` y permisos específicos por rol (RBAC).
-4. **Reglas de Negocio Jerárquicas:** Control de privilegios estrictos donde solo roles autorizados (Dueño/Supervisor) pueden aprobar cuentas o dar de alta perfiles de jerarquía superior (`403 Forbidden`).
-5. **Notificaciones Transaccionales (Nodemailer):** Envío automatizado de correos HTML personalizados mediante autenticación SMTP segura y App Passwords de Gmail.
+1. **Gestión de Archivos Multer y Storage (Múltiples Imágenes):** Middleware configurado con `memoryStorage` que procesa un array de imágenes en paralelo (`Promise.all`) y las almacena de forma segura en los buckets correspondientes de Supabase Storage.
+2. **Validación Estricta de Esquemas (Zod):** Validación de datos de entrada mediante tuplas estrictas (`as const`) e interoperabilidad con tipos de datos complejos, rechazando peticiones malformadas con un formato tipado (`400 Bad Request`).
+3. **Autenticación Centralizada y Middleware ("Patovica"):** Valida tokens JWT combinados con el estado (`status`) y rol de la tabla pública. Las rutas protegidas exigen la cabecera `Authorization: Bearer <TOKEN>` y permisos específicos por rol (RBAC).
+4. **Reglas de Negocio Jerárquicas y Control de Roles:** Control estricto de privilegios por categorías de productos (ej. solo *Cocinero/Dueño* gestionan platos y postres; *Cantinero/Dueño* gestionan bebidas) retornando bloqueos seguros (`403 Forbidden`).
+5. **Baja Lógica de Productos:** Implementación de borrado lógico (`status: 'inactive'`) para preservar la integridad referencial y el historial en la tabla de ítems de pedidos.
+6. **Notificaciones Transaccionales (Nodemailer):** Envío automatizado de correos HTML personalizados mediante autenticación SMTP segura y App Passwords de Gmail.
 
 ---
 
