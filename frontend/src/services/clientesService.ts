@@ -1,4 +1,6 @@
 import { API_BASE_URL } from "./apiConfig";
+import { File } from "expo-file-system";
+import { fetch } from "expo/fetch";
 
 export interface ClienteFormErrors {
   nombres?: string;
@@ -81,14 +83,8 @@ export async function registrarCliente(payload: {
   formData.append("first_name", payload.nombres.trim());
   formData.append("last_name", payload.apellidos.trim());
   formData.append("dni", payload.dni.trim());
-  formData.append(
-    "foto",
-    {
-      uri: payload.fotoUri,
-      name: fileNameFromUri(payload.fotoUri),
-      type: mimeFromUri(payload.fotoUri),
-    } as any
-  );
+  const fotoFile = new File(payload.fotoUri);
+  formData.append("foto", fotoFile, fileNameFromUri(payload.fotoUri));
 
   try {
     const response = await fetch(`${API_BASE_URL}/clientes/register`, {

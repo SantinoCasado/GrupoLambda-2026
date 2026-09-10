@@ -1,5 +1,7 @@
 // src/services/empleadosService.ts
 import { API_BASE_URL } from "./apiConfig";
+import { File } from "expo-file-system";
+import { fetch } from "expo/fetch";
 
 export interface EmpleadoFormValues {
   nombres: string;
@@ -42,16 +44,10 @@ export async function registrarEmpleado(
   formData.append("cuil", cuilLimpio);
   formData.append("role", ROLE_MAPPING[payload.perfil.toLowerCase()] || "cook");
   formData.append("rol_creador", rolCreador);
-  formData.append(
-    "foto",
-    {
-      uri: payload.fotoUri,
-      name: fileNameFromUri(payload.fotoUri),
-      type: mimeFromUri(payload.fotoUri),
-    } as any
-  );
+  const fotoFile = new File(payload.fotoUri);
+  formData.append("foto", fotoFile, fileNameFromUri(payload.fotoUri));
 
-  const response = await fetch(`${API_BASE_URL}/usuarios/empleados`, {
+  const response = await fetch(`${API_BASE_URL}/empleados/empleados`, {
     method: "POST",
     body: formData,
   });

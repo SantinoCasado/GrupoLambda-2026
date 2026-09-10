@@ -188,7 +188,7 @@ export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props
       mostrarMensaje(
         "exito",
         "Registro Exitoso",
-        `El empleado ${perfil} ha sido registrado satisfactoriamente en el sistema.`,
+        `El ${perfil} ha sido registrado exitosamente.`,
         () => {
           setNombres("");
           setApellidos("");
