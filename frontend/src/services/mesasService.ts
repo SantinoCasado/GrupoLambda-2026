@@ -1,4 +1,6 @@
 import { API_BASE_URL } from "./apiConfig";
+import { File } from "expo-file-system";
+import { fetch } from "expo/fetch";
 import { headersConToken } from "./tokenService";
 
 export type TipoMesa = "estandar" | "vip" | "movilidad_reducida";
@@ -21,6 +23,19 @@ export interface MesaFormErrors {
   foto?: string;
 }
 
+// Mapeo de los valores del frontend a los de la API (schema Zod del backend)
+const TIPO_MESA_TO_API: Record<TipoMesa, "standard" | "vip" | "reduced_mobility"> = {
+  estandar: "standard",
+  vip: "vip",
+  movilidad_reducida: "reduced_mobility",
+};
+
+const ESTADO_MESA_TO_API: Record<EstadoMesa, "free" | "occupied" | "cleaning"> = {
+  vacia: "free",
+  ocupada: "occupied",
+  reservada: "cleaning",
+};
+
 // Lista en memoria para pruebas inmediatas y gestión de disponibilidad
 let MESAS_LOCAL: Mesa[] = [
   {
@@ -29,7 +44,7 @@ let MESAS_LOCAL: Mesa[] = [
     tipo: "estandar",
     disponibilidad: "vacia",
     foto: "https://via.placeholder.com/300",
-    qrCode: JSON.stringify({ mesa: 1, tipo: "estandar" }),
+    qrCode: "RESTO-TFI-MESA-1",
   },
   {
     numero: 2,
@@ -37,32 +52,32 @@ let MESAS_LOCAL: Mesa[] = [
     tipo: "vip",
     disponibilidad: "ocupada",
     foto: "https://via.placeholder.com/300",
-    qrCode: JSON.stringify({ mesa: 2, tipo: "vip" }),
+    qrCode: "RESTO-TFI-MESA-2",
   },
-    {
+  {
     numero: 3,
     comensales: 2,
     tipo: "vip",
     disponibilidad: "ocupada",
     foto: "https://via.placeholder.com/300",
-    qrCode: JSON.stringify({ mesa: 2, tipo: "vip" }),
+    qrCode: "RESTO-TFI-MESA-3",
   },
-    {
+  {
     numero: 4,
     comensales: 2,
     tipo: "vip",
     disponibilidad: "ocupada",
     foto: "https://via.placeholder.com/300",
-    qrCode: JSON.stringify({ mesa: 2, tipo: "vip" }),
+    qrCode: "RESTO-TFI-MESA-4",
   },
-      {
+  {
     numero: 5,
     comensales: 2,
     tipo: "vip",
     disponibilidad: "ocupada",
     foto: "https://via.placeholder.com/300",
-    qrCode: JSON.stringify({ mesa: 2, tipo: "vip" }),
-  }
+    qrCode: "RESTO-TFI-MESA-5",
+  },
 ];
 
 // Valida solo los campos del paso 1 (número y comensales).
@@ -139,27 +154,44 @@ export async function registrarMesa(payload: {
   const nuevaMesa: Mesa = {
     ...payload,
     disponibilidad: "vacia",
-    qrCode: JSON.stringify({ mesa: payload.numero, tipo: payload.tipo }),
+    qrCode: `RESTO-TFI-MESA-${payload.numero}`,
   };
 
-  try {
-    const response = await fetch(`${API_BASE_URL}/mesas`, {
-      method: "POST",
-      headers: await headersConToken({ "Content-Type": "application/json" }),
-      body: JSON.stringify(nuevaMesa),
-    });
+  // El backend espera un multipart/form-data con estos campos (multer)
+  const formData = new FormData();
+  formData.append("table_number", String(payload.numero));
+  formData.append("capacity", String(payload.comensales));
+  formData.append("table_type", TIPO_MESA_TO_API[payload.tipo]);
+  formData.append("foto", new File(payload.foto), fileNameFromUri(payload.foto));
 
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message || data.error || "No se pudo registrar la mesa.");
-    }
-    MESAS_LOCAL.push(nuevaMesa);
-    return data;
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}/mesas`, {
+      method: "POST",
+      // No seteamos Content-Type: expo/fetch fija el boundary del multipart automáticamente
+      headers: await headersConToken(),
+      body: formData,
+    });
   } catch (error: any) {
-    console.warn("Fallback local para mesas:", error.message);
+    // Backend no disponible: mantenemos el fallback local para que la demo siga funcionando
+    console.warn("Backend /mesas no disponible, registrando de forma local:", error.message);
     MESAS_LOCAL.push(nuevaMesa);
     return nuevaMesa;
   }
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(
+      typeof data.detalle === "string"
+        ? data.detalle
+        : data.message || data.error || "No se pudo registrar la mesa."
+    );
+  }
+
+  // Guardamos el id real (uuid) que devuelve Supabase para poder cambiar su estado después
+  nuevaMesa.id = data.data?.id || data.id;
+  MESAS_LOCAL.push(nuevaMesa);
+  return data;
 }
 
 export async function actualizarDisponibilidadMesa(
@@ -169,15 +201,44 @@ export async function actualizarDisponibilidadMesa(
   const mesa = MESAS_LOCAL.find((m) => m.numero === numero);
   if (mesa) {
     mesa.disponibilidad = nuevaDisponibilidad;
+  } else {
+    console.warn(`La mesa #${numero} no existe en el listado local.`);
+    return;
   }
 
+  // Sin un id real (uuid) no podemos llamar al backend. Ocurre con los datos mock,
+  // que se cargan cuando aún no existe el endpoint GET /mesas.
+  if (!mesa.id) {
+    console.warn("La mesa no tiene id real; el estado se actualizó solo localmente.");
+    return;
+  }
+
+  let response: Response;
   try {
-    await fetch(`${API_BASE_URL}/mesas/${numero}/disponibilidad`, {
+    response = await fetch(`${API_BASE_URL}/mesas/${mesa.id}/estado`, {
       method: "PATCH",
       headers: await headersConToken({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ disponibilidad: nuevaDisponibilidad }),
+      body: JSON.stringify({ availability: ESTADO_MESA_TO_API[nuevaDisponibilidad] }),
     });
-  } catch (error) {
-    console.warn("No se pudo persistir en backend el cambio de estado:", error);
+  } catch (error: any) {
+    // Backend no disponible: el estado ya quedó actualizado localmente
+    console.warn("No se pudo persistir en backend el cambio de estado:", error.message);
+    return;
   }
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(
+      typeof data.detalle === "string"
+        ? data.detalle
+        : data.message || data.error || "No se pudo cambiar el estado de la mesa."
+    );
+  }
+}
+
+// Deriva un nombre de archivo con extensión correcta desde la URI local
+function fileNameFromUri(uri: string): string {
+  const original = uri.split("/").pop() || "foto.jpg";
+  if (/\.(jpg|jpeg|png|webp)$/i.test(original)) return original;
+  return `${original.split(".")[0] || "foto"}.jpg`;
 }

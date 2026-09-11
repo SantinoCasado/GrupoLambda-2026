@@ -125,7 +125,7 @@ export function validateProductoForm(
 
   const fotosCargadas = data.fotos.filter((f) => f !== null && f !== "");
   if (fotosCargadas.length < 3) {
-    errors.fotos = `Debe cargar obligatoriamente las 3 fotos individuales (${fotosCargadas.length}/3).`;
+    errors.fotos = `Debe cargar obligatoriamente las 3 fotos individuales.`;
   }
 
   return errors;
