@@ -43,14 +43,6 @@ export default function HomeScreen({ usuario, onNavigate }: Props) {
 
   return (
     <>
-      <View
-        style={{ position: "absolute", width: "100%", height: "100%", backgroundColor: "#FFF6EC" }}
-      />
-      <Image
-        source={require("../../assets/images/background-test-3.png")}
-        style={{ position: "absolute", width: "100%", height: "100%" }}
-        resizeMode="cover"
-      />
       <ScrollView
         className="flex-1"
         contentContainerStyle={{ paddingBottom: 50, paddingTop: insets.top }}
@@ -162,13 +154,20 @@ export default function HomeScreen({ usuario, onNavigate }: Props) {
                 onPress={() => navegar("producto")}
                 className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota"
               >
-                <Text className="text-2xl mr-3">{perfil === "cocinero" ? "🍳" : "🍸"}</Text>
+                <Image
+                  source={
+                    perfil === "cocinero"
+                      ? require("../../assets/images/food-y.png")
+                      : require("../../assets/images/martini-glass-y.png")
+                  }
+                  className="w-8 h-8 mr-3"
+                />
                 <View className="flex-1">
                   <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
                     {perfil === "cocinero" ? "Alta de Comida" : "Alta de Bebida"}
                   </Text>
                   <Text className="text-[11px] font-semibold text-amber-100">
-                    Agregar un producto a la carta
+                    {perfil === "cocinero" ? "Agregar un plato a la carta" : "Agregar una bebida a la carta"}
                   </Text>
                 </View>
                 <Text className="text-mostaza text-xl">›</Text>

@@ -104,14 +104,6 @@ export function LoginScreen({ onLoginSuccess, onNavigateRegistroCliente }: Login
 
   return (
     <>
-      <View
-        style={{ position: "absolute", width: "100%", height: "100%", backgroundColor: "#FFF6EC" }}
-      />
-      <Image
-        source={require("../../assets/images/background-test-3.png")}
-        style={{ position: "absolute", width: "100%", height: "100%" }}
-        resizeMode="cover"
-      />
       <SafeAreaView className="flex-1">
         <StatusBar style="light" />
 

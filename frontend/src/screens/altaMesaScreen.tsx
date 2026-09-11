@@ -14,10 +14,10 @@ import {
   StyleSheet,
   Alert,
   ActivityIndicator,
-  Modal,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
+import { OptionModal } from "../components/OptionModal";
 import QRCode from "react-native-qrcode-svg";
 import {
   TipoMesa,
@@ -135,14 +135,6 @@ export default function AltaMesaScreen() {
 
   return (
     <>
-      <View
-        style={{ position: "absolute", width: "100%", height: "100%", backgroundColor: "#FFF6EC" }}
-      />
-      <Image
-        source={require("../../assets/images/background-test-3.png")}
-        style={{ position: "absolute", width: "100%", height: "100%" }}
-        resizeMode="cover"
-      />
       <SafeAreaView className="flex-1">
         <StatusBar style="light" />
 
@@ -359,25 +351,15 @@ export default function AltaMesaScreen() {
         </ScrollView>
 
         {/* Modal Cámara / Galería */}
-        <Modal visible={modalFoto} transparent animationType="fade">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Seleccionar Foto de la Mesa</Text>
-              <TouchableOpacity style={styles.modalOption} onPress={tomarFoto}>
-                <Text style={styles.modalOptionText}>📸 Tomar Foto con Cámara</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.modalOption} onPress={elegirGaleria}>
-                <Text style={styles.modalOptionText}>🖼️ Elegir de la Galería</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalOption, styles.modalOptionCancel]}
-                onPress={() => setModalFoto(false)}
-              >
-                <Text style={styles.modalOptionCancelText}>Cancelar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
+        <OptionModal
+          visible={modalFoto}
+          titulo="Seleccionar Foto de la Mesa"
+          opciones={[
+            { etiqueta: "Tomar Foto con Cámara", icono: require("../../assets/images/camera-v.png"), onPress: tomarFoto },
+            { etiqueta: "Elegir de la Galería", icono: require("../../assets/images/galery-v.png"), onPress: elegirGaleria },
+          ]}
+          onCancel={() => setModalFoto(false)}
+        />
       </SafeAreaView>
     </>
   );
@@ -424,11 +406,4 @@ const styles = StyleSheet.create({
   badgeReservada: { backgroundColor: "#92400E" },
   badgeEstadoText: { color: "#FFF", fontSize: 10, fontWeight: "bold" },
   cardMesaQr: { backgroundColor: "#111827", padding: 6, borderRadius: 8 },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.75)", justifyContent: "center", alignItems: "center", padding: 20 },
-  modalContent: { backgroundColor: "#1F2937", borderRadius: 12, padding: 20, width: "100%", maxWidth: 320 },
-  modalTitle: { color: "#FFF", fontSize: 16, fontWeight: "bold", marginBottom: 16, textAlign: "center" },
-  modalOption: { backgroundColor: "#374151", paddingVertical: 12, borderRadius: 8, marginBottom: 10, alignItems: "center" },
-  modalOptionText: { color: "#FFF", fontSize: 15, fontWeight: "600" },
-  modalOptionCancel: { backgroundColor: "transparent", borderWidth: 1, borderColor: "#4B5563", marginTop: 4 },
-  modalOptionCancelText: { color: "#9CA3AF", fontSize: 14 },
 });

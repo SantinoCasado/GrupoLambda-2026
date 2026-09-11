@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "./apiConfig";
+import { headersConToken } from "./tokenService";
 
 export type TipoMesa = "estandar" | "vip" | "movilidad_reducida";
 export type EstadoMesa = "vacia" | "ocupada" | "reservada";
@@ -73,7 +74,9 @@ export function validateMesaForm(data: {
 
 export async function obtenerMesas(): Promise<Mesa[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/mesas`);
+    const response = await fetch(`${API_BASE_URL}/mesas`, {
+      headers: await headersConToken(),
+    });
     if (response.ok) {
       const data = await response.json();
       return data.data || data;
@@ -104,7 +107,7 @@ export async function registrarMesa(payload: {
   try {
     const response = await fetch(`${API_BASE_URL}/mesas`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: await headersConToken({ "Content-Type": "application/json" }),
       body: JSON.stringify(nuevaMesa),
     });
 
@@ -133,7 +136,7 @@ export async function actualizarDisponibilidadMesa(
   try {
     await fetch(`${API_BASE_URL}/mesas/${numero}/disponibilidad`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
+      headers: await headersConToken({ "Content-Type": "application/json" }),
       body: JSON.stringify({ disponibilidad: nuevaDisponibilidad }),
     });
   } catch (error) {

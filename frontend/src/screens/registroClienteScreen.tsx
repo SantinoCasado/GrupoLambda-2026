@@ -184,16 +184,6 @@ export default function RegistroClienteScreen({ onVolverAlLogin, modo = "cliente
     <View style={{ flex: 1, overflow: "hidden" }}>
       <StatusBar style="light" />
 
-      {/* Fondos */}
-      <View
-        style={{ position: "absolute", width: "100%", height: "100%", backgroundColor: "#FFF6EC" }}
-      />
-      <Image
-        source={require("../../assets/images/background-test-3.png")}
-        style={{ position: "absolute", width: "100%", height: "100%" }}
-        resizeMode="cover"
-      />
-
       {/* Botón Volver al Login */}
       {/* <View className="flex-row justify-end items-center px-5 pt-3 z-20"> */}
         {/* <TouchableOpacity

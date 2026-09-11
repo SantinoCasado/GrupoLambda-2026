@@ -1,6 +1,7 @@
 import { API_BASE_URL } from "./apiConfig";
 import { File } from "expo-file-system";
 import { fetch } from "expo/fetch";
+import { headersConToken } from "./tokenService";
 
 export interface ClienteFormErrors {
   nombres?: string;
@@ -89,6 +90,7 @@ export async function registrarCliente(payload: {
   try {
     const response = await fetch(`${API_BASE_URL}/clientes/register`, {
       method: "POST",
+      headers: await headersConToken(),
       body: formData,
     });
 

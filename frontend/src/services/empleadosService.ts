@@ -2,6 +2,7 @@
 import { API_BASE_URL } from "./apiConfig";
 import { File } from "expo-file-system";
 import { fetch } from "expo/fetch";
+import { headersConToken } from "./tokenService";
 
 export interface EmpleadoFormValues {
   nombres: string;
@@ -49,6 +50,7 @@ export async function registrarEmpleado(
 
   const response = await fetch(`${API_BASE_URL}/empleados/empleados`, {
     method: "POST",
+    headers: await headersConToken(),
     body: formData,
   });
 
