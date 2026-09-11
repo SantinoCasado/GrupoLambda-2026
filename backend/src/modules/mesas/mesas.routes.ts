@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { verificarAutenticacion } from '../../middleware/auth.middleware';
 import { upload } from '../../middleware/upload.middleware';
-import { crearMesa, actualizarEstadoMesa } from './mesas.controller';
+import { crearMesa, actualizarEstadoMesa, obtenerMesas } from './mesas.controller';
 import express from 'express';
 
 const router = Router();
@@ -16,5 +16,8 @@ router.post(
 
 // Endpoint PATCH para cambiar el estado (Libre / Ocupada)
 router.patch('/:id/estado', verificarAutenticacion, actualizarEstadoMesa);
+
+// Endpoint GET para listar todas las mesas
+router.get('/', verificarAutenticacion, obtenerMesas);
 
 export default router;

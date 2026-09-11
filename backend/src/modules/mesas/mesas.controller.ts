@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { crearMesaSchema, cambiarEstadoMesaSchema } from './schema/mesas.schema';
-import { insertarMesaService, cambiarEstadoMesaService } from './mesas.service';
+import { insertarMesaService, cambiarEstadoMesaService, obtenerMesasService } from './mesas.service';
 import { supabase } from '../../config/supabase';
 import { subirImagenSupabase } from '../../services/storage.service';
 
@@ -100,5 +100,14 @@ export const actualizarEstadoMesa = async (req: Request, res: Response): Promise
 
     } catch (error: any) {
         return res.status(500).json({ error: 'Fallo al cambiar el estado de la mesa', detalle: error.message });
+    }
+};
+
+export const obtenerMesas = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const mesas = await obtenerMesasService();
+        return res.status(200).json({ data: mesas });
+    } catch (error: any) {
+        return res.status(500).json({ error: 'Fallo al obtener las mesas', detalle: error.message });
     }
 };
