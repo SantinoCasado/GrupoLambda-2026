@@ -1,5 +1,5 @@
 # Reporte de Testing - App Móvil y Backend
-**Tester:** Rocío Sánchez  
+**Tester:** Rocío M. Sánchez  
 **Fecha:** 10 de Septiembre de 2026  
 **Rama:** feature/rocio-supabase-db  
 **Dispositivo:** Tablet Android con Expo Go  
