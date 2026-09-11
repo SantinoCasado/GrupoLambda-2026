@@ -49,3 +49,16 @@ export const cambiarEstadoMesaService = async (id: string, availability: string)
 
     return data[0];
 };
+
+export const obtenerMesasService = async () => {
+    const { data, error } = await supabase
+        .from('restaurant_tables')
+        .select('*')
+        .order('table_number', { ascending: true });
+
+    if (error) {
+        throw new Error(`Error al obtener el listado de mesas: ${error.message}`);
+    }
+
+    return data;
+};
