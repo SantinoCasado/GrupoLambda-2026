@@ -512,7 +512,7 @@ multiline
               </View>
               <TouchableOpacity
                 onPress={irVolver}
-                className="w-full flex-row items-center justify-center rounded-2xl border border-mostaza/40 bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
+                className="w-full flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
               >
                 <Text style={{ fontFamily: "LaOriental" }} className="text-s text-calabaza">Volver</Text>
               </TouchableOpacity>
