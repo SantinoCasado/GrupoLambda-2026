@@ -54,13 +54,14 @@ async function productoExisteEnDB(
   }
 }
 
-export function validateProductoForm(
+// Valida solo los campos del paso 1 (nombre, descripción, tiempo y precio).
+// Las fotografías pertenecen al paso 2 y se validan en validateProductoForm.
+export function validateProductoPaso1(
   data: {
     nombre: string;
     descripcion: string;
     tiempoElaboracion: string;
     precio: string;
-    fotos: (string | null)[];
   },
   categoria: CategoriaProducto
 ): ProductoFormErrors {
@@ -98,6 +99,29 @@ export function validateProductoForm(
   } else if (isNaN(precioNum) || precioNum <= 0) {
     errors.precio = "El precio debe ser un número válido mayor a $0.";
   }
+
+  return errors;
+}
+
+export function validateProductoForm(
+  data: {
+    nombre: string;
+    descripcion: string;
+    tiempoElaboracion: string;
+    precio: string;
+    fotos: (string | null)[];
+  },
+  categoria: CategoriaProducto
+): ProductoFormErrors {
+  const errors = validateProductoPaso1(
+    {
+      nombre: data.nombre,
+      descripcion: data.descripcion,
+      tiempoElaboracion: data.tiempoElaboracion,
+      precio: data.precio,
+    },
+    categoria
+  );
 
   const fotosCargadas = data.fotos.filter((f) => f !== null && f !== "");
   if (fotosCargadas.length < 3) {

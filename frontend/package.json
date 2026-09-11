@@ -4,7 +4,7 @@
   "main": "index.tsx",
   "dependencies": {
     "@supabase/supabase-js": "^2.115.0",
-    "expo": "~57.0.20",
+    "expo": "~57.0.22",
     "expo-audio": "~57.0.4",
     "expo-av": "~16.0.8",
     "expo-camera": "~57.0.4",

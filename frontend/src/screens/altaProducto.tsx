@@ -13,6 +13,7 @@ import * as Haptics from "expo-haptics";
 import {
   CategoriaProducto,
   validateProductoForm,
+  validateProductoPaso1,
   registrarProducto,
   ProductoFormErrors,
 } from "../services/productosService";
@@ -88,18 +89,69 @@ export default function AltaProductoScreen({ categoria, onSuccess }: Props) {
 
   // Carrusel de secciones
   const scrollRef = useRef<ScrollView>(null);
+  const paso1Validado = useRef(false);
   const [currentStep, setCurrentStep] = useState(0);
   const screenWidth = Dimensions.get("window").width;
 
+  // Avance al paso 2 con validación
   const irSiguiente = () => {
     if (isLoading) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    const paso1Errors = validateProductoPaso1(
+      { nombre, descripcion, tiempoElaboracion, precio },
+      categoria
+    );
+
+    setErrors((prev) => {
+      const cleaned = { ...prev };
+      delete cleaned.fotos;
+      return { ...cleaned, ...paso1Errors };
+    });
+
+    if (Object.keys(paso1Errors).length > 0) {
+      mostrarMensaje(
+        "error",
+        "Datos Incompletos",
+        "Por favor, complete correctamente los campos marcados antes de continuar."
+      );
+      return;
+    }
+
+    paso1Validado.current = true;
     scrollRef.current?.scrollTo({ x: screenWidth, animated: true });
   };
 
   const irVolver = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     scrollRef.current?.scrollTo({ x: 0, animated: true });
+  };
+
+  // Limpieza de error de campo cuando el valor se corrige
+  const clearFieldError = (field: keyof ProductoFormErrors, value: string) => {
+    if (!errors[field]) return;
+
+    let valid = false;
+    switch (field) {
+      case "nombre":
+        valid = value.trim().length >= 3;
+        break;
+      case "descripcion":
+        valid = value.trim().length >= 8;
+        break;
+      case "tiempoElaboracion": {
+        const num = Number(value);
+        valid = value.trim() !== "" && Number.isInteger(num) && num > 0 && num <= (esBebida ? 15 : 60);
+        break;
+      }
+      case "precio": {
+        const num = Number(value.replace(",", "."));
+        valid = value.trim() !== "" && !isNaN(num) && num > 0;
+        break;
+      }
+    }
+
+    if (valid) setErrors((prev) => ({ ...prev, [field]: undefined }));
   };
 
   const abrirSelectorFoto = (index: number) => {
@@ -126,6 +178,9 @@ export default function AltaProductoScreen({ categoria, onSuccess }: Props) {
       const actualizadas = [...fotos];
       actualizadas[selectedSlot] = result.assets[0].uri;
       setFotos(actualizadas);
+      if (actualizadas.filter((f) => f !== null && f !== "").length >= 3) {
+        setErrors((prev) => ({ ...prev, fotos: undefined }));
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
   };
@@ -149,6 +204,9 @@ export default function AltaProductoScreen({ categoria, onSuccess }: Props) {
       const actualizadas = [...fotos];
       actualizadas[selectedSlot] = result.assets[0].uri;
       setFotos(actualizadas);
+      if (actualizadas.filter((f) => f !== null && f !== "").length >= 3) {
+        setErrors((prev) => ({ ...prev, fotos: undefined }));
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
   };
@@ -191,6 +249,7 @@ export default function AltaProductoScreen({ categoria, onSuccess }: Props) {
           setFotos([null, null, null]);
           scrollRef.current?.scrollTo({ x: 0, animated: false });
           setCurrentStep(0);
+          paso1Validado.current = false;
 
           if (onSuccess) onSuccess();
         }
@@ -244,7 +303,13 @@ export default function AltaProductoScreen({ categoria, onSuccess }: Props) {
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={{ flexGrow: 1 }}
         onMomentumScrollEnd={(e) => {
-          setCurrentStep(Math.round(e.nativeEvent.contentOffset.x / screenWidth));
+          const step = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+          if (step === 1 && !paso1Validado.current) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            scrollRef.current?.scrollTo({ x: 0, animated: true });
+            return;
+          }
+          setCurrentStep(step);
         }}
         style={{ flex: 1 }}
       >
@@ -261,7 +326,7 @@ export default function AltaProductoScreen({ categoria, onSuccess }: Props) {
                   <Text className="mb-1 text-s font-bold text-vino">Nombre *</Text>
 <TextInput
               value={nombre}
-              onChangeText={setNombre}
+              onChangeText={(v) => { setNombre(v); clearFieldError("nombre", v); }}
               placeholder={config.placeholderNombre}
 placeholderTextColor="#a37e1f"
               className={`rounded-xl border px-4 py-3 text-stone-700 ${
@@ -278,7 +343,7 @@ placeholderTextColor="#a37e1f"
                   <Text className="mb-1 text-s font-bold text-vino">Descripción *</Text>
                   <TextInput
                     value={descripcion}
-                    onChangeText={setDescripcion}
+                    onChangeText={(v) => { setDescripcion(v); clearFieldError("descripcion", v); }}
                     placeholder={config.placeholderDesc}
                     placeholderTextColor="#a37e1f"
 multiline
@@ -299,7 +364,7 @@ multiline
                     <Text className="mb-1 text-s font-bold text-vino">Tiempo (min) *</Text>
                     <TextInput
                       value={tiempoElaboracion}
-                      onChangeText={setTiempoElaboracion}
+                      onChangeText={(v) => { setTiempoElaboracion(v); clearFieldError("tiempoElaboracion", v); }}
                       keyboardType="number-pad"
                       placeholder={config.placeholderTiempo}
                       placeholderTextColor="#a37e1f"
@@ -315,7 +380,7 @@ multiline
                     <Text className="mb-1 text-s font-bold text-vino">Precio ($) *</Text>
                     <TextInput
                       value={precio}
-                      onChangeText={setPrecio}
+                      onChangeText={(v) => { setPrecio(v); clearFieldError("precio", v); }}
                       keyboardType="decimal-pad"
                       placeholder={config.placeholderPrecio}
                       placeholderTextColor="#a37e1f"
