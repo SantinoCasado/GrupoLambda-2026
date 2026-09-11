@@ -39,13 +39,37 @@ let MESAS_LOCAL: Mesa[] = [
     foto: "https://via.placeholder.com/300",
     qrCode: JSON.stringify({ mesa: 2, tipo: "vip" }),
   },
+    {
+    numero: 3,
+    comensales: 2,
+    tipo: "vip",
+    disponibilidad: "ocupada",
+    foto: "https://via.placeholder.com/300",
+    qrCode: JSON.stringify({ mesa: 2, tipo: "vip" }),
+  },
+    {
+    numero: 4,
+    comensales: 2,
+    tipo: "vip",
+    disponibilidad: "ocupada",
+    foto: "https://via.placeholder.com/300",
+    qrCode: JSON.stringify({ mesa: 2, tipo: "vip" }),
+  },
+      {
+    numero: 5,
+    comensales: 2,
+    tipo: "vip",
+    disponibilidad: "ocupada",
+    foto: "https://via.placeholder.com/300",
+    qrCode: JSON.stringify({ mesa: 2, tipo: "vip" }),
+  }
 ];
 
-export function validateMesaForm(data: {
+// Valida solo los campos del paso 1 (número y comensales).
+// La fotografía pertenece al paso 2 y se valida en validateMesaForm.
+export function validateMesaPaso1(data: {
   numero: string;
   comensales: string;
-  tipo: TipoMesa;
-  foto: string | null;
 }): MesaFormErrors {
   const errors: MesaFormErrors = {};
 
@@ -64,6 +88,20 @@ export function validateMesaForm(data: {
   } else if (com > 8) {
     errors.comensales = "Máximo 8 comensales por mesa.";
   }
+
+  return errors;
+}
+
+export function validateMesaForm(data: {
+  numero: string;
+  comensales: string;
+  tipo: TipoMesa;
+  foto: string | null;
+}): MesaFormErrors {
+  const errors = validateMesaPaso1({
+    numero: data.numero,
+    comensales: data.comensales,
+  });
 
   if (!data.foto) {
     errors.foto = "La fotografía de la mesa es obligatoria.";

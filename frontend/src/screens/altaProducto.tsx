@@ -7,9 +7,11 @@ import {
   ScrollView,
   Image,
   Dimensions,
+  Modal,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import {
   CategoriaProducto,
   validateProductoForm,
@@ -54,6 +56,11 @@ export default function AltaProductoScreen({ categoria, onSuccess }: Props) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+
+  // Cámara en vivo (misma estrategia que Alta Empleados, evita reinicios de la app)
+  const [permission, requestPermission] = useCameraPermissions();
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const cameraRef = useRef<CameraView | null>(null);
 
   // Estado del Modal de Feedback (Reemplazo obligatorio de Alert)
   const [modalFeedback, setModalFeedback] = useState<{
@@ -159,29 +166,36 @@ export default function AltaProductoScreen({ categoria, onSuccess }: Props) {
     setModalVisible(true);
   };
 
-  const tomarFoto = async () => {
+  const abrirCamara = async () => {
     setModalVisible(false);
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted") {
-      mostrarMensaje("error", "Permiso Requerido", "Se requiere permiso de cámara para tomar fotos.");
-      return;
-    }
-
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.7,
-    });
-
-    if (!result.canceled && selectedSlot !== null) {
-      const actualizadas = [...fotos];
-      actualizadas[selectedSlot] = result.assets[0].uri;
-      setFotos(actualizadas);
-      if (actualizadas.filter((f) => f !== null && f !== "").length >= 3) {
-        setErrors((prev) => ({ ...prev, fotos: undefined }));
+    if (!permission?.granted) {
+      const res = await requestPermission();
+      if (!res.granted) {
+        mostrarMensaje("error", "Permiso Requerido", "Se requiere permiso de cámara para tomar fotos.");
+        return;
       }
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
+    setIsCameraOpen(true);
+  };
+
+  const tomarFoto = async () => {
+    if (cameraRef.current) {
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
+        if (photo?.uri && selectedSlot !== null) {
+          const actualizadas = [...fotos];
+          actualizadas[selectedSlot] = photo.uri;
+          setFotos(actualizadas);
+          if (actualizadas.filter((f) => f !== null && f !== "").length >= 3) {
+            setErrors((prev) => ({ ...prev, fotos: undefined }));
+          }
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          setIsCameraOpen(false);
+        }
+      } catch {
+        mostrarMensaje("error", "Error de Captura", "No se pudo tomar la fotografía. Inténtelo nuevamente.");
+      }
     }
   };
 
@@ -512,11 +526,36 @@ multiline
         visible={modalVisible}
         titulo={`Foto #${selectedSlot !== null ? selectedSlot + 1 : ""}`}
         opciones={[
-          { etiqueta: "Tomar Foto", icono: require("../../assets/images/camera-v.png"), onPress: tomarFoto },
+          { etiqueta: "Tomar Foto", icono: require("../../assets/images/camera-v.png"), onPress: abrirCamara },
           { etiqueta: "Elegir de la Galería", icono: require("../../assets/images/galery-v.png"), onPress: elegirGaleria },
         ]}
         onCancel={() => setModalVisible(false)}
       />
+
+      {/* MODAL: CÁMARA PARA FOTO EN VIVO */}
+      <Modal visible={isCameraOpen} animationType="slide">
+        <View className="flex-1 bg-stone-950">
+          <CameraView ref={cameraRef} style={{ flex: 1 }} facing="back" />
+
+          <View className="absolute top-12 right-6">
+            <TouchableOpacity
+              onPress={() => setIsCameraOpen(false)}
+              className="border border-mostaza bg-vino px-4 py-2"
+            >
+              <Text style={{ fontFamily: "LaOriental" }} className="text-xs text-mostaza">Cerrar</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View className="absolute bottom-10 left-0 right-0 items-center">
+            <TouchableOpacity
+              onPress={tomarFoto}
+              className="h-20 w-20 items-center justify-center rounded-full border-4 border-amber-300 bg-amber-500/30 active:bg-amber-500/50"
+            >
+              <View className="h-14 w-14 rounded-full bg-amber-400" />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal de Feedback */}
       <FeedbackModal
