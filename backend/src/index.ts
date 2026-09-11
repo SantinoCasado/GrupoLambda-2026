@@ -6,6 +6,7 @@ import empleadosRoutes from './modules/empleados/empleados.routes';
 import clientesRoutes from './modules/cliente/cliente.routes';
 import authRoutes from './modules/auth/auth.routes';
 import productosRoutes from './modules/productos/productos.routes';
+import mesasRoutes from './modules/mesas/mesas.routes';
 
 dotenv.config();
 
@@ -27,6 +28,7 @@ app.use('/api/empleados', empleadosRoutes);
 app.use('/api/clientes', clientesRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/productos', productosRoutes);
+app.use('/api/mesas', mesasRoutes);
 
 // Ruta base
 app.get('/', (req: Request, res: Response) => {
