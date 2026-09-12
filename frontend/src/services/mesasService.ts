@@ -36,49 +36,41 @@ const ESTADO_MESA_TO_API: Record<EstadoMesa, "free" | "occupied" | "cleaning"> =
   reservada: "cleaning",
 };
 
-// Lista en memoria para pruebas inmediatas y gestión de disponibilidad
-let MESAS_LOCAL: Mesa[] = [
-  {
-    numero: 1,
-    comensales: 4,
-    tipo: "estandar",
-    disponibilidad: "vacia",
-    foto: "https://via.placeholder.com/300",
-    qrCode: "RESTO-TFI-MESA-1",
-  },
-  {
-    numero: 2,
-    comensales: 2,
-    tipo: "vip",
-    disponibilidad: "ocupada",
-    foto: "https://via.placeholder.com/300",
-    qrCode: "RESTO-TFI-MESA-2",
-  },
-  {
-    numero: 3,
-    comensales: 2,
-    tipo: "vip",
-    disponibilidad: "ocupada",
-    foto: "https://via.placeholder.com/300",
-    qrCode: "RESTO-TFI-MESA-3",
-  },
-  {
-    numero: 4,
-    comensales: 2,
-    tipo: "vip",
-    disponibilidad: "ocupada",
-    foto: "https://via.placeholder.com/300",
-    qrCode: "RESTO-TFI-MESA-4",
-  },
-  {
-    numero: 5,
-    comensales: 2,
-    tipo: "vip",
-    disponibilidad: "ocupada",
-    foto: "https://via.placeholder.com/300",
-    qrCode: "RESTO-TFI-MESA-5",
-  },
-];
+// Mapeo inverso: valores de la API (schema Zod / Supabase) a los del frontend
+const API_TIPO_TO_FRONT: Record<string, TipoMesa> = {
+  standard: "estandar",
+  vip: "vip",
+  reduced_mobility: "movilidad_reducida",
+};
+
+const API_ESTADO_TO_FRONT: Record<string, EstadoMesa> = {
+  free: "vacia",
+  occupied: "ocupada",
+  cleaning: "reservada",
+};
+
+interface MesaDesdeApi {
+  id?: string;
+  table_number: number;
+  capacity: number;
+  table_type: string;
+  photo_url: string;
+  qr_data?: string;
+  availability: string;
+}
+
+// Convierte una fila de restaurant_tables (snake_case) al modelo del frontend
+function mapMesaDesdeApi(row: MesaDesdeApi): Mesa {
+  return {
+    id: row.id,
+    numero: row.table_number,
+    comensales: row.capacity,
+    tipo: API_TIPO_TO_FRONT[row.table_type] ?? "estandar",
+    disponibilidad: API_ESTADO_TO_FRONT[row.availability] ?? "vacia",
+    foto: row.photo_url,
+    qrCode: row.qr_data,
+  };
+}
 
 // Valida solo los campos del paso 1 (número y comensales).
 // La fotografía pertenece al paso 2 y se valida en validateMesaForm.
@@ -132,12 +124,13 @@ export async function obtenerMesas(): Promise<Mesa[]> {
     });
     if (response.ok) {
       const data = await response.json();
-      return data.data || data;
+      const filas = Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : [];
+      return filas.map(mapMesaDesdeApi);
     }
   } catch (error) {
-    console.warn("Backend /mesas no disponible, usando local:", error);
+    console.warn("Backend /mesas no disponible, listado vacío:", error);
   }
-  return MESAS_LOCAL;
+  return [];
 }
 
 export async function registrarMesa(payload: {
@@ -146,17 +139,6 @@ export async function registrarMesa(payload: {
   tipo: TipoMesa;
   foto: string;
 }): Promise<Mesa> {
-  const existe = MESAS_LOCAL.some((m) => m.numero === payload.numero);
-  if (existe) {
-    throw new Error(`La mesa número ${payload.numero} ya existe en el restaurante.`);
-  }
-
-  const nuevaMesa: Mesa = {
-    ...payload,
-    disponibilidad: "vacia",
-    qrCode: `RESTO-TFI-MESA-${payload.numero}`,
-  };
-
   // El backend espera un multipart/form-data con estos campos (multer)
   const formData = new FormData();
   formData.append("table_number", String(payload.numero));
@@ -173,10 +155,9 @@ export async function registrarMesa(payload: {
       body: formData,
     });
   } catch (error: any) {
-    // Backend no disponible: mantenemos el fallback local para que la demo siga funcionando
-    console.warn("Backend /mesas no disponible, registrando de forma local:", error.message);
-    MESAS_LOCAL.push(nuevaMesa);
-    return nuevaMesa;
+    // Backend no disponible: no registramos en local, propagamos el error
+    console.warn("Backend /mesas no disponible:", error.message);
+    throw new Error("No se pudo conectar con el servidor. Intente nuevamente.");
   }
 
   const data = await response.json();
@@ -188,29 +169,18 @@ export async function registrarMesa(payload: {
     );
   }
 
-  // Guardamos el id real (uuid) que devuelve Supabase para poder cambiar su estado después
-  nuevaMesa.id = data.data?.id || data.id;
-  MESAS_LOCAL.push(nuevaMesa);
-  return data;
+  // Mapeamos la fila devuelta por el backend (guarda el id real de Supabase
+  // para poder cambiar su estado después).
+  return mapMesaDesdeApi(data.data || data);
 }
 
 export async function actualizarDisponibilidadMesa(
-  numero: number,
+  mesa: Mesa,
   nuevaDisponibilidad: EstadoMesa
 ) {
-  const mesa = MESAS_LOCAL.find((m) => m.numero === numero);
-  if (mesa) {
-    mesa.disponibilidad = nuevaDisponibilidad;
-  } else {
-    console.warn(`La mesa #${numero} no existe en el listado local.`);
-    return;
-  }
-
-  // Sin un id real (uuid) no podemos llamar al backend. Ocurre con los datos mock,
-  // que se cargan cuando aún no existe el endpoint GET /mesas.
+  // Sin un id real (uuid) no podemos llamar al PATCH del backend
   if (!mesa.id) {
-    console.warn("La mesa no tiene id real; el estado se actualizó solo localmente.");
-    return;
+    throw new Error("La mesa no tiene un id válido; no se puede cambiar su estado.");
   }
 
   let response: Response;
@@ -221,9 +191,7 @@ export async function actualizarDisponibilidadMesa(
       body: JSON.stringify({ availability: ESTADO_MESA_TO_API[nuevaDisponibilidad] }),
     });
   } catch (error: any) {
-    // Backend no disponible: el estado ya quedó actualizado localmente
-    console.warn("No se pudo persistir en backend el cambio de estado:", error.message);
-    return;
+    throw new Error(`No se pudo conectar con el servidor: ${error.message}`);
   }
 
   const data = await response.json();

@@ -277,13 +277,18 @@ export default function AltaMesaScreen() {
     }
   };
 
-  const cambiarEstado = async (numMesa: number, estadoActual: EstadoMesa) => {
+  const cambiarEstado = async (mesa: Mesa, estadoActual: EstadoMesa) => {
     const nuevoEstado: EstadoMesa =
       estadoActual === "vacia" ? "ocupada" : estadoActual === "ocupada" ? "reservada" : "vacia";
 
-    await actualizarDisponibilidadMesa(numMesa, nuevoEstado);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    cargarMesas();
+    try {
+      await actualizarDisponibilidadMesa(mesa, nuevoEstado);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      cargarMesas();
+    } catch (error: any) {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      mostrarMensaje("error", "Error", error.message || "No se pudo cambiar el estado de la mesa.");
+    }
   };
 
   return (
@@ -623,7 +628,7 @@ export default function AltaMesaScreen() {
                                       ? styles.badgeOcupada
                                       : styles.badgeReservada,
                                   ]}
-                                  onPress={() => cambiarEstado(m.numero, m.disponibilidad)}
+                                  onPress={() => cambiarEstado(m, m.disponibilidad)}
                                 >
                                   <Text style={styles.badgeEstadoText}>
                                     ESTADO: {m.disponibilidad.toUpperCase()} (Tocar para cambiar)
@@ -632,13 +637,22 @@ export default function AltaMesaScreen() {
                               </View>
 
                               {/* QR Generado Automáticamente */}
-                              <View style={styles.cardMesaQr}>
-                                <QRCode
-                                  value={m.qrCode || `mesa_${m.numero}`}
-                                  size={65}
-                                  backgroundColor="#1F2937"
-                                  color="#FFF"
-                                />
+                              <View className="items-center gap-2">
+                                {m.foto ? (
+                                  <Image
+                                    source={{ uri: m.foto }}
+                                    style={styles.cardMesaFoto}
+                                    resizeMode="cover"
+                                  />
+                                ) : null}
+                                <View style={styles.cardMesaQr}>
+                                  <QRCode
+                                    value={m.qrCode || `mesa_${m.numero}`}
+                                    size={65}
+                                    backgroundColor="#1F2937"
+                                    color="#FFF"
+                                  />
+                                </View>
                               </View>
                             </View>
                           ))}
@@ -745,4 +759,5 @@ const styles = StyleSheet.create({
   badgeReservada: { backgroundColor: "#92400E" },
   badgeEstadoText: { color: "#FFF", fontSize: 10, fontWeight: "bold" },
   cardMesaQr: { backgroundColor: "#111827", padding: 6, borderRadius: 8 },
+  cardMesaFoto: { width: 48, height: 48, borderRadius: 8, borderWidth: 1, borderColor: "#374151" },
 });
