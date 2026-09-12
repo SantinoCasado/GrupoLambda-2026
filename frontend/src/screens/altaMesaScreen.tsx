@@ -44,6 +44,7 @@ export default function AltaMesaScreen() {
   const [errors, setErrors] = useState<MesaFormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   const [modalFoto, setModalFoto] = useState(false);
+  const [mesaQr, setMesaQr] = useState<Mesa | null>(null);
   const [mesas, setMesas] = useState<Mesa[]>([]);
   const insets = useSafeAreaInsets();
 
@@ -587,17 +588,17 @@ export default function AltaMesaScreen() {
         ) : (
           /* Solapa de Gestión y Listado */
           <View className="flex-1">
-            <View className="mx-5 mt-1 mb-2 items-center">
-              <Text className="text-xs font-bold text-vino">Toca el estado de una mesa para alternarlo.</Text>
-              <Text className="text-xs font-bold text-vino">(Vacía ➔ Ocupada ➔ Reservada)</Text>
-            </View>
-
             {agrupadas.length === 0 ? (
               <View className="flex-1 items-center pt-10">
-                <Text className="text-xs font-bold text-amber-100/70">No hay mesas registradas.</Text>
+                <Text className="text-xs font-bold text-calabaza">No hay mesas disponibles aún.</Text>
               </View>
             ) : (
               <>
+                <View className="mx-5 mt-1 mb-2 items-center">
+                  <Text className="text-xs font-bold text-vino">Toca el estado de una mesa para alternarlo.</Text>
+                  <Text className="text-xs font-bold text-vino">(Vacía ➔ Ocupada ➔ Reservada)</Text>
+                </View>
+
                 <ScrollView
                   ref={listaScrollRef}
                   horizontal
@@ -636,7 +637,7 @@ export default function AltaMesaScreen() {
                                 </TouchableOpacity>
                               </View>
 
-                              {/* QR Generado Automáticamente */}
+                              {/* QR Accesible desde botón (modal) */}
                               <View className="items-center gap-2">
                                 {m.foto ? (
                                   <Image
@@ -645,14 +646,15 @@ export default function AltaMesaScreen() {
                                     resizeMode="cover"
                                   />
                                 ) : null}
-                                <View style={styles.cardMesaQr}>
-                                  <QRCode
-                                    value={m.qrCode || `mesa_${m.numero}`}
-                                    size={65}
-                                    backgroundColor="#1F2937"
-                                    color="#FFF"
-                                  />
-                                </View>
+                                <TouchableOpacity
+                                  onPress={() => setMesaQr(m)}
+                                  className="mt-1 items-center rounded-lg border border-calabaza bg-[#FBE9DF] px-4 py-1.5 active:bg-[#f5dccb]"
+                                  activeOpacity={0.7}
+                                  accessible
+                                  accessibilityLabel={`Ver código QR de la mesa ${m.numero}`}
+                                >
+                                  <Text className="text-xs font-bold text-calabaza">QR</Text>
+                                </TouchableOpacity>
                               </View>
                             </View>
                           ))}
@@ -699,7 +701,7 @@ export default function AltaMesaScreen() {
           visible={modalFoto}
           titulo="Seleccionar Foto de la Mesa"
           opciones={[
-            { etiqueta: "Tomar Foto con Cámara", icono: require("../../assets/images/camera-v.png"), onPress: abrirCamara },
+            { etiqueta: "Tomar Foto", icono: require("../../assets/images/camera-v.png"), onPress: abrirCamara },
             { etiqueta: "Elegir de la Galería", icono: require("../../assets/images/galery-v.png"), onPress: elegirGaleria },
           ]}
           onCancel={() => setModalFoto(false)}
@@ -725,6 +727,40 @@ export default function AltaMesaScreen() {
                 className="h-20 w-20 items-center justify-center rounded-full border-4 border-amber-300 bg-amber-500/30 active:bg-amber-500/50"
               >
                 <View className="h-14 w-14 rounded-full bg-amber-400" />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* MODAL: QR DE LA MESA */}
+        <Modal
+          visible={mesaQr !== null}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setMesaQr(null)}
+        >
+          <View className="flex-1 items-center justify-center bg-black/60 px-8">
+            <View style={styles.qrModalBox}>
+              <Text style={styles.qrModalTitle}>Mesa #{mesaQr?.numero}</Text>
+              <View style={styles.cardMesaQr}>
+                <QRCode
+                  value={mesaQr?.qrCode || `mesa_${mesaQr?.numero}`}
+                  size={200}
+                  backgroundColor="#111827"
+                  color="#FFF"
+                />
+              </View>
+              <TouchableOpacity
+                onPress={() => setMesaQr(null)}
+                className="mt-5 rounded-2xl bg-mostaza px-8 py-2.5 active:bg-calabaza/60"
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={{ fontFamily: "LaOriental" }}
+                  className="text-center uppercase tracking-wider text-vino"
+                >
+                  Cerrar
+                </Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -760,4 +796,6 @@ const styles = StyleSheet.create({
   badgeEstadoText: { color: "#FFF", fontSize: 10, fontWeight: "bold" },
   cardMesaQr: { backgroundColor: "#111827", padding: 6, borderRadius: 8 },
   cardMesaFoto: { width: 48, height: 48, borderRadius: 8, borderWidth: 1, borderColor: "#374151" },
+  qrModalBox: { alignItems: "center", backgroundColor: "#1F2937", borderRadius: 16, padding: 24, borderWidth: 1, borderColor: "#374151" },
+  qrModalTitle: { color: "#FFF", fontSize: 18, fontWeight: "bold", marginBottom: 14 },
 });
