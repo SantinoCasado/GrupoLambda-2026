@@ -74,6 +74,8 @@ Nuestra arquitectura simula un entorno laboral real, separando las responsabilid
   - `nodemailer` (Envío automatizado de correos electrónicos transaccionales mediante SMTP y App Passwords)
   - `jsonwebtoken` & `bcrypt` (Autenticación y seguridad de credenciales)
   - `dotenv` (Gestión segura de variables de entorno)
+  - `nodemailer` (Envío automatizado de correos electrónicos transaccionales mediante SMTP y App Passwords)
+  - `node-fetch` o `fetch` nativo (Comunicación con la API de Expo Push Notifications para alertas en dispositivos móviles)
 - **Base de Datos y Auth:** PostgreSQL gestionado a través de Supabase y GoTrue.
 - **Servicios Externos Adicionales:**
   - Firebase Cloud Messaging + Expo Notifications (Notificaciones Push).
@@ -117,6 +119,7 @@ Para proteger la integridad de los datos, el servidor implementa un conjunto rob
 4. **Reglas de Negocio Jerárquicas y Control de Roles:** Control estricto de privilegios por categorías de productos (ej. solo _Cocinero/Dueño_ gestionan platos y postres; _Cantinero/Dueño_ gestionan bebidas) retornando bloqueos seguros (`403 Forbidden`).
 5. **Baja Lógica de Productos:** Implementación de borrado lógico (`status: 'inactive'`) para preservar la integridad referencial y el historial en la tabla de ítems de pedidos.
 6. **Notificaciones Transaccionales (Nodemailer):** Envío automatizado de correos HTML personalizados mediante autenticación SMTP segura y App Passwords de Gmail.
+7. **Notificaciones Multicanal Automatizadas (Nodemailer & Expo Push):** Disparo simultáneo de correos transaccionales en HTML ante la aprobación/rechazo de cuentas y despacho automático de alertas móviles mediante la API de Expo Push Notifications.
 
 ---
 
@@ -281,14 +284,14 @@ Los siguientes puntos son bloqueadores de integración para Valentín y Sebasti�
 | Login mediante API       | Implementado en backend   | Disponible en `POST /api/auth/login`, pero aún no es utilizado por el frontend.                                         |
 | Alta de empleados        | Implementado              | Incluye fotografía, validación Zod y reglas jerárquicas.                                                                |
 | Registro de clientes     | Implementado parcialmente | El frontend conserva un fallback local si falla el backend.                                                             |
-| Aprobación de clientes   | Implementado parcialmente | La configuración de correos transaccionales con Nodemailer es la tarea activa en desarrollo.                            |
+| Aprobación de clientes   | Implementado              | Incluye validación de roles y envío automatizado de correos HTML mediante Nodemailer.                                   |
 | Clientes anónimos        | Implementado en backend   | Se registran en la lista de espera.                                                                                     |
 | Alta de productos        | Implementado              | Incluye hasta cinco imágenes y baja lógica.                                                                             |
 | Alta y estados de mesas  | Implementado              | Backend finalizado y testeado. Pendiente integración del frontend para consumir los endpoints.                          |
 | Códigos QR               | Implementado              | Backend autogenera el patrón `RESTO-TFI-MESA-<numero>`. Frontend consume este string para renderizar el QR visualmente. |
 | Pedidos                  | Planificado               | El módulo existe como estructura inicial, pero no está montado.                                                         |
 | Chat en tiempo real      | Planificado               | Sin implementación funcional visible.                                                                                   |
-| Notificaciones push      | Planificado               | Firebase Admin está instalado, pero el flujo no está conectado.                                                         |
+| Notificaciones push      | Implementado              | Integración completa en el servicio de clientes conectada a la API de Expo Push Notificatio                             |
 | Encuestas y estadísticas | Planificado               | Sin persistencia ni pantallas funcionales completas.                                                                    |
 
 ---
