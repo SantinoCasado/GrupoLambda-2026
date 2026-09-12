@@ -1,4 +1,7 @@
 import { API_BASE_URL } from "./apiConfig";
+import { File } from "expo-file-system";
+import { fetch } from "expo/fetch";
+import { headersConToken } from "./tokenService";
 
 export type TipoMesa = "estandar" | "vip" | "movilidad_reducida";
 export type EstadoMesa = "vacia" | "ocupada" | "reservada";
@@ -20,31 +23,60 @@ export interface MesaFormErrors {
   foto?: string;
 }
 
-// Lista en memoria para pruebas inmediatas y gestión de disponibilidad
-let MESAS_LOCAL: Mesa[] = [
-  {
-    numero: 1,
-    comensales: 4,
-    tipo: "estandar",
-    disponibilidad: "vacia",
-    foto: "https://via.placeholder.com/300",
-    qrCode: JSON.stringify({ mesa: 1, tipo: "estandar" }),
-  },
-  {
-    numero: 2,
-    comensales: 2,
-    tipo: "vip",
-    disponibilidad: "ocupada",
-    foto: "https://via.placeholder.com/300",
-    qrCode: JSON.stringify({ mesa: 2, tipo: "vip" }),
-  },
-];
+// Mapeo de los valores del frontend a los de la API (schema Zod del backend)
+const TIPO_MESA_TO_API: Record<TipoMesa, "standard" | "vip" | "reduced_mobility"> = {
+  estandar: "standard",
+  vip: "vip",
+  movilidad_reducida: "reduced_mobility",
+};
 
-export function validateMesaForm(data: {
+const ESTADO_MESA_TO_API: Record<EstadoMesa, "free" | "occupied" | "cleaning"> = {
+  vacia: "free",
+  ocupada: "occupied",
+  reservada: "cleaning",
+};
+
+// Mapeo inverso: valores de la API (schema Zod / Supabase) a los del frontend
+const API_TIPO_TO_FRONT: Record<string, TipoMesa> = {
+  standard: "estandar",
+  vip: "vip",
+  reduced_mobility: "movilidad_reducida",
+};
+
+const API_ESTADO_TO_FRONT: Record<string, EstadoMesa> = {
+  free: "vacia",
+  occupied: "ocupada",
+  cleaning: "reservada",
+};
+
+interface MesaDesdeApi {
+  id?: string;
+  table_number: number;
+  capacity: number;
+  table_type: string;
+  photo_url: string;
+  qr_data?: string;
+  availability: string;
+}
+
+// Convierte una fila de restaurant_tables (snake_case) al modelo del frontend
+function mapMesaDesdeApi(row: MesaDesdeApi): Mesa {
+  return {
+    id: row.id,
+    numero: row.table_number,
+    comensales: row.capacity,
+    tipo: API_TIPO_TO_FRONT[row.table_type] ?? "estandar",
+    disponibilidad: API_ESTADO_TO_FRONT[row.availability] ?? "vacia",
+    foto: row.photo_url,
+    qrCode: row.qr_data,
+  };
+}
+
+// Valida solo los campos del paso 1 (número y comensales).
+// La fotografía pertenece al paso 2 y se valida en validateMesaForm.
+export function validateMesaPaso1(data: {
   numero: string;
   comensales: string;
-  tipo: TipoMesa;
-  foto: string | null;
 }): MesaFormErrors {
   const errors: MesaFormErrors = {};
 
@@ -64,6 +96,20 @@ export function validateMesaForm(data: {
     errors.comensales = "Máximo 8 comensales por mesa.";
   }
 
+  return errors;
+}
+
+export function validateMesaForm(data: {
+  numero: string;
+  comensales: string;
+  tipo: TipoMesa;
+  foto: string | null;
+}): MesaFormErrors {
+  const errors = validateMesaPaso1({
+    numero: data.numero,
+    comensales: data.comensales,
+  });
+
   if (!data.foto) {
     errors.foto = "La fotografía de la mesa es obligatoria.";
   }
@@ -73,15 +119,18 @@ export function validateMesaForm(data: {
 
 export async function obtenerMesas(): Promise<Mesa[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/mesas`);
+    const response = await fetch(`${API_BASE_URL}/mesas`, {
+      headers: await headersConToken(),
+    });
     if (response.ok) {
       const data = await response.json();
-      return data.data || data;
+      const filas = Array.isArray(data.data) ? data.data : Array.isArray(data) ? data : [];
+      return filas.map(mapMesaDesdeApi);
     }
   } catch (error) {
-    console.warn("Backend /mesas no disponible, usando local:", error);
+    console.warn("Backend /mesas no disponible, listado vacío:", error);
   }
-  return MESAS_LOCAL;
+  return [];
 }
 
 export async function registrarMesa(payload: {
@@ -90,53 +139,74 @@ export async function registrarMesa(payload: {
   tipo: TipoMesa;
   foto: string;
 }): Promise<Mesa> {
-  const existe = MESAS_LOCAL.some((m) => m.numero === payload.numero);
-  if (existe) {
-    throw new Error(`La mesa número ${payload.numero} ya existe en el restaurante.`);
-  }
+  // El backend espera un multipart/form-data con estos campos (multer)
+  const formData = new FormData();
+  formData.append("table_number", String(payload.numero));
+  formData.append("capacity", String(payload.comensales));
+  formData.append("table_type", TIPO_MESA_TO_API[payload.tipo]);
+  formData.append("foto", new File(payload.foto), fileNameFromUri(payload.foto));
 
-  const nuevaMesa: Mesa = {
-    ...payload,
-    disponibilidad: "vacia",
-    qrCode: JSON.stringify({ mesa: payload.numero, tipo: payload.tipo }),
-  };
-
+  let response: Response;
   try {
-    const response = await fetch(`${API_BASE_URL}/mesas`, {
+    response = await fetch(`${API_BASE_URL}/mesas`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(nuevaMesa),
+      // No seteamos Content-Type: expo/fetch fija el boundary del multipart automáticamente
+      headers: await headersConToken(),
+      body: formData,
     });
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.message || data.error || "No se pudo registrar la mesa.");
-    }
-    MESAS_LOCAL.push(nuevaMesa);
-    return data;
   } catch (error: any) {
-    console.warn("Fallback local para mesas:", error.message);
-    MESAS_LOCAL.push(nuevaMesa);
-    return nuevaMesa;
+    // Backend no disponible: no registramos en local, propagamos el error
+    console.warn("Backend /mesas no disponible:", error.message);
+    throw new Error("No se pudo conectar con el servidor. Intente nuevamente.");
   }
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(
+      typeof data.detalle === "string"
+        ? data.detalle
+        : data.message || data.error || "No se pudo registrar la mesa."
+    );
+  }
+
+  // Mapeamos la fila devuelta por el backend (guarda el id real de Supabase
+  // para poder cambiar su estado después).
+  return mapMesaDesdeApi(data.data || data);
 }
 
 export async function actualizarDisponibilidadMesa(
-  numero: number,
+  mesa: Mesa,
   nuevaDisponibilidad: EstadoMesa
 ) {
-  const mesa = MESAS_LOCAL.find((m) => m.numero === numero);
-  if (mesa) {
-    mesa.disponibilidad = nuevaDisponibilidad;
+  // Sin un id real (uuid) no podemos llamar al PATCH del backend
+  if (!mesa.id) {
+    throw new Error("La mesa no tiene un id válido; no se puede cambiar su estado.");
   }
 
+  let response: Response;
   try {
-    await fetch(`${API_BASE_URL}/mesas/${numero}/disponibilidad`, {
+    response = await fetch(`${API_BASE_URL}/mesas/${mesa.id}/estado`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ disponibilidad: nuevaDisponibilidad }),
+      headers: await headersConToken({ "Content-Type": "application/json" }),
+      body: JSON.stringify({ availability: ESTADO_MESA_TO_API[nuevaDisponibilidad] }),
     });
-  } catch (error) {
-    console.warn("No se pudo persistir en backend el cambio de estado:", error);
+  } catch (error: any) {
+    throw new Error(`No se pudo conectar con el servidor: ${error.message}`);
   }
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(
+      typeof data.detalle === "string"
+        ? data.detalle
+        : data.message || data.error || "No se pudo cambiar el estado de la mesa."
+    );
+  }
+}
+
+// Deriva un nombre de archivo con extensión correcta desde la URI local
+function fileNameFromUri(uri: string): string {
+  const original = uri.split("/").pop() || "foto.jpg";
+  if (/\.(jpg|jpeg|png|webp)$/i.test(original)) return original;
+  return `${original.split(".")[0] || "foto"}.jpg`;
 }

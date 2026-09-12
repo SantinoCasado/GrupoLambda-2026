@@ -1,5 +1,8 @@
 // src/services/empleadosService.ts
 import { API_BASE_URL } from "./apiConfig";
+import { File } from "expo-file-system";
+import { fetch } from "expo/fetch";
+import { headersConToken } from "./tokenService";
 
 export interface EmpleadoFormValues {
   nombres: string;
@@ -32,23 +35,23 @@ export async function registrarEmpleado(
   const dniLimpio = payload.dni.replace(/\D/g, "");
   const cuilLimpio = payload.cuil.replace(/\D/g, "");
 
-  const bodyParaBackend = {
-    email: payload.email.trim().toLowerCase(),
-    password: payload.password,
-    first_name: payload.nombres.trim(),
-    last_name: payload.apellidos.trim(),
-    dni: dniLimpio,
-    cuil: cuilLimpio,
-    role: ROLE_MAPPING[payload.perfil.toLowerCase()] || "cook",
-    rol_creador: rolCreador,
-  };
+  // Armamos la foto como archivo multipart en el campo "foto" (multer)
+  const formData = new FormData();
+  formData.append("email", payload.email.trim().toLowerCase());
+  formData.append("password", payload.password);
+  formData.append("first_name", payload.nombres.trim());
+  formData.append("last_name", payload.apellidos.trim());
+  formData.append("dni", dniLimpio);
+  formData.append("cuil", cuilLimpio);
+  formData.append("role", ROLE_MAPPING[payload.perfil.toLowerCase()] || "cook");
+  formData.append("rol_creador", rolCreador);
+  const fotoFile = new File(payload.fotoUri);
+  formData.append("foto", fotoFile, fileNameFromUri(payload.fotoUri));
 
-  const response = await fetch(`${API_BASE_URL}/usuarios/empleados`, {
+  const response = await fetch(`${API_BASE_URL}/empleados/empleados`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(bodyParaBackend),
+    headers: await headersConToken(),
+    body: formData,
   });
 
   const data = await response.json();
@@ -61,4 +64,18 @@ export async function registrarEmpleado(
   }
 
   return data;
+}
+
+// Deriva un nombre de archivo con extensión correcta desde la URI local
+function fileNameFromUri(uri: string): string {
+  const original = uri.split("/").pop() || "foto.jpg";
+  if (/\.(jpg|jpeg|png|webp)$/i.test(original)) return original;
+  return `${original.split(".")[0] || "foto"}.jpg`;
+}
+
+function mimeFromUri(uri: string): string {
+  const nombre = fileNameFromUri(uri).toLowerCase();
+  if (nombre.endsWith(".png")) return "image/png";
+  if (nombre.endsWith(".webp")) return "image/webp";
+  return "image/jpeg";
 }

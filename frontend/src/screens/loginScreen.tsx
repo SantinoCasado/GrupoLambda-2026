@@ -27,6 +27,7 @@ export function LoginScreen({ onLoginSuccess, onNavigateRegistroCliente }: Login
   const [email, setEmail] = useState("");
   const [clave, setClave] = useState("");
   const [cargando, setCargando] = useState(false);
+  const [errors, setErrors] = useState<{ email?: string; clave?: string }>({});
 
   const [modalAccesosVisible, setModalAccesosVisible] = useState(false);
   const [logoTaps, setLogoTaps] = useState(0);
@@ -50,15 +51,44 @@ export function LoginScreen({ onLoginSuccess, onNavigateRegistroCliente }: Login
     else Vibration.vibrate([0, 40]);
   };
 
+  // Limpieza de error de campo cuando el valor se corrige
+  const clearFieldError = (field: "email" | "clave", value: string) => {
+    if (!errors[field]) return;
+
+    const valid =
+      field === "email"
+        ? /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+        : value.trim().length >= 6;
+
+    if (valid) setErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
+
   const ejecutarLogin = async (correoAUsar: string, claveAUsar: string) => {
     vibrar("toque");
-    if (!correoAUsar.trim() || !claveAUsar.trim()) {
+
+    const loginErrors: { email?: string; clave?: string } = {};
+
+    if (!correoAUsar.trim()) {
+      loginErrors.email = "El correo electrónico es obligatorio.";
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correoAUsar.trim())) {
+      loginErrors.email = "El formato de correo no es válido.";
+    }
+
+    if (!claveAUsar.trim()) {
+      loginErrors.clave = "La contraseña es obligatoria.";
+    } else if (claveAUsar.trim().length < 6) {
+      loginErrors.clave = "La contraseña debe tener al menos 6 caracteres.";
+    }
+
+    setErrors(loginErrors);
+
+    if (Object.keys(loginErrors).length > 0) {
       vibrar("error");
       setModalFeedback({
         visible: true,
         tipo: "error",
-        titulo: "Campos Incompletos",
-        mensaje: "Debe ingresar el correo electrónico y la contraseña.",
+        titulo: "Datos Inválidos",
+        mensaje: "Por favor, complete correctamente los campos marcados.",
       });
       return;
     }
@@ -86,6 +116,7 @@ export function LoginScreen({ onLoginSuccess, onNavigateRegistroCliente }: Login
     vibrar("toque");
     setEmail(acceso.email);
     setClave(acceso.clave);
+    setErrors({});
   };
 
   // Toque rápido: 3 toques sobre el logo abren el modal de accesos rápidos
@@ -104,14 +135,6 @@ export function LoginScreen({ onLoginSuccess, onNavigateRegistroCliente }: Login
 
   return (
     <>
-      <View
-        style={{ position: "absolute", width: "100%", height: "100%", backgroundColor: "#FFF6EC" }}
-      />
-      <Image
-        source={require("../../assets/images/background-test-3.png")}
-        style={{ position: "absolute", width: "100%", height: "100%" }}
-        resizeMode="cover"
-      />
       <SafeAreaView className="flex-1">
         <StatusBar style="light" />
 
@@ -122,7 +145,7 @@ export function LoginScreen({ onLoginSuccess, onNavigateRegistroCliente }: Login
           <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
         </View>
 
-      <ScrollView className="flex-1 px-5 pt-4" contentContainerStyle={{ paddingBottom: 50 }}>
+      <ScrollView className="flex-1 px-5 pt-20" contentContainerStyle={{ paddingBottom: 50 }}>
         {/* Encabezado */}
         <View className="mb-5 items-center">
           <TouchableOpacity onPress={manejarToqueLogo} activeOpacity={0.8}>
@@ -148,25 +171,31 @@ export function LoginScreen({ onLoginSuccess, onNavigateRegistroCliente }: Login
             <Text className="mb-1 text-s font-bold text-vino">Correo Electrónico *</Text>
             <TextInput
               value={email}
-              onChangeText={setEmail}
+              onChangeText={(v) => { setEmail(v); clearFieldError("email", v); }}
               keyboardType="email-address"
               autoCapitalize="none"
               placeholder="ejemplo@restaurante.com"
               placeholderTextColor="#a37e1f"
-              className="rounded-2xl border border-mostaza px-4 py-3 text-stone-700"
+              className={`rounded-2xl border px-4 py-3 text-stone-700 ${
+                errors.email ? "border-terracota" : "border-mostaza"
+              }`}
             />
+            {errors.email && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.email}</Text>}
           </View>
 
           <View>
             <Text className="mb-1 text-s font-bold text-vino">Contraseña *</Text>
             <TextInput
               value={clave}
-              onChangeText={setClave}
+              onChangeText={(v) => { setClave(v); clearFieldError("clave", v); }}
               secureTextEntry
               placeholder="••••••••"
               placeholderTextColor="#a37e1f"
-              className="rounded-xl border border-mostaza px-4 py-3 text-stone-700"
+              className={`rounded-xl border px-4 py-3 text-stone-700 ${
+                errors.clave ? "border-terracota" : "border-mostaza"
+              }`}
             />
+            {errors.clave && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.clave}</Text>}
           </View>
 
           <TouchableOpacity

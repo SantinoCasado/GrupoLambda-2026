@@ -184,16 +184,6 @@ export default function RegistroClienteScreen({ onVolverAlLogin, modo = "cliente
     <View style={{ flex: 1, overflow: "hidden" }}>
       <StatusBar style="light" />
 
-      {/* Fondos */}
-      <View
-        style={{ position: "absolute", width: "100%", height: "100%", backgroundColor: "#FFF6EC" }}
-      />
-      <Image
-        source={require("../../assets/images/background-test-3.png")}
-        style={{ position: "absolute", width: "100%", height: "100%" }}
-        resizeMode="cover"
-      />
-
       {/* Botón Volver al Login */}
       {/* <View className="flex-row justify-end items-center px-5 pt-3 z-20"> */}
         {/* <TouchableOpacity
@@ -254,12 +244,14 @@ export default function RegistroClienteScreen({ onVolverAlLogin, modo = "cliente
             <Text className="text-xs font-bold text-mostaza">← Volver al Login</Text>
           </TouchableOpacity>
         )}
+      </View>
 
-        {/* Nombres del equipo */}
-        <View className="items-end">
-          <Text className="text-[9px] text-vino/70">Rocío Sanchez • Santino Casado</Text>
-          <Text className="text-[9px] text-vino/70">Sebastián Andreozzi • Valentín Brazanovich</Text>
-        </View>
+      {/* Nombres del equipo */}
+      <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + 16 }}>
+        <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
+        <Text className="text-[10px] text-vino/70">Santino Casado</Text>
+        <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
+        <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
       </View>
 
       {/* Cabecera */}

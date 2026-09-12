@@ -1,10 +1,12 @@
 import "./global.css";
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Vibration } from "react-native";
+import { View, Text, Image, TouchableOpacity, Vibration } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { UsuarioSeed } from "./src/data/usuariosPrecargados";
 import { LoginScreen } from "./src/screens/loginScreen";
 import HomeScreen, { HomeDestino } from "./src/screens/homeScreen";
+import { AuthProvider } from "./src/context/AuthContext";
+import { getSupabaseClient } from "./src/config/supabase";
 
 // Pantallas
 import AltaEmpleadoScreen from "./src/screens/altaEmpleadoScreen";
@@ -12,6 +14,16 @@ import AltaProductoScreen from "./src/screens/altaProducto";
 import AltaMesaScreen from "./src/screens/altaMesaScreen";
 import RegistroClienteScreen from "./src/screens/registroClienteScreen";
 import AprobacionClientesScreen from "./src/screens/aprobacionClientesScreen";
+import ScreenBackground from "./src/components/ScreenBackground";
+
+const NO_PHOTO = require("./assets/images/no-photo.jpg");
+
+const obtenerFotoUsuario = (usuario: UsuarioSeed) =>
+  usuario.perfil === "dueño" ||
+  usuario.perfil === "supervisor" ||
+  !usuario.foto
+    ? NO_PHOTO
+    : { uri: usuario.foto };
 
 type VistaPrivada =
   | "home"
@@ -22,19 +34,32 @@ type VistaPrivada =
   | "registro_metre";
 
 export default function App() {
+  return (
+    <AuthProvider>
+      <AppInterna />
+    </AuthProvider>
+  );
+}
+
+function AppInterna() {
   const [usuarioActual, setUsuarioActual] = useState<UsuarioSeed | null>(null);
   const [vistaPrivada, setVistaPrivada] = useState<VistaPrivada>("home");
   const [vistaPublica, setVistaPublica] = useState<"login" | "registro_cliente">("login");
+  const [perfilAltaEmpleado, setPerfilAltaEmpleado] = useState<string | null>(null);
 
   const cerrarSesion = () => {
     Vibration.vibrate([0, 50, 50, 50]);
+    getSupabaseClient()?.auth.signOut().catch((error: any) => {
+      console.warn("Error al cerrar sesión en Supabase:", error.message);
+    });
     setUsuarioActual(null);
     setVistaPrivada("home");
     setVistaPublica("login");
   };
 
-  const irA = (destino: HomeDestino) => {
+  const irA = (destino: HomeDestino, perfil?: string) => {
     setVistaPrivada(destino);
+    if (destino === "empleados" && perfil) setPerfilAltaEmpleado(perfil);
   };
 
   const volverAlInicio = () => {
@@ -46,23 +71,29 @@ export default function App() {
   if (!usuarioActual) {
     if (vistaPublica === "registro_cliente") {
       return (
-        <RegistroClienteScreen
-          modo="cliente"
-          onVolverAlLogin={() => setVistaPublica("login")}
-        />
+        <>
+          <ScreenBackground />
+          <RegistroClienteScreen
+            modo="cliente"
+            onVolverAlLogin={() => setVistaPublica("login")}
+          />
+        </>
       );
     }
 
     return (
-      <LoginScreen
-        onLoginSuccess={(usuario) => {
-          setUsuarioActual(usuario);
-          setVistaPrivada("home");
-        }}
-        onNavigateRegistroCliente={() => {
-          setVistaPublica("registro_cliente");
-        }}
-      />
+      <>
+        <ScreenBackground />
+        <LoginScreen
+          onLoginSuccess={(usuario) => {
+            setUsuarioActual(usuario);
+            setVistaPrivada("home");
+          }}
+          onNavigateRegistroCliente={() => {
+            setVistaPublica("registro_cliente");
+          }}
+        />
+      </>
     );
   }
 
@@ -78,7 +109,10 @@ export default function App() {
         {/* Barra superior con datos de sesión */}
         <View className="flex-row items-center justify-between border-b-2 border-caramelo bg-vino px-5 py-3">
           <View className="flex-row items-center flex-1">
-            <Text className="text-2xl mr-2">{usuarioActual.icono}</Text>
+            <Image
+              source={obtenerFotoUsuario(usuarioActual)}
+              className="h-10 w-10 rounded-full border-2 border-mostaza mr-2"
+            />
             <View>
               <Text className="text-xs font-black text-mostaza uppercase">
                 {usuarioActual.nombres} {usuarioActual.apellidos}
@@ -97,7 +131,10 @@ export default function App() {
           </TouchableOpacity>
         </View>
 
-        <HomeScreen usuario={usuarioActual} onNavigate={irA} />
+        <View className="flex-1">
+          <ScreenBackground />
+          <HomeScreen usuario={usuarioActual} onNavigate={irA} />
+        </View>
       </SafeAreaView>
     );
   }
@@ -117,10 +154,13 @@ export default function App() {
   if (!accesoValido) {
     return (
       <SafeAreaView className="flex-1 bg-vino">
-        <HomeScreen
-          usuario={usuarioActual}
-          onNavigate={irA}
-        />
+        <View className="flex-1">
+          <ScreenBackground />
+          <HomeScreen
+            usuario={usuarioActual}
+            onNavigate={irA}
+          />
+        </View>
       </SafeAreaView>
     );
   }
@@ -131,7 +171,10 @@ export default function App() {
       {/* Barra superior con datos de sesión + botón Volver */}
       <View className="flex-row items-center justify-between border-b-2 border-caramelo bg-vino px-5 py-3">
         <View className="flex-row items-center flex-1">
-          <Text className="text-2xl mr-2">{usuarioActual.icono}</Text>
+          <Image
+            source={obtenerFotoUsuario(usuarioActual)}
+            className="h-10 w-10 rounded-full border-2 border-mostaza mr-2"
+          />
           <View>
             <Text className="text-xs font-black text-mostaza uppercase">
               {usuarioActual.nombres} {usuarioActual.apellidos}
@@ -147,19 +190,22 @@ export default function App() {
             onPress={volverAlInicio}
             className="rounded-xl border border-mostaza bg-mostaza/30 px-3 py-1.5 active:bg-mostaza/60"
           >
-            <Text className="text-xs font-bold text-mostaza">← Inicio</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={cerrarSesion}
-            className="rounded-xl border border-terracota bg-terracota/40 px-3 py-1.5 active:bg-terracota"
-          >
-            <Text className="text-xs font-bold text-amber-100">Salir</Text>
+            <Image
+              source={require("./assets/images/left-arrow-y.png")}
+              className="h-6 w-6 mr-0.5"
+              resizeMode="contain"
+              accessible
+              accessibilityLabel="Volver al inicio"
+            />
           </TouchableOpacity>
         </View>
       </View>
 
       <View className="flex-1">
-        {vistaPrivada === "empleados" && <AltaEmpleadoScreen />}
+        <ScreenBackground />
+        {vistaPrivada === "empleados" && (
+          <AltaEmpleadoScreen perfilInicial={perfilAltaEmpleado ?? "cocinero"} />
+        )}
         {vistaPrivada === "mesas" && <AltaMesaScreen />}
         {vistaPrivada === "clientes" && <AprobacionClientesScreen />}
         {vistaPrivada === "producto" && (

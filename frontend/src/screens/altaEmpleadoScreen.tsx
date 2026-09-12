@@ -14,14 +14,19 @@ import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context"
 import { StatusBar } from "expo-status-bar";
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from "expo-camera";
 import { parseDniData } from "../utils/dniParser";
-import { validarFormEmpleado, FormErrors } from "../utils/validators";
+import { validarFormEmpleado, validarPaso1, FormErrors } from "../utils/validators";
 import { registrarEmpleado } from "../services/empleadosService";
 import { FeedbackModal } from "../components/FeedbackModal";
 import { CompanySpinner } from "../components/CompanySpinner";
 import { ChineseFrame } from "../components/ChineseFrame";
+import { ConfirmModal } from "../components/ConfirmModal";
 
 
-export default function AltaEmpleadoScreen() {
+interface Props {
+  perfilInicial?: string;
+}
+
+export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props) {
   const [permission, requestPermission] = useCameraPermissions();
   const insets = useSafeAreaInsets();
 
@@ -32,7 +37,7 @@ export default function AltaEmpleadoScreen() {
   const [cuil, setCuil] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [perfil, setPerfil] = useState<string>("cocinero");
+  const [perfil] = useState<string>(perfilInicial);
   const [fotoUri, setFotoUri] = useState<string | null>(null);
 
   // Modales de Hardware
@@ -42,6 +47,7 @@ export default function AltaEmpleadoScreen() {
   // Estados de Validación y Envío
   const [errors, setErrors] = useState<FormErrors>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmacionVisible, setConfirmacionVisible] = useState(false);
 
   // Estado del Modal de Feedback (Reemplazo obligatorio de Alert)
   const [modalFeedback, setModalFeedback] = useState<{
@@ -59,8 +65,40 @@ export default function AltaEmpleadoScreen() {
 
   const cameraRef = useRef<CameraView | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+  const paso1Validado = useRef(false);
   const [currentStep, setCurrentStep] = useState(0);
   const screenWidth = Dimensions.get("window").width;
+
+  // Limpieza de error de campo cuando el valor se corrige
+  const clearFieldError = (field: keyof FormErrors, value: string) => {
+    if (!errors[field]) return;
+
+    let valid = false;
+    switch (field) {
+      case "nombres":
+        valid = value.trim().length >= 2;
+        break;
+      case "apellidos":
+        valid = value.trim().length >= 2;
+        break;
+      case "dni":
+        valid = value.replace(/\D/g, "").length === 8;
+        break;
+      case "cuil": {
+        const clean = value.replace(/\D/g, "");
+        valid = clean.length === 11 && clean.includes(dni.replace(/\D/g, ""));
+        break;
+      }
+      case "email":
+        valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+        break;
+      case "password":
+        valid = value.length >= 6;
+        break;
+    }
+
+    if (valid) setErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
 
   // Control centralizado de vibración
   const ejecutarVibracion = (tipo: "exito" | "error" | "toque") => {
@@ -98,9 +136,18 @@ export default function AltaEmpleadoScreen() {
     const parsed = parseDniData(result.data);
 
     if (parsed && (parsed.dni || parsed.apellidos)) {
-      if (parsed.nombres) setNombres(parsed.nombres);
-      if (parsed.apellidos) setApellidos(parsed.apellidos);
-      if (parsed.dni) setDni(parsed.dni);
+      if (parsed.nombres) {
+        setNombres(parsed.nombres);
+        clearFieldError("nombres", parsed.nombres);
+      }
+      if (parsed.apellidos) {
+        setApellidos(parsed.apellidos);
+        clearFieldError("apellidos", parsed.apellidos);
+      }
+      if (parsed.dni) {
+        setDni(parsed.dni);
+        clearFieldError("dni", parsed.dni);
+      }
 
       setIsQrScannerOpen(false);
       mostrarMensaje(
@@ -126,6 +173,7 @@ export default function AltaEmpleadoScreen() {
         const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
         if (photo?.uri) {
           setFotoUri(photo.uri);
+          setErrors((prev) => ({ ...prev, fotoUri: undefined }));
           setIsCameraOpen(false);
           ejecutarVibracion("exito");
         }
@@ -135,8 +183,35 @@ export default function AltaEmpleadoScreen() {
     }
   };
 
+  // Avance al paso 2 con validación
+  const handleSiguiente = () => {
+    ejecutarVibracion("toque");
+
+    const paso1Errors = validarPaso1({ nombres, apellidos, dni, cuil });
+
+    setErrors((prev) => {
+      const cleaned = { ...prev };
+      delete cleaned.email;
+      delete cleaned.password;
+      delete cleaned.fotoUri;
+      return { ...cleaned, ...paso1Errors };
+    });
+
+    if (Object.keys(paso1Errors).length > 0) {
+      mostrarMensaje(
+        "error",
+        "Datos Incompletos",
+        "Por favor, complete correctamente los campos marcados antes de continuar."
+      );
+      return;
+    }
+
+    paso1Validado.current = true;
+    scrollRef.current?.scrollTo({ x: screenWidth, animated: true });
+  };
+
   // Envío del Formulario
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     ejecutarVibracion("toque");
 
     const formValidation = validarFormEmpleado({
@@ -160,6 +235,12 @@ export default function AltaEmpleadoScreen() {
       return;
     }
 
+    setConfirmacionVisible(true);
+  };
+
+  const ejecutarEnvioEmpleado = async () => {
+    setConfirmacionVisible(false);
+
     try {
       setIsSubmitting(true);
       await registrarEmpleado({
@@ -176,7 +257,7 @@ export default function AltaEmpleadoScreen() {
       mostrarMensaje(
         "exito",
         "Registro Exitoso",
-        "El empleado cocinero ha sido registrado satisfactoriamente en el sistema.",
+        `El ${perfil} ha sido registrado exitosamente.`,
         () => {
           setNombres("");
           setApellidos("");
@@ -188,6 +269,7 @@ export default function AltaEmpleadoScreen() {
           setErrors({});
           scrollRef.current?.scrollTo({ x: 0, animated: false });
           setCurrentStep(0);
+          paso1Validado.current = false;
         }
       );
     } catch (error: any) {
@@ -199,15 +281,7 @@ export default function AltaEmpleadoScreen() {
 
   return (
     <>
-      <View
-        style={{ position: "absolute", width: "100%", height: "100%", backgroundColor: "#FFF6EC" }}
-      />
-      <Image
-        source={require("../../assets/images/background-test-3.png")}
-        style={{ position: "absolute", width: "100%", height: "100%" }}
-        resizeMode="cover"
-      />
-    <SafeAreaView className="flex-1">
+      <SafeAreaView className="flex-1">
 
       <StatusBar style="light" />
 
@@ -255,6 +329,11 @@ export default function AltaEmpleadoScreen() {
         contentContainerStyle={{ flexGrow: 1 }}
         onMomentumScrollEnd={(e) => {
           const step = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+          if (step === 1 && !paso1Validado.current) {
+            ejecutarVibracion("error");
+            scrollRef.current?.scrollTo({ x: 0, animated: true });
+            return;
+          }
           setCurrentStep(step);
         }}
         style={{ flex: 1 }}
@@ -283,47 +362,12 @@ export default function AltaEmpleadoScreen() {
           </TouchableOpacity>
           
           <View className="mx-6 gap-y-4">
-            {/* SELECTOR DE PUESTO / ROL */}
-            <View>
-              <Text className="mb-2 text-s font-bold text-vino">Puesto / Rol del Empleado *</Text>
-              <View className="flex-row flex-wrap gap-2">
-                {[
-                  { id: "cocinero", label: "🍳 Cocinero" },
-                  { id: "cantinero", label: "🍸 Cantinero" },
-                  { id: "mozo", label: "🤵 Mozo" },
-                  { id: "metre", label: "📋 Metre" },
-                  { id: "supervisor", label: "👔 Supervisor" },
-                ].map((rol) => (
-                  <TouchableOpacity
-                    key={rol.id}
-                    onPress={() => {
-                      ejecutarVibracion("toque");
-                      setPerfil(rol.id);
-                    }}
-                    className={`rounded-xl border px-3 py-2 ${
-                      perfil === rol.id
-                        ? "border-vino bg-mostaza"
-                        : "border-mostaza/50 bg-[#FBE9DF]"
-                    }`}
-                  >
-                    <Text
-                      className={`text-xs font-bold ${
-                        perfil === rol.id ? "text-vino" : "text-amber-900"
-                      }`}
-                    >
-                      {rol.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
             {/* Nombres */}
             <View>
               <Text className="mb-1 text-s font-bold text-vino">Nombres *</Text>
               <TextInput
                 value={nombres}
-                onChangeText={setNombres}
+                onChangeText={(v) => { setNombres(v); clearFieldError("nombres", v); }}
                 placeholder="Ingrese los nombres"
                 placeholderTextColor="#a37e1f"
                 className={`rounded-xl border px-4 py-3 text-stone-700 ${
@@ -338,7 +382,7 @@ export default function AltaEmpleadoScreen() {
               <Text className="mb-1 text-s font-bold text-vino">Apellidos *</Text>
               <TextInput
                 value={apellidos}
-                onChangeText={setApellidos}
+                onChangeText={(v) => { setApellidos(v); clearFieldError("apellidos", v); }}
                 placeholder="Ingrese los apellidos"
                 placeholderTextColor="#a37e1f"
                 className={`rounded-xl border px-4 py-3 text-stone-700 ${
@@ -353,7 +397,7 @@ export default function AltaEmpleadoScreen() {
               <Text className="mb-1 text-s font-bold text-vino">Número de DNI *</Text>
               <TextInput
                 value={dni}
-                onChangeText={setDni}
+                onChangeText={(v) => { setDni(v); clearFieldError("dni", v); }}
                 keyboardType="numeric"
                 maxLength={8}
                 placeholder="Ejemplo: 38123456"
@@ -370,7 +414,7 @@ export default function AltaEmpleadoScreen() {
               <Text className="mb-1 text-s font-bold text-vino">Número de CUIL *</Text>
               <TextInput
                 value={cuil}
-                onChangeText={setCuil}
+                onChangeText={(v) => { setCuil(v); clearFieldError("cuil", v); }}
                 keyboardType="numeric"
                 maxLength={11}
                 placeholder="Ejemplo: 20381234562"
@@ -396,13 +440,7 @@ export default function AltaEmpleadoScreen() {
               ))}
             </View>
             <TouchableOpacity
-              onPress={() => {
-                ejecutarVibracion("toque");
-                scrollRef.current?.scrollTo({
-                  x: screenWidth,
-                  animated: true,
-                });
-              }}
+              onPress={handleSiguiente}
               className="w-full flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
             >
               <Text style={{ fontFamily: "LaOriental" }}  className="text-s  text-calabaza">Siguiente</Text>
@@ -424,7 +462,7 @@ export default function AltaEmpleadoScreen() {
               <Text className="mb-1 text-s font-bold text-vino">Correo Electrónico *</Text>
               <TextInput
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(v) => { setEmail(v); clearFieldError("email", v); }}
                 keyboardType="email-address"
                 autoCapitalize="none"
                 placeholder="empleado@restaurante.com"
@@ -441,7 +479,7 @@ export default function AltaEmpleadoScreen() {
               <Text className="mb-1 text-s font-bold text-vino">Contraseña *</Text>
               <TextInput
                 value={password}
-                onChangeText={setPassword}
+                onChangeText={(v) => { setPassword(v); clearFieldError("password", v); }}
                 secureTextEntry
                 placeholder="Mínimo seis caracteres"
                 placeholderTextColor="#a37e1f"
@@ -534,7 +572,7 @@ export default function AltaEmpleadoScreen() {
                   animated: true,
                 });
               }}
-              className="w-full flex-row items-center justify-center rounded-2xl border border-mostaza/40 bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
+              className="w-full flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
             >
               <Text style={{ fontFamily: "LaOriental" }} className="text-s text-calabaza">Volver</Text>
             </TouchableOpacity>
@@ -594,6 +632,20 @@ export default function AltaEmpleadoScreen() {
           </View>
         </View>
       </Modal>
+
+      <ConfirmModal
+        visible={confirmacionVisible}
+        titulo="Confirmar Registro"
+        mensaje="¿Está seguro de que desea registrar este empleado en el sistema?"
+        textoConfirmar="Confirmar"
+        textoCancelar="Cancelar"
+        cargando={isSubmitting}
+        onConfirm={ejecutarEnvioEmpleado}
+        onCancel={() => {
+          ejecutarVibracion("toque");
+          setConfirmacionVisible(false);
+        }}
+      />
 
       <CompanySpinner visible={isSubmitting} mensaje={`Registrando empleado ${perfil}...`} />
 

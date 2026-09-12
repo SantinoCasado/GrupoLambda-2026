@@ -89,6 +89,7 @@ async function loginConSupabase(email: string, clave: string): Promise<UsuarioSe
 
   const rol = (perfil.role || "").toLowerCase();
   const perfilUsuario: PerfilUsuario = ROLE_TO_PERFIL[rol] || "cliente_registrado";
+  const esSinFoto = perfilUsuario === "dueño" || perfilUsuario === "supervisor";
 
   return {
     id: perfil.id || data.user.id,
@@ -99,7 +100,7 @@ async function loginConSupabase(email: string, clave: string): Promise<UsuarioSe
     nombres: perfil.first_name || perfil.nombre || "Usuario",
     apellidos: perfil.last_name || perfil.apellido || "",
     documento: perfil.dni || "00000000",
-    foto: perfil.photo_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400",
+    foto: esSinFoto ? "" : perfil.photo_url || "",
     icono: "👤",
   };
 }

@@ -8,6 +8,45 @@ export interface FormErrors {
   fotoUri?: string;
 }
 
+export function validarPaso1(values: {
+  nombres: string;
+  apellidos: string;
+  dni: string;
+  cuil: string;
+}): Partial<FormErrors> {
+  const errors: Partial<FormErrors> = {};
+
+  if (!values.nombres.trim()) {
+    errors.nombres = "El nombre es obligatorio.";
+  } else if (values.nombres.trim().length < 2) {
+    errors.nombres = "Debe tener al menos 2 caracteres.";
+  }
+
+  if (!values.apellidos.trim()) {
+    errors.apellidos = "El apellido es obligatorio.";
+  } else if (values.apellidos.trim().length < 2) {
+    errors.apellidos = "Debe tener al menos 2 caracteres.";
+  }
+
+  const cleanDni = values.dni.replace(/\D/g, "");
+  if (!cleanDni) {
+    errors.dni = "El DNI es obligatorio.";
+  } else if (cleanDni.length !== 8) {
+    errors.dni = "El DNI debe tener 8 dígitos.";
+  }
+
+  const cleanCuil = values.cuil.replace(/\D/g, "");
+  if (!cleanCuil) {
+    errors.cuil = "El CUIL es obligatorio.";
+  } else if (cleanCuil.length !== 11) {
+    errors.cuil = "El CUIL debe tener exactamente 11 dígitos.";
+  } else if (cleanDni && !cleanCuil.includes(cleanDni)) {
+    errors.cuil = "El CUIL debe coincidir con el DNI ingresado.";
+  }
+
+  return errors;
+}
+
 export function validarFormEmpleado(values: {
   nombres: string;
   apellidos: string;

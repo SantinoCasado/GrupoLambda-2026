@@ -8,6 +8,7 @@ import authRoutes from './modules/auth/auth.routes';
 import productosRoutes from './modules/productos/productos.routes';
 import pedidosRoutes from './modules/pedidos/pedidos.routes';
 import chatRoutes from './modules/chat/chat.routes';
+import mesasRoutes from './modules/mesas/mesas.routes';
 
 dotenv.config();
 
@@ -31,6 +32,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/productos', productosRoutes);
 app.use('/api/pedidos', pedidosRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/mesas', mesasRoutes);
 
 // Ruta base
 app.get('/', (req: Request, res: Response) => {

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import {
   View,
   Text,
@@ -6,19 +6,25 @@ import {
   TouchableOpacity,
   ScrollView,
   Image,
-  StyleSheet,
-  Alert,
-  ActivityIndicator,
+  Dimensions,
   Modal,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
+import { CameraView, useCameraPermissions } from "expo-camera";
 import {
   CategoriaProducto,
   validateProductoForm,
+  validateProductoPaso1,
   registrarProducto,
   ProductoFormErrors,
 } from "../services/productosService";
+import { ChineseFrame } from "../components/ChineseFrame";
+import { OptionModal } from "../components/OptionModal";
+import { FeedbackModal } from "../components/FeedbackModal";
+import { CompanySpinner } from "../components/CompanySpinner";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { StatusBar } from "expo-status-bar";
 
 interface Props {
   categoria: CategoriaProducto;
@@ -27,17 +33,17 @@ interface Props {
 
 export default function AltaProductoScreen({ categoria, onSuccess }: Props) {
   const esBebida = categoria === "bebida";
+  const insets = useSafeAreaInsets();
 
   const config = {
-    badge: esBebida ? "🍸 • CANTINERO" : "🍳 • COCINERO",
     titulo: esBebida ? "Alta de Bebida" : "Alta de Plato",
-    placeholderNombre: esBebida ? "Ej: Gin Tonic con Frutos Rojos" : "Ej: Pastel de Papa Tradicional",
+    placeholderNombre: esBebida ? "Ej: Gin Tonic" : "Ej: Pollo Gong Bao",
     placeholderDesc: esBebida
-      ? "Ej: Gin macerado artesanalmente, agua tónica premium y rodajas de pomelo."
-      : "Ej: Carne vacuna seleccionada, puré de papas gratinado al horno con queso.",
+      ? "Ej: Gin artesanal con agua tónica y rodajas de pomelo."
+      : "Ej: Pollo marinado mezclado con un sofrito de guindillas y pimienta de Sichuan preparada en wok.",
     placeholderTiempo: esBebida ? "Ej: 5" : "Ej: 35",
-    placeholderPrecio: esBebida ? "Ej: 4500" : "Ej: 9800",
-    botonTexto: esBebida ? "🍸 Agregar Bebida a la Carta" : "🍳 Agregar Plato a la Carta",
+    placeholderPrecio: esBebida ? "Ej: 10500" : "Ej: 28900",
+    botonTexto: esBebida ? "Agregar Bebida a la Carta" : "Agregar Plato a la Carta",
   };
 
   const [nombre, setNombre] = useState("");
@@ -51,31 +57,145 @@ export default function AltaProductoScreen({ categoria, onSuccess }: Props) {
   const [selectedSlot, setSelectedSlot] = useState<number | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
 
+  // Cámara en vivo (misma estrategia que Alta Empleados, evita reinicios de la app)
+  const [permission, requestPermission] = useCameraPermissions();
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
+  const cameraRef = useRef<CameraView | null>(null);
+
+  // Estado del Modal de Feedback (Reemplazo obligatorio de Alert)
+  const [modalFeedback, setModalFeedback] = useState<{
+    visible: boolean;
+    tipo: "exito" | "error" | "informacion";
+    titulo: string;
+    mensaje: string;
+    onAceptar?: () => void;
+  }>({
+    visible: false,
+    tipo: "informacion",
+    titulo: "",
+    mensaje: "",
+  });
+
+  const mostrarMensaje = (
+    tipo: "exito" | "error" | "informacion",
+    titulo: string,
+    mensaje: string,
+    onAceptar?: () => void
+  ) => {
+    if (tipo === "error") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+    else if (tipo === "exito") Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    setModalFeedback({
+      visible: true,
+      tipo,
+      titulo,
+      mensaje,
+      onAceptar,
+    });
+  };
+
+  // Carrusel de secciones
+  const scrollRef = useRef<ScrollView>(null);
+  const paso1Validado = useRef(false);
+  const [currentStep, setCurrentStep] = useState(0);
+  const screenWidth = Dimensions.get("window").width;
+
+  // Avance al paso 2 con validación
+  const irSiguiente = () => {
+    if (isLoading) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    const paso1Errors = validateProductoPaso1(
+      { nombre, descripcion, tiempoElaboracion, precio },
+      categoria
+    );
+
+    setErrors((prev) => {
+      const cleaned = { ...prev };
+      delete cleaned.fotos;
+      return { ...cleaned, ...paso1Errors };
+    });
+
+    if (Object.keys(paso1Errors).length > 0) {
+      mostrarMensaje(
+        "error",
+        "Datos Incompletos",
+        "Por favor, complete correctamente los campos marcados antes de continuar."
+      );
+      return;
+    }
+
+    paso1Validado.current = true;
+    scrollRef.current?.scrollTo({ x: screenWidth, animated: true });
+  };
+
+  const irVolver = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    scrollRef.current?.scrollTo({ x: 0, animated: true });
+  };
+
+  // Limpieza de error de campo cuando el valor se corrige
+  const clearFieldError = (field: keyof ProductoFormErrors, value: string) => {
+    if (!errors[field]) return;
+
+    let valid = false;
+    switch (field) {
+      case "nombre":
+        valid = value.trim().length >= 3;
+        break;
+      case "descripcion":
+        valid = value.trim().length >= 8;
+        break;
+      case "tiempoElaboracion": {
+        const num = Number(value);
+        valid = value.trim() !== "" && Number.isInteger(num) && num > 0 && num <= (esBebida ? 15 : 60);
+        break;
+      }
+      case "precio": {
+        const num = Number(value.replace(",", "."));
+        valid = value.trim() !== "" && !isNaN(num) && num > 0;
+        break;
+      }
+    }
+
+    if (valid) setErrors((prev) => ({ ...prev, [field]: undefined }));
+  };
+
   const abrirSelectorFoto = (index: number) => {
     setSelectedSlot(index);
     setModalVisible(true);
   };
 
-  const tomarFoto = async () => {
+  const abrirCamara = async () => {
     setModalVisible(false);
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert("Permiso Requerido", "Se requiere permiso de cámara para tomar fotos.");
-      return;
+    if (!permission?.granted) {
+      const res = await requestPermission();
+      if (!res.granted) {
+        mostrarMensaje("error", "Permiso Requerido", "Se requiere permiso de cámara para tomar fotos.");
+        return;
+      }
     }
+    setIsCameraOpen(true);
+  };
 
-    const result = await ImagePicker.launchCameraAsync({
-      mediaTypes: ['images'],
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.7,
-    });
-
-    if (!result.canceled && selectedSlot !== null) {
-      const actualizadas = [...fotos];
-      actualizadas[selectedSlot] = result.assets[0].uri;
-      setFotos(actualizadas);
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  const tomarFoto = async () => {
+    if (cameraRef.current) {
+      try {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
+        if (photo?.uri && selectedSlot !== null) {
+          const actualizadas = [...fotos];
+          actualizadas[selectedSlot] = photo.uri;
+          setFotos(actualizadas);
+          if (actualizadas.filter((f) => f !== null && f !== "").length >= 3) {
+            setErrors((prev) => ({ ...prev, fotos: undefined }));
+          }
+          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+          setIsCameraOpen(false);
+        }
+      } catch {
+        mostrarMensaje("error", "Error de Captura", "No se pudo tomar la fotografía. Inténtelo nuevamente.");
+      }
     }
   };
 
@@ -83,7 +203,7 @@ export default function AltaProductoScreen({ categoria, onSuccess }: Props) {
     setModalVisible(false);
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== "granted") {
-      Alert.alert("Permiso Requerido", "Se requiere permiso para acceder a la galería.");
+      mostrarMensaje("error", "Permiso Requerido", "Se requiere permiso para acceder a la galería.");
       return;
     }
 
@@ -98,6 +218,9 @@ export default function AltaProductoScreen({ categoria, onSuccess }: Props) {
       const actualizadas = [...fotos];
       actualizadas[selectedSlot] = result.assets[0].uri;
       setFotos(actualizadas);
+      if (actualizadas.filter((f) => f !== null && f !== "").length >= 3) {
+        setErrors((prev) => ({ ...prev, fotos: undefined }));
+      }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     }
   };
@@ -111,7 +234,7 @@ export default function AltaProductoScreen({ categoria, onSuccess }: Props) {
     if (Object.keys(formErrors).length > 0) {
       setErrors(formErrors);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Formulario Incompleto", "Por favor revisa los campos marcados en rojo.");
+      mostrarMensaje("error", "Formulario Incompleto", "Por favor revisa los campos marcados en rojo.");
       return;
     }
 
@@ -128,221 +251,328 @@ export default function AltaProductoScreen({ categoria, onSuccess }: Props) {
         categoria,
       });
 
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert("¡Éxito!", `"${nombre.trim()}" se registró correctamente en la carta.`);
+      mostrarMensaje(
+        "exito",
+        "¡Éxito!",
+        `"${nombre.trim()}" se registró correctamente.`,
+        () => {
+          setNombre("");
+          setDescripcion("");
+          setTiempoElaboracion("");
+          setPrecio("");
+          setFotos([null, null, null]);
+          scrollRef.current?.scrollTo({ x: 0, animated: false });
+          setCurrentStep(0);
+          paso1Validado.current = false;
 
-      setNombre("");
-      setDescripcion("");
-      setTiempoElaboracion("");
-      setPrecio("");
-      setFotos([null, null, null]);
-
-      if (onSuccess) onSuccess();
+          if (onSuccess) onSuccess();
+        }
+      );
     } catch (error: any) {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-      Alert.alert("Error de Carta", error.message || "No se pudo registrar el producto.");
+      mostrarMensaje("error", "Error de Carga", error.message || "No se pudo registrar el producto.");
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.header}>
-        <Text style={styles.badge}>{config.badge}</Text>
-        <Text style={styles.title}>{config.titulo}</Text>
-        <Text style={styles.subtitle}>Carga los datos y 3 fotografías individuales para la carta.</Text>
+    <SafeAreaView className="flex-1">
+      <StatusBar style="light" />
+
+      {/* Nombres del equipo */}
+      <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + 16 }}>
+        <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
+        <Text className="text-[10px] text-vino/70">Santino Casado</Text>
+        <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
+        <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
       </View>
 
-      <View style={styles.fieldContainer}>
-        <Text style={styles.label}>Nombre *</Text>
-        <TextInput
-          style={[styles.input, errors.nombre ? styles.inputError : null]}
-          placeholder={config.placeholderNombre}
-          placeholderTextColor="#666"
-          value={nombre}
-          onChangeText={setNombre}
-        />
-        {errors.nombre && <Text style={styles.errorText}>{errors.nombre}</Text>}
-      </View>
-
-      <View style={styles.fieldContainer}>
-        <Text style={styles.label}>Descripción e Ingredientes *</Text>
-        <TextInput
-          style={[styles.input, styles.textArea, errors.descripcion ? styles.inputError : null]}
-          placeholder={config.placeholderDesc}
-          placeholderTextColor="#666"
-          multiline
-          numberOfLines={3}
-          value={descripcion}
-          onChangeText={setDescripcion}
-        />
-        {errors.descripcion && <Text style={styles.errorText}>{errors.descripcion}</Text>}
-      </View>
-
-      <View style={styles.row}>
-        <View style={[styles.fieldContainer, { flex: 1, marginRight: 8 }]}>
-          <Text style={styles.label}>Tiempo (min) *</Text>
-          <TextInput
-            style={[styles.input, errors.tiempoElaboracion ? styles.inputError : null]}
-            placeholder={config.placeholderTiempo}
-            placeholderTextColor="#666"
-            keyboardType="number-pad"
-            value={tiempoElaboracion}
-            onChangeText={setTiempoElaboracion}
+      {/* Cabecera */}
+      <View className="px-5 pt-4">
+        <View className="mb-4">
+          <Image
+            source={require("../../assets/images/logo-name.png")}
+            className="h-16 w-auto self-center"
+            resizeMode="contain"
           />
-          {errors.tiempoElaboracion && (
-            <Text style={styles.errorText}>{errors.tiempoElaboracion}</Text>
-          )}
-        </View>
-
-        <View style={[styles.fieldContainer, { flex: 1, marginLeft: 8 }]}>
-          <Text style={styles.label}>Precio ($) *</Text>
-          <TextInput
-            style={[styles.input, errors.precio ? styles.inputError : null]}
-            placeholder={config.placeholderPrecio}
-            placeholderTextColor="#666"
-            keyboardType="decimal-pad"
-            value={precio}
-            onChangeText={setPrecio}
+          <Image
+            source={require("../../assets/images/separator.png")}
+            className="my-2 h-5 w-full"
+            resizeMode="contain"
           />
-          {errors.precio && <Text style={styles.errorText}>{errors.precio}</Text>}
-        </View>
-      </View>
-
-      <View style={styles.fieldContainer}>
-        <Text style={styles.label}>Fotografías (3 obligatorias) *</Text>
-        <Text style={styles.helperText}>
-          Toca cada contenedor para tomar una foto con la cámara o elegir de la galería.
-        </Text>
-
-        {errors.fotos && <Text style={[styles.errorText, { marginBottom: 8 }]}>{errors.fotos}</Text>}
-
-        <View style={styles.fotosGrid}>
-          {fotos.map((uri, index) => (
-            <View key={index} style={styles.fotoContainer}>
-              <Text style={styles.fotoSlotLabel}>Foto #{index + 1}</Text>
-              <TouchableOpacity
-                style={[styles.fotoSlot, uri ? styles.fotoSlotActive : null]}
-                onPress={() => abrirSelectorFoto(index)}
-              >
-                {uri ? (
-                  <Image source={{ uri }} style={styles.fotoImage} />
-                ) : (
-                  <View style={styles.placeholderContainer}>
-                    <Text style={styles.cameraIcon}>📷</Text>
-                    <Text style={styles.placeholderText}>Cargar</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-              {uri && (
-                <TouchableOpacity
-                  style={styles.btnCambiarFoto}
-                  onPress={() => abrirSelectorFoto(index)}
-                >
-                  <Text style={styles.btnCambiarFotoText}>Cambiar</Text>
-                </TouchableOpacity>
-              )}
+          <ChineseFrame className="mt-2 bg-vino">
+            <View className="items-center rounded-xl bg-mostaza/15 px-4 py-4">
+              <Text style={{ fontFamily: "LaOriental" }} className="text-2xl text-mostaza uppercase">{config.titulo}</Text>
+              <Text className="mt-1 text-xs font-semibold text-amber-100">Carga los datos y 3 fotografías individuales para la carta.</Text>
             </View>
-          ))}
+          </ChineseFrame>
         </View>
       </View>
 
-      <TouchableOpacity
-        style={[styles.submitButton, isLoading ? styles.submitButtonDisabled : null]}
-        onPress={handleSubmit}
-        disabled={isLoading}
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        pagingEnabled
+        nestedScrollEnabled
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={{ flexGrow: 1 }}
+        onMomentumScrollEnd={(e) => {
+          const step = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+          if (step === 1 && !paso1Validado.current) {
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+            scrollRef.current?.scrollTo({ x: 0, animated: true });
+            return;
+          }
+          setCurrentStep(step);
+        }}
+        style={{ flex: 1 }}
       >
-        {isLoading ? (
-          <ActivityIndicator color="#000" />
-        ) : (
-          <Text style={styles.submitButtonText}>{config.botonTexto}</Text>
-        )}
-      </TouchableOpacity>
+        {/* SECCIÓN 1: Datos del producto */}
+        <View style={{ width: screenWidth }} className="flex-1 px-5 pt-2">
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
+            contentContainerStyle={{ paddingBottom: 40 }}
+          >
+            <View className="mx-6 gap-y-4">
+              {/* Nombre */}
+                <View>
+                  <Text className="mb-1 text-s font-bold text-vino">Nombre *</Text>
+<TextInput
+              value={nombre}
+              onChangeText={(v) => { setNombre(v); clearFieldError("nombre", v); }}
+              placeholder={config.placeholderNombre}
+placeholderTextColor="#a37e1f"
+              className={`rounded-xl border px-4 py-3 text-stone-700 ${
+                errors.nombre ? "border-terracota" : "border-mostaza"
+              }`}
+                  />
+                  {errors.nombre && (
+                    <Text className="mt-1 text-xs font-medium text-rose-400">{errors.nombre}</Text>
+                  )}
+                </View>
 
-      <Modal visible={modalVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Origen de la Imagen #{selectedSlot !== null ? selectedSlot + 1 : ""}</Text>
-            <TouchableOpacity style={styles.modalOption} onPress={tomarFoto}>
-              <Text style={styles.modalOptionText}>📸 Tomar Foto con Cámara</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.modalOption} onPress={elegirGaleria}>
-              <Text style={styles.modalOptionText}>🖼️ Elegir de la Galería</Text>
-            </TouchableOpacity>
+                {/* Descripción e Ingredientes */}
+                <View>
+                  <Text className="mb-1 text-s font-bold text-vino">Descripción *</Text>
+                  <TextInput
+                    value={descripcion}
+                    onChangeText={(v) => { setDescripcion(v); clearFieldError("descripcion", v); }}
+                    placeholder={config.placeholderDesc}
+                    placeholderTextColor="#a37e1f"
+multiline
+              numberOfLines={3}
+              style={{ textAlignVertical: "top" }}
+                    className={`min-h-[75px] rounded-xl border px-4 py-3 text-stone-700 ${
+                      errors.descripcion ? "border-terracota" : "border-mostaza"
+                    }`}
+                  />
+                  {errors.descripcion && (
+                    <Text className="mt-1 text-xs font-medium text-rose-400">{errors.descripcion}</Text>
+                  )}
+                </View>
+
+                {/* Tiempo y Precio */}
+                <View className="flex-row">
+                  <View className="flex-1 mr-2">
+                    <Text className="mb-1 text-s font-bold text-vino">Tiempo (min) *</Text>
+                    <TextInput
+                      value={tiempoElaboracion}
+                      onChangeText={(v) => { setTiempoElaboracion(v); clearFieldError("tiempoElaboracion", v); }}
+                      keyboardType="number-pad"
+                      placeholder={config.placeholderTiempo}
+                      placeholderTextColor="#a37e1f"
+                      className={`rounded-xl border px-4 py-3 text-stone-700 ${
+                        errors.tiempoElaboracion ? "border-terracota" : "border-mostaza"
+                      }`}
+                    />
+                    {errors.tiempoElaboracion && (
+                      <Text className="mt-1 text-xs font-medium text-rose-400">{errors.tiempoElaboracion}</Text>
+                    )}
+                  </View>
+                  <View className="flex-1 ml-2">
+                    <Text className="mb-1 text-s font-bold text-vino">Precio ($) *</Text>
+                    <TextInput
+                      value={precio}
+                      onChangeText={(v) => { setPrecio(v); clearFieldError("precio", v); }}
+                      keyboardType="decimal-pad"
+                      placeholder={config.placeholderPrecio}
+                      placeholderTextColor="#a37e1f"
+                      className={`rounded-xl border px-4 py-3 text-stone-700 ${
+                        errors.precio ? "border-terracota" : "border-mostaza"
+                      }`}
+                    />
+                    {errors.precio && (
+                      <Text className="mt-1 text-xs font-medium text-rose-400">{errors.precio}</Text>
+                    )}
+                  </View>
+                </View>
+            </View>
+
+            {/* Paginación + Siguiente */}
+            <View className="mx-6 mt-4 items-center">
+              <View className="flex-row items-center justify-center gap-2 py-1 mb-3">
+                {[0, 1].map((i) => (
+                  <View
+                    key={i}
+                    className={`h-2 w-2 rotate-45 ${currentStep === i ? "bg-vino" : "bg-mostaza/30"}`}
+                  />
+                ))}
+              </View>
+              <TouchableOpacity
+                onPress={irSiguiente}
+                className="w-full flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
+              >
+                <Text style={{ fontFamily: "LaOriental" }} className="text-s text-calabaza">Siguiente</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </View>
+
+        {/* SECCIÓN 2: Fotografías y registro */}
+        <View style={{ width: screenWidth }} className="flex-1 px-5 pt-2">
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
+            contentContainerStyle={{ paddingBottom: 40 }}
+          >
+            {/* Fotografías */}
+            <View className="mx-4 mt-6 rounded-2xl border border-mostaza p-4">
+              <Text className="mb-2 text-s font-bold text-vino">Fotografías (3 obligatorias) *</Text>
+              <Text className="mb-3 text-[11px] text-stone-400">
+                Toca cada contenedor para tomar una foto con la cámara o elegir de la galería.
+              </Text>
+
+              {errors.fotos && (
+                <Text className="mb-2 text-xs font-medium text-rose-400">{errors.fotos}</Text>
+              )}
+
+              <View className="flex-row justify-between">
+                {fotos.map((uri, index) => (
+                  <View key={index} className="w-[31%] items-center">
+                    <Text className="mb-1 text-[11px] font-semibold text-terracota">Foto #{index + 1}</Text>
+                    <TouchableOpacity
+                      onPress={() => abrirSelectorFoto(index)}
+                      className={`aspect-square w-full items-center justify-center overflow-hidden rounded-xl border ${
+                        uri ? "border-solid border-amber-600/50" : "border-dashed border-amber-600/50"
+                      }`}
+                    >
+                      {uri ? (
+                        <Image source={{ uri }} className="h-full w-full" resizeMode="cover" />
+                      ) : (
+                        <View className="items-center">
+                          <Image source={require("../../assets/images/camera.png")} className="mb-1 h-7 w-7" />
+                          <Text className="text-xs font-bold text-terracota">Cargar</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                    {uri && (
+                      <TouchableOpacity
+                        onPress={() => abrirSelectorFoto(index)}
+                        className="mt-2 self-center rounded-lg border border-calabaza bg-[#FBE9DF] px-3 py-1 active:bg-[#f5dccb]"
+                      >
+                        <Text className="text-[11px] font-bold text-calabaza">Cambiar</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Botón registrar */}
             <TouchableOpacity
-              style={[styles.modalOption, styles.modalOptionCancel]}
-              onPress={() => setModalVisible(false)}
+              onPress={handleSubmit}
+              disabled={isLoading}
+              className="mt-6 flex-row items-center justify-center rounded-2xl border border-amber-400/40 bg-vino py-3 active:bg-terracota"
             >
-              <Text style={styles.modalOptionCancelText}>Cancelar</Text>
+              <Image
+                source={require("../../assets/images/sello.png")}
+                className="h-7 w-7"
+                resizeMode="contain"
+              />
+              <Text style={{ fontFamily: "LaOriental" }} className="mx-4 text-center text-l uppercase tracking-wider text-mostaza">
+                {config.botonTexto}
+              </Text>
+              <Image
+                source={require("../../assets/images/sello.png")}
+                className="h-7 w-7"
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+
+            {/* Paginación + Volver */}
+            <View className="mx-6 mt-4 items-center">
+              <View className="flex-row items-center justify-center gap-2 py-1 mb-3">
+                {[0, 1].map((i) => (
+                  <View
+                    key={i}
+                    className={`h-2 w-2 rotate-45 ${currentStep === i ? "bg-vino" : "bg-mostaza/30"}`}
+                  />
+                ))}
+              </View>
+              <TouchableOpacity
+                onPress={irVolver}
+                className="w-full flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
+              >
+                <Text style={{ fontFamily: "LaOriental" }} className="text-s text-calabaza">Volver</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        </View>
+      </ScrollView>
+
+      {/* Modal origen de imagen */}
+      <OptionModal
+        visible={modalVisible}
+        titulo={`Foto #${selectedSlot !== null ? selectedSlot + 1 : ""}`}
+        opciones={[
+          { etiqueta: "Tomar Foto", icono: require("../../assets/images/camera-v.png"), onPress: abrirCamara },
+          { etiqueta: "Elegir de la Galería", icono: require("../../assets/images/galery-v.png"), onPress: elegirGaleria },
+        ]}
+        onCancel={() => setModalVisible(false)}
+      />
+
+      {/* MODAL: CÁMARA PARA FOTO EN VIVO */}
+      <Modal visible={isCameraOpen} animationType="slide">
+        <View className="flex-1 bg-stone-950">
+          <CameraView ref={cameraRef} style={{ flex: 1 }} facing="back" />
+
+          <View className="absolute top-12 right-6">
+            <TouchableOpacity
+              onPress={() => setIsCameraOpen(false)}
+              className="border border-mostaza bg-vino px-4 py-2"
+            >
+              <Text style={{ fontFamily: "LaOriental" }} className="text-xs text-mostaza">Cerrar</Text>
+            </TouchableOpacity>
+          </View>
+
+          <View className="absolute bottom-10 left-0 right-0 items-center">
+            <TouchableOpacity
+              onPress={tomarFoto}
+              className="h-20 w-20 items-center justify-center rounded-full border-4 border-amber-300 bg-amber-500/30 active:bg-amber-500/50"
+            >
+              <View className="h-14 w-14 rounded-full bg-amber-400" />
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
-    </ScrollView>
+
+      {/* Modal de Feedback */}
+      <FeedbackModal
+        visible={modalFeedback.visible}
+        tipo={modalFeedback.tipo}
+        titulo={modalFeedback.titulo}
+        mensaje={modalFeedback.mensaje}
+        onClose={() => {
+          setModalFeedback((prev) => ({ ...prev, visible: false }));
+          if (modalFeedback.onAceptar) modalFeedback.onAceptar();
+        }}
+      />
+
+      <CompanySpinner
+        visible={isLoading}
+        mensaje={esBebida ? "Registrando bebida en la carta..." : "Registrando plato en la carta..."}
+      />
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#0F1117" },
-  content: { padding: 20, paddingBottom: 40 },
-  header: { marginBottom: 20 },
-  badge: { color: "#F59E0B", fontSize: 12, fontWeight: "700", letterSpacing: 1, marginBottom: 4 },
-  title: { fontSize: 26, fontWeight: "bold", color: "#FFF" },
-  subtitle: { fontSize: 14, color: "#9CA3AF", marginTop: 4 },
-  fieldContainer: { marginBottom: 16 },
-  row: { flexDirection: "row", justifyContent: "space-between" },
-  label: { color: "#E5E7EB", fontSize: 14, fontWeight: "600", marginBottom: 6 },
-  helperText: { color: "#9CA3AF", fontSize: 12, marginBottom: 10 },
-  input: {
-    backgroundColor: "#1F2937",
-    color: "#FFF",
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    borderWidth: 1,
-    borderColor: "#374151",
-  },
-  textArea: { minHeight: 75, textAlignVertical: "top" },
-  inputError: { borderColor: "#EF4444" },
-  errorText: { color: "#EF4444", fontSize: 12, marginTop: 4 },
-  fotosGrid: { flexDirection: "row", justifyContent: "space-between" },
-  fotoContainer: { width: "31%", alignItems: "center" },
-  fotoSlotLabel: { color: "#9CA3AF", fontSize: 12, marginBottom: 4, fontWeight: "600" },
-  fotoSlot: {
-    width: "100%",
-    aspectRatio: 1,
-    backgroundColor: "#1F2937",
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: "#374151",
-    borderStyle: "dashed",
-    justifyContent: "center",
-    alignItems: "center",
-    overflow: "hidden",
-  },
-  fotoSlotActive: { borderStyle: "solid", borderColor: "#F59E0B" },
-  fotoImage: { width: "100%", height: "100%", resizeMode: "cover" },
-  placeholderContainer: { alignItems: "center" },
-  cameraIcon: { fontSize: 22, marginBottom: 2 },
-  placeholderText: { color: "#9CA3AF", fontSize: 11, fontWeight: "500" },
-  btnCambiarFoto: { marginTop: 6, paddingVertical: 2, paddingHorizontal: 8, backgroundColor: "#374151", borderRadius: 4 },
-  btnCambiarFotoText: { color: "#FFF", fontSize: 11 },
-  submitButton: {
-    backgroundColor: "#F59E0B",
-    borderRadius: 8,
-    paddingVertical: 14,
-    alignItems: "center",
-    marginTop: 10,
-  },
-  submitButtonDisabled: { opacity: 0.6 },
-  submitButtonText: { color: "#000", fontSize: 16, fontWeight: "bold" },
-  modalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.75)", justifyContent: "center", alignItems: "center", padding: 20 },
-  modalContent: { backgroundColor: "#1F2937", borderRadius: 12, padding: 20, width: "100%", maxWidth: 320 },
-  modalTitle: { color: "#FFF", fontSize: 16, fontWeight: "bold", marginBottom: 16, textAlign: "center" },
-  modalOption: { backgroundColor: "#374151", paddingVertical: 12, borderRadius: 8, marginBottom: 10, alignItems: "center" },
-  modalOptionText: { color: "#FFF", fontSize: 15, fontWeight: "600" },
-  modalOptionCancel: { backgroundColor: "transparent", borderWidth: 1, borderColor: "#4B5563", marginTop: 4 },
-  modalOptionCancelText: { color: "#9CA3AF", fontSize: 14 },
-});

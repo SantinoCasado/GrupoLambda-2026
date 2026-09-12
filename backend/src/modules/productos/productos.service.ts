@@ -41,3 +41,25 @@ export const cambiarEstadoProductoDB = async (id: string, status: 'active' | 'in
 
     return data[0];
 };
+
+// Listar productos (Sirve para el CU-06 de aprobaciones)
+export const obtenerProductosService = async (categoriasPermitidas?: string[]) => {
+    // Inicia la query trayendo solo los productos que NO están dados de baja
+    let query = supabase
+        .from('products')
+        .select('*')
+        .neq('status', 'inactive'); 
+
+    // Si hay un array de categorías, filtramos por esas
+    if (categoriasPermitidas && categoriasPermitidas.length > 0) {
+        query = query.in('category', categoriasPermitidas);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+        throw new Error(`Error al obtener los productos: ${error.message}`);
+    }
+
+    return data;
+};

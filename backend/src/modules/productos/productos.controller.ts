@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { crearProductoSchema } from './schema/productos.schema';
 import { subirImagenSupabase} from '../../services/storage.service';
-import { insertarProductoDB, cambiarEstadoProductoDB } from './productos.service';
+import { insertarProductoDB, cambiarEstadoProductoDB, obtenerProductosService } from './productos.service';
 import { supabase } from '../../config/supabase'; 
 
 export const crearProducto = async (req: Request, res: Response): Promise<Response> => {
@@ -107,5 +107,45 @@ export const bajaLogicaProducto = async (req: Request, res: Response): Promise<R
 
     } catch (error: any) {
         return res.status(500).json({ error: 'Fallo al dar de baja el producto', detalle: error.message });
+    }
+};
+
+export const obtenerProductos = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const usuarioLogueado = (req as any).user;
+        const reqCategory = req.query.category as string;
+        
+        let categoriasFiltro: string[] = [];
+
+        // Reglas estrictas por rol
+        if (usuarioLogueado.role === 'cook') {
+            // El cocinero SOLO ve platos y postres, sin importar quE pida
+            categoriasFiltro = ['dish', 'dessert'];
+        
+        } else if (usuarioLogueado.role === 'bartender') {
+            // El cantinero SOLO ve bebidas
+            categoriasFiltro = ['drink'];
+        
+        } else {
+            // Roles con acceso total (owner, supervisor, maitre, waiter, clientes)
+            // Si pidieron un filtro específico en la URL, se lo aplicamos
+            if (reqCategory) {
+                const categoriasValidas = ['dish', 'drink', 'dessert'];
+                if (!categoriasValidas.includes(reqCategory)) {
+                    return res.status(400).json({ error: 'Categoría inválida en la URL.' });
+                }
+                categoriasFiltro = [reqCategory];
+            }
+            // Si no mandaron filtro (reqCategory es undefined), categoriasFiltro queda vacío 
+            // y el servicio traerá todo el menú.
+        }
+
+        // Ejecuta la búsqueda con las reglas aplicadas
+        const productos = await obtenerProductosService(categoriasFiltro.length > 0 ? categoriasFiltro : undefined);
+
+        return res.status(200).json({ data: productos });
+
+    } catch (error: any) {
+        return res.status(500).json({ error: 'Fallo al obtener los productos', detalle: error.message });
     }
 };

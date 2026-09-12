@@ -1,4 +1,5 @@
 import { API_BASE_URL } from "./apiConfig";
+import { headersConToken } from "./tokenService";
 
 export interface ClientePendiente {
   id: string;
@@ -48,7 +49,9 @@ let CLIENTES_PENDIENTES_LOCAL: ClientePendiente[] = [
 // Obtener clientes en estado pendiente
 export async function obtenerClientesPendientes(): Promise<ClientePendiente[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/clientes/pendientes`);
+    const response = await fetch(`${API_BASE_URL}/clientes/pendientes`, {
+      headers: await headersConToken(),
+    });
     if (response.ok) {
       const data = await response.json();
       const resultado = Array.isArray(data) ? data : data.data || [];
@@ -68,7 +71,7 @@ export async function responderSolicitudCliente(
   try {
     const response = await fetch(`${API_BASE_URL}/clientes/${id}/estado`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: await headersConToken({ "Content-Type": "application/json" }),
       body: JSON.stringify({ estado: accion }),
     });
 
