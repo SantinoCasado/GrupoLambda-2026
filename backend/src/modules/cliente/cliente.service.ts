@@ -2,6 +2,7 @@ import { supabase } from '../../config/supabase';
 import { CrearClienteDTO } from './schema/cliente.schema';
 import { RegistrarAnonimoDTO } from './interface/registrarClienteAnonimo';
 import { enviarNotificacionAprobacion } from '../../services/email.service';
+import { enviarPushNotification } from '../../services/pushNotifications.service';
 
 // Registrar un nuevo cliente registrado (CU-05)
 export const registrarClienteService = async (datos: CrearClienteDTO) => {
@@ -77,8 +78,23 @@ export const actualizarEstadoClienteService = async (id: string, status: 'approv
         throw new Error('Cliente no encontrado en la base de datos');
     }
 
-    // Dispara el correo electronico de forma asincrona mediante Resend
+    // Dispara el correo electronico de forma asincrona mediante NodeMailer (no bloquea la respuesta al frontend)
     await enviarNotificacionAprobacion(data.email, data.first_name, status);
+
+    // Si el cliente ya escaneo o se registro y tiene su Expo Push Token guardado:
+    if (data.push_token) {
+        const tituloPush = status === 'approved' ? '¡Cuenta Aprobada! 🎉' : 'Actualización de cuenta';
+        const cuerpoPush = status === 'approved' 
+            ? 'Ya podés ingresar a la app del restaurante.' 
+            : 'Tu solicitud de registro fue rechazada.';
+        
+        await enviarPushNotification(
+            data.push_token, 
+            tituloPush, 
+            cuerpoPush, 
+            { statusActualizado: status } // Datos extra opcionales para el front
+        );
+    }
 
     return data;
 };
@@ -98,4 +114,4 @@ export const listarClientesService = async (statusFilter?: string) => {
 
     if (error) throw new Error(`Fallo al listar clientes: ${error.message}`);
     return data;
-};
+}; 
