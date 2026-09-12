@@ -94,7 +94,7 @@ export const USUARIOS_PRECARGADOS: UsuarioSeed[] = [
     nombres: "Carlos",
     apellidos: "Rodríguez",
     documento: "20301112224",
-    foto: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400",
+    foto: "",
     icono: "👑",
   },
   {
@@ -106,7 +106,7 @@ export const USUARIOS_PRECARGADOS: UsuarioSeed[] = [
     nombres: "Mariana",
     apellidos: "López",
     documento: "27332221114",
-    foto: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400",
+    foto: "",
     icono: "📋",
   },
   {

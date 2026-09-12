@@ -16,6 +16,15 @@ import RegistroClienteScreen from "./src/screens/registroClienteScreen";
 import AprobacionClientesScreen from "./src/screens/aprobacionClientesScreen";
 import ScreenBackground from "./src/components/ScreenBackground";
 
+const NO_PHOTO = require("./assets/images/no-photo.jpg");
+
+const obtenerFotoUsuario = (usuario: UsuarioSeed) =>
+  usuario.perfil === "dueño" ||
+  usuario.perfil === "supervisor" ||
+  !usuario.foto
+    ? NO_PHOTO
+    : { uri: usuario.foto };
+
 type VistaPrivada =
   | "home"
   | "empleados"
@@ -101,7 +110,7 @@ function AppInterna() {
         <View className="flex-row items-center justify-between border-b-2 border-caramelo bg-vino px-5 py-3">
           <View className="flex-row items-center flex-1">
             <Image
-              source={{ uri: usuarioActual.foto }}
+              source={obtenerFotoUsuario(usuarioActual)}
               className="h-10 w-10 rounded-full border-2 border-mostaza mr-2"
             />
             <View>
@@ -163,7 +172,7 @@ function AppInterna() {
       <View className="flex-row items-center justify-between border-b-2 border-caramelo bg-vino px-5 py-3">
         <View className="flex-row items-center flex-1">
           <Image
-            source={{ uri: usuarioActual.foto }}
+            source={obtenerFotoUsuario(usuarioActual)}
             className="h-10 w-10 rounded-full border-2 border-mostaza mr-2"
           />
           <View>
