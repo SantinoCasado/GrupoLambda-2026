@@ -1,18 +1,20 @@
 import { Request, Response } from 'express';
-import { guardarPedido, obtenerEstadoPedido } from './pedidos.service';
+import { guardarPedido, obtenerEstadoPedido, confirmarPedidoPorMozo } from './pedidos.service';
+import { crearPedidoSchema, confirmarPedidoSchema } from './schema/pedidos.schema';
 
 export const crearPedido = async (req: Request, res: Response) => {
-        // extraemos los datos del JSON que mandan desde la aplicación móvil
-  const { id_cliente, numero_mesa, productos } = req.body;
-
-  if (!id_cliente || !numero_mesa || !productos || !Array.isArray(productos) || productos.length === 0) {
+  const validacion = crearPedidoSchema.safeParse(req.body);
+  if (!validacion.success) {
     return res.status(400).json({
-      error: 'Faltan datos requeridos: id_cliente, numero_mesa o lista de productos',
+      error: 'Datos inválidos para crear el pedido',
+      detalles: validacion.error.format(),
     });
   }
 
+  const { id_cliente, numero_mesa, productos, order_type } = validacion.data;
+
   try {
-    const resultado = await guardarPedido(id_cliente, Number(numero_mesa), productos);
+    const resultado = await guardarPedido(id_cliente, numero_mesa, productos, order_type);
 
     return res.status(201).json({
       mensaje: `Pedido para la mesa ${numero_mesa} recibido. Esperando aprobación del mozo.`,
@@ -41,6 +43,34 @@ export const verEstadoPedido = async (req: Request, res: Response) => {
   } catch (error: any) {
     return res.status(404).json({
       error: 'Pedido no encontrado',
+      detalle: error.message,
+    });
+  }
+};
+
+export const confirmarPedido = async (req: Request, res: Response) => {
+  const { id } = req.params;
+
+  const validacion = confirmarPedidoSchema.safeParse(req.body);
+  if (!validacion.success) {
+    return res.status(400).json({
+      error: 'Datos inválidos para confirmar el pedido',
+      detalles: validacion.error.format(),
+    });
+  }
+
+  const { waiter_id, estado, rejection_reason } = validacion.data;
+
+  try {
+    const resultado = await confirmarPedidoPorMozo(id as string, waiter_id, estado, rejection_reason);
+    return res.status(200).json({
+      mensaje: `Pedido ${id} actualizado con éxito a '${estado}'`,
+      status: 'OK',
+      data: resultado,
+    });
+  } catch (error: any) {
+    return res.status(400).json({
+      error: 'No se pudo confirmar el pedido',
       detalle: error.message,
     });
   }
