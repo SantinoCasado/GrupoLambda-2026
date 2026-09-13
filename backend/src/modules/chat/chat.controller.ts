@@ -1,24 +1,19 @@
 import { Request, Response } from 'express';
 import { enviarMensajeService, listarMensajesService } from './chat.service';
+import { enviarMensajeSchema } from './schema/chat.schema';
 
 export const enviarMensaje = async (req: Request, res: Response) => {
-  const { sender_id, table_id, message, order_id, chat_type } = req.body;
+  const validacion = enviarMensajeSchema.safeParse(req.body);
 
-  // sender_id y message son obligatorios
-  if (!sender_id || !message || typeof message !== 'string' || !message.trim()) {
+  if (!validacion.success) {
     return res.status(400).json({
-      error: 'Faltan campos obligatorios (sender_id y message).',
+      error: 'Datos inválidos para enviar el mensaje',
+      detalles: validacion.error.format(),
     });
   }
 
   try {
-    const nuevoMensaje = await enviarMensajeService({
-      sender_id,
-      table_id, // puede venir undefined si responde un empleado sin mesa fija
-      message,
-      order_id,
-      chat_type,
-    });
+    const nuevoMensaje = await enviarMensajeService(validacion.data);
 
     return res.status(201).json({
       status: 'OK',

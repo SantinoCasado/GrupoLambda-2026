@@ -1,14 +1,7 @@
 import { supabase } from '../../config/supabase';
+import { EnviarMensajeDTO } from './schema/chat.schema';
 
-interface NuevoMensajeDTO {
-  sender_id: string;
-  table_id?: string;
-  message: string;
-  order_id?: string;
-  chat_type?: string;
-}
-
-export const enviarMensajeService = async (datos: NuevoMensajeDTO) => {
+export const enviarMensajeService = async (datos: EnviarMensajeDTO) => {
   const { sender_id, table_id, message, order_id, chat_type = 'table_waiter' } = datos;
 
   const { data, error } = await supabase
@@ -58,7 +51,6 @@ export const listarMensajesService = async (table_id?: string) => {
     `)
     .order('created_at', { ascending: true });
 
-  // Si se pasa table_id se filtra, sino trae toda la sala compartida
   if (table_id) {
     query = query.eq('table_id', table_id);
   }
