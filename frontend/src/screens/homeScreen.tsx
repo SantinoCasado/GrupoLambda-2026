@@ -183,7 +183,7 @@ export default function HomeScreen({ usuario, onNavigate }: Props) {
                     {perfil === "cocinero" ? "Agregar un plato a la carta" : "Agregar una bebida a la carta"}
                   </Text>
                 </View>
-                <Text className="text-mostaza text-xl">›</Text>
+                <Image source={require("../../assets/images/right-arrow-y.png")} className="h-7 w-7" resizeMode="contain" />
               </TouchableOpacity>
 
               {/* Botón 2: Ver Carta y Administrar */}
@@ -200,7 +200,7 @@ export default function HomeScreen({ usuario, onNavigate }: Props) {
                     Consultar o eliminar productos cargados
                   </Text>
                 </View>
-                <Text className="text-mostaza text-xl">›</Text>
+                <Image source={require("../../assets/images/right-arrow-y.png")} className="h-7 w-7" resizeMode="contain" />
               </TouchableOpacity>
             </View>
           )}
@@ -271,16 +271,16 @@ export default function HomeScreen({ usuario, onNavigate }: Props) {
                 onPress={() => navegar("registro_metre")}
                 className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota"
               >
-                <Text className="text-2xl mr-3">🛎️</Text>
+                <Image source={require("../../assets/images/employeeRegistration-y.png")} className="h-7 w-7 mr-3" resizeMode="contain" />
                 <View className="flex-1">
                   <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
                     Registrar Cliente
                   </Text>
                   <Text className="text-[11px] font-semibold text-amber-100">
-                    Carga asistida de un cliente (Metre)
+                    Carga asistida de un cliente
                   </Text>
                 </View>
-                <Text className="text-mostaza text-xl">›</Text>
+                <Image source={require("../../assets/images/right-arrow-y.png")} className="h-7 w-7" resizeMode="contain" />
               </TouchableOpacity>
             </View>
           )}

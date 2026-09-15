@@ -12,6 +12,36 @@ export interface ClienteFormErrors {
   fotoUri?: string;
 }
 
+// Validación del Paso 1 (identificación personal, previo a credenciales y foto)
+export function validarPaso1Cliente(data: {
+  nombres: string;
+  apellidos: string;
+  dni: string;
+}): Partial<ClienteFormErrors> {
+  const errors: Partial<ClienteFormErrors> = {};
+
+  if (!data.nombres.trim()) {
+    errors.nombres = "El nombre es obligatorio.";
+  } else if (data.nombres.trim().length < 2) {
+    errors.nombres = "El nombre debe tener al menos 2 caracteres.";
+  }
+
+  if (!data.apellidos.trim()) {
+    errors.apellidos = "El apellido es obligatorio.";
+  } else if (data.apellidos.trim().length < 2) {
+    errors.apellidos = "El apellido debe tener al menos 2 caracteres.";
+  }
+
+  const dniLimpio = data.dni.trim();
+  if (!dniLimpio) {
+    errors.dni = "El número de DNI es obligatorio.";
+  } else if (!/^\d{8}$/.test(dniLimpio)) {
+    errors.dni = "El DNI debe contener 8 dígitos numéricos.";
+  }
+
+  return errors;
+}
+
 // Validaciones estrictas de todos los campos
 export function validateClienteForm(data: {
   nombres: string;
@@ -102,12 +132,7 @@ export async function registrarCliente(payload: {
   } catch (error: any) {
     console.error("❌ Error en el registro de cliente:", error.message);
 
-    return {
-      status: "ERROR",
-      mensaje:
-        "Ocurrió un problema al procesar su solicitud de registro. Por favor, intente nuevamente o acérquese al personal del local.",
-      detalle: error.message,
-    };
+    throw error;
   }
 }
 
