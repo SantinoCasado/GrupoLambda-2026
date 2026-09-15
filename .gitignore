@@ -1,0 +1,7 @@
+# Ignorar backend local si este repo es solo de frontend
+backend/
+
+# Ignorar variables de entorno y dependencias siempre
+.env
+.env.local
+node_modules/
