@@ -1,4 +1,5 @@
 import { supabase } from '../../config/supabase';
+import { enviarPushNotification } from '../../services/pushNotifications.service';
 
 interface ProductoItem {
   id_producto: string;
@@ -86,6 +87,30 @@ export const guardarPedido = async (
     throw new Error(`Error al insertar ítems de la orden: ${itemsError.message}`);
   }
 
+  // ==========================================
+  // PUSH NOTIFICATION: Nuevo pedido creado
+  // ==========================================
+  // Busca si hay un mozo o personal de cocina al que notificar, o puede buscar el token del cliente.
+  // Por ejemplo, si quiere notificar al personal de cocina/mozos de la mesa:
+  try {
+    const { data: clienteData } = await supabase
+      .from('users')
+      .select('push_token')
+      .eq('id', idCliente)
+      .single();
+
+    if (clienteData?.push_token) {
+      await enviarPushNotification(
+        clienteData.push_token,
+        '🍽️ ¡Pedido Registrado!',
+        `Tu pedido para la Mesa #${numeroMesa} fue enviado a cocina. Tiempo estimado: ${tiempoElaboracionTotal} mins.`,
+        { orderId: ordenCreada.id }
+      );
+    }
+  } catch (pushError) {
+    console.error('No se pudo enviar la push de creación de pedido:', pushError);
+  }
+
   return {
     pedido: ordenCreada,
     total: totalAcumulado,
@@ -129,7 +154,7 @@ export const confirmarPedidoPorMozo = async (
 ) => {
   const { data: pedidoActual, error: errorBusqueda } = await supabase
     .from('orders')
-    .select('id, status')
+    .select('id, status, client_id') // Trae tambien el client_id para buscar su token
     .eq('id', idPedido)
     .single();
 
@@ -160,6 +185,33 @@ export const confirmarPedidoPorMozo = async (
 
   if (errorUpdate || !pedidoActualizado) {
     throw new Error(`Error al actualizar el pedido: ${errorUpdate?.message}`);
+  }
+
+  // ========================================================
+  // PUSH NOTIFICATION: Mozo confirmó o rechazó el pedido
+  // ========================================================
+  try {
+    if (pedidoActual.client_id) {
+      const { data: clienteData } = await supabase
+        .from('users')
+        .select('push_token')
+        .eq('id', pedidoActual.client_id)
+        .single();
+
+      if (clienteData?.push_token) {
+        const titulo = nuevoEstado === 'in_preparation' ? '👨‍🍳 ¡Pedido en Preparación!' : '❌ Pedido Cancelado';
+        const cuerpo = nuevoEstado === 'in_preparation'
+          ? 'El mozo confirmó tu pedido y ya se encuentra en cocina.'
+          : `Lo sentimos, tu pedido fue rechazado. Motivo: ${rejectionReason || 'No especificado'}`;
+
+        await enviarPushNotification(clienteData.push_token, titulo, cuerpo, {
+          orderId: idPedido,
+          status: nuevoEstado
+        });
+      }
+    }
+  } catch (pushError) {
+    console.error('No se pudo enviar la push de confirmación del mozo:', pushError);
   }
 
   return pedidoActualizado;
