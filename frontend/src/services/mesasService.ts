@@ -4,7 +4,7 @@ import { fetch } from "expo/fetch";
 import { headersConToken } from "./tokenService";
 
 export type TipoMesa = "estandar" | "vip" | "movilidad_reducida";
-export type EstadoMesa = "vacia" | "ocupada" | "reservada";
+export type EstadoMesa = "vacia" | "ocupada";
 
 export interface Mesa {
   id?: string;
@@ -30,10 +30,9 @@ const TIPO_MESA_TO_API: Record<TipoMesa, "standard" | "vip" | "reduced_mobility"
   movilidad_reducida: "reduced_mobility",
 };
 
-const ESTADO_MESA_TO_API: Record<EstadoMesa, "free" | "occupied" | "cleaning"> = {
+const ESTADO_MESA_TO_API: Record<EstadoMesa, "free" | "occupied"> = {
   vacia: "free",
   ocupada: "occupied",
-  reservada: "cleaning",
 };
 
 // Mapeo inverso: valores de la API (schema Zod / Supabase) a los del frontend
@@ -46,7 +45,6 @@ const API_TIPO_TO_FRONT: Record<string, TipoMesa> = {
 const API_ESTADO_TO_FRONT: Record<string, EstadoMesa> = {
   free: "vacia",
   occupied: "ocupada",
-  cleaning: "reservada",
 };
 
 interface MesaDesdeApi {

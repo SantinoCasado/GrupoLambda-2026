@@ -14,11 +14,13 @@ import {
   StyleSheet,
   Dimensions,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import * as Haptics from "expo-haptics";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { OptionModal } from "../components/OptionModal";
+import { ConfirmModal } from "../components/ConfirmModal";
 import { FeedbackModal } from "../components/FeedbackModal";
 import { CompanySpinner } from "../components/CompanySpinner";
 import QRCode from "react-native-qrcode-svg";
@@ -43,9 +45,11 @@ export default function AltaMesaScreen() {
 
   const [errors, setErrors] = useState<MesaFormErrors>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [confirmarMesaVisible, setConfirmarMesaVisible] = useState(false);
   const [modalFoto, setModalFoto] = useState(false);
   const [mesaQr, setMesaQr] = useState<Mesa | null>(null);
   const [mesas, setMesas] = useState<Mesa[]>([]);
+  const [mesaActualizando, setMesaActualizando] = useState<number | null>(null);
   const insets = useSafeAreaInsets();
 
   // Cámara en vivo (misma estrategia que Alta Empleados, evita reinicios de la app)
@@ -230,7 +234,7 @@ export default function AltaMesaScreen() {
     }
   };
 
-  const handleCrearMesa = async () => {
+  const handleCrearMesa = () => {
     const errs = validateMesaForm({ numero, comensales, tipo, foto });
     if (Object.keys(errs).length > 0) {
       setErrors(errs);
@@ -242,7 +246,12 @@ export default function AltaMesaScreen() {
       );
       return;
     }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setConfirmarMesaVisible(true);
+  };
 
+  const ejecutarCrearMesa = async () => {
+    setConfirmarMesaVisible(false);
     setErrors({});
     setIsLoading(true);
 
@@ -279,16 +288,20 @@ export default function AltaMesaScreen() {
   };
 
   const cambiarEstado = async (mesa: Mesa, estadoActual: EstadoMesa) => {
+    if (mesaActualizando !== null) return;
     const nuevoEstado: EstadoMesa =
-      estadoActual === "vacia" ? "ocupada" : estadoActual === "ocupada" ? "reservada" : "vacia";
+      estadoActual === "vacia" ? "ocupada" : "vacia";
 
     try {
+      setMesaActualizando(mesa.numero);
       await actualizarDisponibilidadMesa(mesa, nuevoEstado);
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       cargarMesas();
     } catch (error: any) {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       mostrarMensaje("error", "Error", error.message || "No se pudo cambiar el estado de la mesa.");
+    } finally {
+      setMesaActualizando(null);
     }
   };
 
@@ -596,7 +609,7 @@ export default function AltaMesaScreen() {
               <>
                 <View className="mx-5 mt-1 mb-2 items-center">
                   <Text className="text-xs font-bold text-vino">Toca el estado de una mesa para alternarlo.</Text>
-                  <Text className="text-xs font-bold text-vino">(Vacía ➔ Ocupada ➔ Reservada)</Text>
+                  <Text className="text-xs font-bold text-vino">(Vacía ➔ Ocupada)</Text>
                 </View>
 
                 <ScrollView
@@ -613,27 +626,31 @@ export default function AltaMesaScreen() {
                     <View key={index} style={{ width: screenWidth }} className="px-5 pt-2">
                       <View className="gap-y-4">
                         {grupo.map((m) => (
-                            <View key={m.numero} style={styles.cardMesa}>
+                            <View key={m.numero} style={[styles.cardMesa, m.disponibilidad === "vacia" ? styles.cardBordeVacia : styles.cardBordeOcupada, m.disponibilidad === "vacia" ? styles.cardFondoVacia : styles.cardFondoOcupada]}>
                               <View style={styles.cardMesaInfo}>
                                 <Text style={styles.cardMesaTitle}>Mesa #{m.numero}</Text>
-                                <Text style={styles.cardMesaSub}>
-                                  Capacidad: {m.comensales} comensales • Tipo: {m.tipo.toUpperCase()}
-                                </Text>
+                                <Text style={[styles.cardMesaSub, { marginBottom: 0 }]}>– Capacidad: {m.comensales} comensales</Text>
+                                <Text style={[styles.cardMesaSub, { marginTop: 0 }]}>– Tipo: {m.tipo === "movilidad_reducida" ? "MOV. REDUCIDA" : m.tipo.toUpperCase()}</Text>
 
                                 <TouchableOpacity
                                   style={[
                                     styles.badgeEstado,
-                                    m.disponibilidad === "vacia"
+                                    mesaActualizando === m.numero
+                                      ? styles.badgeCargando
+                                      : m.disponibilidad === "vacia"
                                       ? styles.badgeVacia
-                                      : m.disponibilidad === "ocupada"
-                                      ? styles.badgeOcupada
-                                      : styles.badgeReservada,
+                                      : styles.badgeOcupada,
                                   ]}
                                   onPress={() => cambiarEstado(m, m.disponibilidad)}
+                                  disabled={mesaActualizando !== null}
                                 >
-                                  <Text style={styles.badgeEstadoText}>
-                                    ESTADO: {m.disponibilidad.toUpperCase()} (Tocar para cambiar)
-                                  </Text>
+                                  {mesaActualizando === m.numero ? (
+                                    <ActivityIndicator size="small" color="#d8572a" />
+                                  ) : (
+                                    <Text style={styles.badgeEstadoText}>
+                                      ESTADO: {m.disponibilidad.toUpperCase()}
+                                    </Text>
+                                  )}
                                 </TouchableOpacity>
                               </View>
 
@@ -642,18 +659,18 @@ export default function AltaMesaScreen() {
                                 {m.foto ? (
                                   <Image
                                     source={{ uri: m.foto }}
-                                    style={styles.cardMesaFoto}
+                                    style={[styles.cardMesaFoto, m.disponibilidad === "vacia" ? styles.cardBordeVacia : styles.cardBordeOcupada]}
                                     resizeMode="cover"
                                   />
                                 ) : null}
                                 <TouchableOpacity
                                   onPress={() => setMesaQr(m)}
-                                  className="mt-1 items-center rounded-lg border border-calabaza bg-[#FBE9DF] px-4 py-1.5 active:bg-[#f5dccb]"
+                                  className="mt-1 items-center rounded-lg border border-vino bg-[#FBE9DF] px-4 py-1.5 active:bg-[#f5dccb]"
                                   activeOpacity={0.7}
                                   accessible
                                   accessibilityLabel={`Ver código QR de la mesa ${m.numero}`}
                                 >
-                                  <Text className="text-xs font-bold text-calabaza">QR</Text>
+                                  <Text className="text-xs font-bold text-vino">QR</Text>
                                 </TouchableOpacity>
                               </View>
                             </View>
@@ -740,31 +757,45 @@ export default function AltaMesaScreen() {
           onRequestClose={() => setMesaQr(null)}
         >
           <View className="flex-1 items-center justify-center bg-black/60 px-8">
-            <View style={styles.qrModalBox}>
-              <Text style={styles.qrModalTitle}>Mesa #{mesaQr?.numero}</Text>
-              <View style={styles.cardMesaQr}>
-                <QRCode
-                  value={mesaQr?.qrCode || `mesa_${mesaQr?.numero}`}
-                  size={200}
-                  backgroundColor="#111827"
-                  color="#FFF"
-                />
-              </View>
-              <TouchableOpacity
-                onPress={() => setMesaQr(null)}
-                className="mt-5 rounded-2xl bg-mostaza px-8 py-2.5 active:bg-calabaza/60"
-                activeOpacity={0.7}
-              >
-                <Text
-                  style={{ fontFamily: "LaOriental" }}
-                  className="text-center uppercase tracking-wider text-vino"
+            <ChineseFrame className="w-full max-w-sm bg-vino shadow-2xl p-3">
+              <View style={styles.qrModalBox}>
+                <Text style={styles.qrModalTitle}>Mesa #{mesaQr?.numero}</Text>
+                <View style={styles.cardMesaQr}>
+                  <QRCode
+                    value={mesaQr?.qrCode || `mesa_${mesaQr?.numero}`}
+                    size={200}
+                    backgroundColor="#111827"
+                    color="#FFF"
+                  />
+                </View>
+                <TouchableOpacity
+                  onPress={() => setMesaQr(null)}
+                  className="mt-5 rounded-2xl bg-mostaza px-8 py-2.5 active:bg-calabaza/60"
+                  activeOpacity={0.7}
                 >
-                  Cerrar
-                </Text>
-              </TouchableOpacity>
-            </View>
+                  <Text
+                    style={{ fontFamily: "LaOriental" }}
+                    className="text-center uppercase tracking-wider text-vino"
+                  >
+                    Cerrar
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ChineseFrame>
           </View>
         </Modal>
+
+        {/* Modal de Confirmación de Alta */}
+        <ConfirmModal
+          visible={confirmarMesaVisible}
+          titulo="Confirmar Mesa"
+          mensaje={`¿Está seguro de que desea dar de alta la Mesa #${numero} con ${comensales} comensales y generar su código QR?`}
+          textoConfirmar="Confirmar"
+          textoCancelar="Cancelar"
+          cargando={isLoading}
+          onConfirm={ejecutarCrearMesa}
+          onCancel={() => setConfirmarMesaVisible(false)}
+        />
 
         {/* Modal de Feedback */}
         <FeedbackModal
@@ -785,17 +816,21 @@ export default function AltaMesaScreen() {
 }
 
 const styles = StyleSheet.create({
-  cardMesa: { backgroundColor: "#1F2937", borderRadius: 10, padding: 14, marginBottom: 12, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 1, borderColor: "#374151" },
+  cardMesa: { backgroundColor: "transparent", borderRadius: 10, padding: 14, marginBottom: 3, flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderWidth: 2, borderColor: "#f7b538" },
+  cardBordeVacia: { borderColor: "#10b981" },
+  cardBordeOcupada: { borderColor: "#c32f27" },
+  cardFondoVacia: { backgroundColor: "rgba(16, 185, 129, 0.1)" },
+  cardFondoOcupada: { backgroundColor: "rgba(195, 47, 39, 0.1)" },
   cardMesaInfo: { flex: 1, marginRight: 10 },
-  cardMesaTitle: { color: "#FFF", fontSize: 16, fontWeight: "bold" },
-  cardMesaSub: { color: "#9CA3AF", fontSize: 12, marginVertical: 4 },
+  cardMesaTitle: { color: "#8f0018", fontSize: 16, fontWeight: "bold" },
+  cardMesaSub: { color: "#8f0018", fontSize: 12, marginVertical: 4 },
   badgeEstado: { paddingVertical: 4, paddingHorizontal: 8, borderRadius: 6, alignSelf: "flex-start", marginTop: 4 },
-  badgeVacia: { backgroundColor: "#065F46" },
-  badgeOcupada: { backgroundColor: "#991B1B" },
-  badgeReservada: { backgroundColor: "#92400E" },
+  badgeVacia: { backgroundColor: "#10b981" },
+  badgeOcupada: { backgroundColor: "#c32f27" },
+  badgeCargando: { backgroundColor: "#FBE9DF" },
   badgeEstadoText: { color: "#FFF", fontSize: 10, fontWeight: "bold" },
-  cardMesaQr: { backgroundColor: "#111827", padding: 6, borderRadius: 8 },
-  cardMesaFoto: { width: 48, height: 48, borderRadius: 8, borderWidth: 1, borderColor: "#374151" },
-  qrModalBox: { alignItems: "center", backgroundColor: "#1F2937", borderRadius: 16, padding: 24, borderWidth: 1, borderColor: "#374151" },
-  qrModalTitle: { color: "#FFF", fontSize: 18, fontWeight: "bold", marginBottom: 14 },
+  cardMesaQr: { backgroundColor: "transparent", padding: 6, borderRadius: 8 },
+  cardMesaFoto: { width: 48, height: 48, borderRadius: 8, borderWidth: 1, borderColor: "#8f0018" },
+  qrModalBox: { alignItems: "center", backgroundColor: "#8f0018", borderRadius: 16, padding: 24, borderWidth: 1, borderColor: "transparent" },
+  qrModalTitle: { color: "#f7b538", fontSize: 18, marginBottom: 14, fontFamily: "LaOriental" },
 });
