@@ -58,7 +58,7 @@ export const ACCESOS_RAPIDOS: AccesoRapido[] = [
     id: "acceso_mozo",
     tituloVisual: "Mozo",
     icono: "🍽️",
-    email: "jojeda@gmail.com",
+    email: "jojeda@restaurante.com",
     clave: "123456",
   },
   {
