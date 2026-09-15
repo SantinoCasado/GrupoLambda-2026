@@ -100,11 +100,13 @@ export async function registrarCliente(payload: {
     }
     return data;
   } catch (error: any) {
-    console.warn("Backend /clientes/register no disponible, guardado simulado:", error.message);
-    // Simulación local exitosa para pruebas de UI y hardware
+    console.error("❌ Error en el registro de cliente:", error.message);
+
     return {
-      status: "OK",
-      mensaje: "Registro completado. Su cuenta se encuentra pendiente de aprobación.",
+      status: "ERROR",
+      mensaje:
+        "Ocurrió un problema al procesar su solicitud de registro. Por favor, intente nuevamente o acérquese al personal del local.",
+      detalle: error.message,
     };
   }
 }
