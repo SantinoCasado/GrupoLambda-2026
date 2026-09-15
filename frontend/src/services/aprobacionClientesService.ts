@@ -1,5 +1,5 @@
-import { API_BASE_URL } from "./apiConfig";
-import { headersConToken } from "./tokenService";
+import { supabase, getSupabaseClient } from "../config/supabase";
+import { API_URL } from "../config/api";
 
 export interface ClientePendiente {
   id: string;
@@ -9,90 +9,123 @@ export interface ClientePendiente {
   email: string;
   fotoUri: string;
   fechaRegistro: string;
-  estado: "pendiente" | "aprobado" | "rechazado";
+  estado: string;
 }
 
-// Datos de prueba iniciales con fotos reales para testear la UI
-let CLIENTES_PENDIENTES_LOCAL: ClientePendiente[] = [
-  {
-    id: "cli-101",
-    nombres: "Mateo Ignacio",
-    apellidos: "Gómez",
-    dni: "42890123",
-    email: "mateo.gomez@gmail.com",
-    fotoUri: "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400&auto=format&fit=crop&q=80",
-    fechaRegistro: "Hoy, 19:42",
-    estado: "pendiente",
-  },
-  {
-    id: "cli-102",
-    nombres: "Camila Belén",
-    apellidos: "Fernández",
-    dni: "44112233",
-    email: "camila.fer@hotmail.com",
-    fotoUri: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&auto=format&fit=crop&q=80",
-    fechaRegistro: "Hoy, 18:15",
-    estado: "pendiente",
-  },
-  {
-    id: "cli-103",
-    nombres: "Lucas Damián",
-    apellidos: "Rodríguez",
-    dni: "41998877",
-    email: "lucas.rod@gmail.com",
-    fotoUri: "https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=400&auto=format&fit=crop&q=80",
-    fechaRegistro: "Ayer, 21:05",
-    estado: "pendiente",
-  },
-];
+async function obtenerTokenAuth(): Promise<string | null> {
+  const client = getSupabaseClient();
+  if (!client) return null;
+  const { data } = await client.auth.getSession();
+  return data.session?.access_token || null;
+}
 
-// Obtener clientes en estado pendiente
 export async function obtenerClientesPendientes(): Promise<ClientePendiente[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/clientes/pendientes`, {
-      headers: await headersConToken(),
+    const token = await obtenerTokenAuth();
+
+    // GET /api/clientes?estado=pending
+    const response = await fetch(`${API_URL}/api/clientes?estado=pending`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
     });
+
     if (response.ok) {
-      const data = await response.json();
-      const resultado = Array.isArray(data) ? data : data.data || [];
-      if (resultado.length > 0) return resultado;
+      const json = await response.json();
+      const lista = json.data || [];
+
+      return lista.map((u: any) => ({
+        id: u.id,
+        nombres: u.first_name || "Sin nombre",
+        apellidos: u.last_name || "",
+        dni: u.dni || "S/D",
+        email: u.email || "",
+        fotoUri: u.photo_url || "https://via.placeholder.com/150",
+        fechaRegistro: u.created_at
+          ? new Date(u.created_at).toLocaleDateString("es-AR")
+          : "Reciente",
+        estado: u.status,
+      }));
     }
-  } catch (error) {
-    console.warn("Backend /clientes/pendientes no disponible, usando datos locales:", error);
+  } catch (err: any) {
+    console.warn("⚠️ [Aprobación] Falló GET al backend, intentando directo en Supabase:", err.message);
   }
-  return CLIENTES_PENDIENTES_LOCAL.filter((c) => c.estado === "pendiente");
+
+  // Fallback directo a Supabase con el rol y status exactos del backend
+  const { data, error } = await supabase
+    .from("users")
+    .select("*")
+    .eq("role", "registered_client")
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.warn("⚠️ Error en consulta directa a Supabase:", error.message);
+    return [];
+  }
+
+  return (data || []).map((u: any) => ({
+    id: u.id,
+    nombres: u.first_name || "Sin nombre",
+    apellidos: u.last_name || "",
+    dni: u.dni || "S/D",
+    email: u.email || "",
+    fotoUri: u.photo_url || "https://via.placeholder.com/150",
+    fechaRegistro: u.created_at
+      ? new Date(u.created_at).toLocaleDateString("es-AR")
+      : "Reciente",
+    estado: u.status,
+  }));
 }
 
-// Resolver solicitud (Aprobar o Rechazar)
 export async function responderSolicitudCliente(
   id: string,
-  accion: "aprobado" | "rechazado"
-): Promise<{ ok: boolean; mensaje: string }> {
+  decision: "aprobado" | "rechazado"
+): Promise<{ exito: boolean; mensaje: string }> {
   try {
-    const response = await fetch(`${API_BASE_URL}/clientes/${id}/estado`, {
-      method: "PUT",
-      headers: await headersConToken({ "Content-Type": "application/json" }),
-      body: JSON.stringify({ estado: accion }),
+    const token = await obtenerTokenAuth();
+    const nuevoEstado = decision === "aprobado" ? "approved" : "rejected";
+
+    const response = await fetch(`${API_URL}/api/clientes/${id}/status`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      body: JSON.stringify({
+        status: nuevoEstado,
+      }),
     });
 
-    if (response.ok) {
-      const data = await response.json();
-      return { ok: true, mensaje: data.mensaje || `Cliente ${accion} correctamente.` };
+    const json = await response.json();
+
+    if (!response.ok) {
+      throw new Error(json.error || json.detalle || "Error al actualizar estado");
     }
-  } catch (error) {
-    console.warn(`Error al ${accion} cliente en backend, aplicando localmente:`, error);
+
+    return {
+      exito: true,
+      mensaje: json.mensaje || (decision === "aprobado" ? "Cliente aprobado con éxito." : "Cliente rechazado."),
+    };
+  } catch (err: any) {
+    console.warn("⚠️ [Aprobación] Falló PATCH en backend, aplicando directo en Supabase:", err.message);
+
+    const nuevoEstado = decision === "aprobado" ? "approved" : "rejected";
+    const { error } = await supabase
+      .from("users")
+      .update({ status: nuevoEstado })
+      .eq("id", id)
+      .eq("role", "registered_client");
+
+    if (error) {
+      return { exito: false, mensaje: error.message };
+    }
+
+    return {
+      exito: true,
+      mensaje: decision === "aprobado" ? "Cliente aprobado (directo en BD)." : "Cliente rechazado.",
+    };
   }
-
-  // Actualización local
-  CLIENTES_PENDIENTES_LOCAL = CLIENTES_PENDIENTES_LOCAL.map((c) =>
-    c.id === id ? { ...c, estado: accion } : c
-  );
-
-  return {
-    ok: true,
-    mensaje:
-      accion === "aprobado"
-        ? "Cliente Aprobado. Se ha enviado el correo de confirmación de acceso."
-        : "Cliente Rechazado. Se ha notificado la decisión por correo electrónico.",
-  };
 }

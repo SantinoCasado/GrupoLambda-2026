@@ -1,50 +1,5 @@
-// import { API_BASE_URL } from "./apiConfig";
-// import { USUARIOS_PRECARGADOS, UsuarioSeed } from "../data/usuariosPrecargados";
-
-// export async function login(email: string, clave: string): Promise<UsuarioSeed> {
-//   const urlDestino = `${API_BASE_URL}/usuarios/login`;
-
-//   try {
-//     const response = await fetch(urlDestino, {
-//       method: "POST",
-//       headers: {
-//         "Content-Type": "application/json",
-//       },
-//       body: JSON.stringify({
-//         email: email.trim().toLowerCase(),
-//         password: clave.trim(),
-//       }),
-//     });
-
-//     const data = await response.json();
-
-//     if (!response.ok) {
-//       throw new Error(data.message || data.error || "Credenciales inválidas.");
-//     }
-
-//     const userData = data.user || data.data || data.usuario || data;
-//     const rol = (userData.role || userData.perfil || "cliente_registrado").toLowerCase();
-
-//     return {
-//       id: userData.id || "usr_db",
-//       email: userData.email || email,
-//       clave: clave,
-//       perfil: rol as any,
-//       tituloVisual: rol.charAt(0).toUpperCase() + rol.slice(1),
-//       nombres: userData.nombre || userData.nombres || "Usuario",
-//       apellidos: userData.apellido || userData.apellidos || "",
-//       documento: userData.documento || userData.dni || "00000000",
-//       foto: userData.foto || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400",
-//       icono: "👤",
-//     };
-//   } catch (error: any) {
-//     console.warn("Error en login:", error.message);
-//     throw new Error(error.message || "Error al conectar con el servidor.");
-//   }
-// }
-// src/services/authService.ts
 import { USUARIOS_PRECARGADOS, UsuarioSeed, PerfilUsuario } from "../data/usuariosPrecargados";
-import { getSupabaseClient, isSupabaseConfigured } from "../config/supabase";
+import { getSupabaseClient, isSupabaseConfigured, supabase } from "../config/supabase";
 
 // Mapea el rol en inglés (tabla 'users') al perfil en español del frontend
 const ROLE_TO_PERFIL: Record<string, PerfilUsuario> = {
@@ -57,17 +12,18 @@ const ROLE_TO_PERFIL: Record<string, PerfilUsuario> = {
   delivery: "mozo",
   cliente: "cliente_registrado",
   cliente_registrado: "cliente_registrado",
+  registered_client: "cliente_registrado",
   cliente_anonimo: "cliente_anonimo",
 };
 
-// Intenta autenticar contra Supabase Auth directamente (sin endpoint propio del backend)
+// Intenta autenticar contra Supabase Auth directamente
 async function loginConSupabase(email: string, clave: string): Promise<UsuarioSeed> {
-  const supabase = getSupabaseClient();
-  if (!supabase) {
+  const client = getSupabaseClient();
+  if (!client) {
     throw new Error("Supabase no configurado.");
   }
 
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await client.auth.signInWithPassword({
     email: email.trim().toLowerCase(),
     password: clave.trim(),
   });
@@ -76,8 +32,8 @@ async function loginConSupabase(email: string, clave: string): Promise<UsuarioSe
     throw new Error(error?.message || "Credenciales inválidas.");
   }
 
-  // Obtener el perfil desde la tabla pública 'users'
-  const { data: perfil, error: perfilError } = await supabase
+  // Obtiene el perfil desde la tabla pública 'users'
+  const { data: perfil, error: perfilError } = await client
     .from("users")
     .select("*")
     .eq("id", data.user.id)
@@ -89,6 +45,22 @@ async function loginConSupabase(email: string, clave: string): Promise<UsuarioSe
 
   const rol = (perfil.role || "").toLowerCase();
   const perfilUsuario: PerfilUsuario = ROLE_TO_PERFIL[rol] || "cliente_registrado";
+
+  // VALIDACIÓN DE ESTADO PARA CLIENTES REGISTRADOS
+  if (perfilUsuario === "cliente_registrado") {
+    const estado = (perfil.status || "").toLowerCase();
+
+    if (estado === "pending" || estado === "pendiente") {
+      await client.auth.signOut();
+      throw new Error("Tu cuenta está pendiente de aprobación por parte de un dueño o supervisor.");
+    }
+
+    if (estado === "rejected" || estado === "rechazado") {
+      await client.auth.signOut();
+      throw new Error("Tu solicitud de registro ha sido rechazada.");
+    }
+  }
+
   const esSinFoto = perfilUsuario === "dueño" || perfilUsuario === "supervisor";
 
   return {
@@ -105,9 +77,9 @@ async function loginConSupabase(email: string, clave: string): Promise<UsuarioSe
   };
 }
 
-// Login local contra los usuarios precargados (fallback para demos sin Supabase configurado)
+// Login local contra los usuarios precargados
 async function loginLocal(email: string, clave: string): Promise<UsuarioSeed> {
-  await new Promise((resolve) => setTimeout(resolve, 500));
+  await new Promise((resolve) => setTimeout(resolve, 300));
 
   const usuario = USUARIOS_PRECARGADOS.find(
     (u) => u.email.toLowerCase() === email.trim().toLowerCase() && u.clave === clave
@@ -121,15 +93,24 @@ async function loginLocal(email: string, clave: string): Promise<UsuarioSeed> {
 }
 
 export async function login(email: string, clave: string): Promise<UsuarioSeed> {
-  // 1. Si Supabase está configurado, intentamos autenticar por Auth primero.
   if (isSupabaseConfigured) {
     try {
       return await loginConSupabase(email, clave);
     } catch (error: any) {
-      console.warn("Login Supabase falló, usando fallback local:", error.message);
+      const mensaje = error?.message || "";
+
+      // 🛑 Si el error es de bloqueo de cuenta (pendiente o rechazada), se corta acá y se lanza el error directo a la UI
+      if (
+        mensaje.includes("pendiente de aprobación") ||
+        mensaje.includes("rechazada")
+      ) {
+        throw error;
+      }
+
+      console.log("ℹ️ [Auth] Intento fallido en Supabase, evaluando fallback local:", mensaje);
     }
   }
 
-  // 2. Fallback local para usuarios precargados (demostración / sin backend).
+  // Fallback local únicamente para credenciales precargadas de testing
   return loginLocal(email, clave);
 }

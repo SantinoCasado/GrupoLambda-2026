@@ -79,8 +79,8 @@ export const ACCESOS_RAPIDOS: AccesoRapido[] = [
     id: "acceso_cliente",
     tituloVisual: "Cliente Registrado",
     icono: "👤",
-    email: "EMAIL_CLIENTE_AQUI",
-    clave: "CONTRASENA_AQUI",
+    email: "cliente@restaurante.com",
+    clave: "123456",
   },
 ];
 

@@ -6,6 +6,7 @@ import { UsuarioSeed } from "./src/data/usuariosPrecargados";
 import { LoginScreen } from "./src/screens/loginScreen";
 import HomeScreen, { HomeDestino } from "./src/screens/homeScreen";
 import { AuthProvider } from "./src/context/AuthContext";
+import { CartProvider } from "./src/context/carritoContext";
 import { getSupabaseClient } from "./src/config/supabase";
 
 // Pantallas
@@ -14,6 +15,8 @@ import AltaProductoScreen from "./src/screens/altaProducto";
 import AltaMesaScreen from "./src/screens/altaMesaScreen";
 import RegistroClienteScreen from "./src/screens/registroClienteScreen";
 import AprobacionClientesScreen from "./src/screens/aprobacionClientesScreen";
+import { CartaScreen } from "./src/screens/cartaScreen";
+import { CarritoScreen } from "./src/screens/carritoScreen";
 import ScreenBackground from "./src/components/ScreenBackground";
 
 const NO_PHOTO = require("./assets/images/no-photo.jpg");
@@ -31,12 +34,16 @@ type VistaPrivada =
   | "mesas"
   | "clientes"
   | "producto"
-  | "registro_metre";
+  | "registro_metre"
+  | "carta"
+  | "carrito";
 
 export default function App() {
   return (
     <AuthProvider>
-      <AppInterna />
+      <CartProvider>
+        <AppInterna />
+      </CartProvider>
     </AuthProvider>
   );
 }
@@ -46,6 +53,7 @@ function AppInterna() {
   const [vistaPrivada, setVistaPrivada] = useState<VistaPrivada>("home");
   const [vistaPublica, setVistaPublica] = useState<"login" | "registro_cliente">("login");
   const [perfilAltaEmpleado, setPerfilAltaEmpleado] = useState<string | null>(null);
+  const [tipoCartaSeleccionada, setTipoCartaSeleccionada] = useState<"comida" | "bebida" | "todo">("comida");
 
   const cerrarSesion = () => {
     Vibration.vibrate([0, 50, 50, 50]);
@@ -57,9 +65,14 @@ function AppInterna() {
     setVistaPublica("login");
   };
 
-  const irA = (destino: HomeDestino, perfil?: string) => {
+  const irA = (destino: HomeDestino, parametro?: string) => {
     setVistaPrivada(destino);
-    if (destino === "empleados" && perfil) setPerfilAltaEmpleado(perfil);
+    if (destino === "empleados" && parametro) {
+      setPerfilAltaEmpleado(parametro);
+    }
+    if (destino === "carta" && parametro) {
+      setTipoCartaSeleccionada(parametro as "comida" | "bebida" | "todo");
+    }
   };
 
   const volverAlInicio = () => {
@@ -67,7 +80,7 @@ function AppInterna() {
     setVistaPrivada("home");
   };
 
-  // Si no hay sesión iniciada (Público: Login o Auto-registro del Cliente)
+  // 1. Vistas Públicas
   if (!usuarioActual) {
     if (vistaPublica === "registro_cliente") {
       return (
@@ -97,16 +110,17 @@ function AppInterna() {
     );
   }
 
-  // Clasificación de rol
+  // 2. Clasificación de roles
   const esAdmin = usuarioActual.perfil === "dueño" || usuarioActual.perfil === "supervisor";
   const esProducto =
     usuarioActual.perfil === "cocinero" || usuarioActual.perfil === "cantinero";
+  const esCliente =
+    usuarioActual.perfil === "cliente_registrado" || usuarioActual.perfil === "cliente_anonimo";
 
-  // Si estamos en la Home, renderizamos el menú de inicio
+  // 3. Vista Home
   if (vistaPrivada === "home") {
     return (
       <SafeAreaView className="flex-1 bg-vino">
-        {/* Barra superior con datos de sesión */}
         <View className="flex-row items-center justify-between border-b-2 border-caramelo bg-vino px-5 py-3">
           <View className="flex-row items-center flex-1">
             <Image
@@ -139,16 +153,18 @@ function AppInterna() {
     );
   }
 
-  // Si el usuario intenta acceder a una vista que no le corresponde, se le devuelve a la Home
+  // 4. Validación de Acceso a Vistas Privadas
   const accesoValido =
-    vistaPrivada === "empleados" ||
-    vistaPrivada === "mesas" ||
-    vistaPrivada === "clientes"
+    vistaPrivada === "empleados" || vistaPrivada === "mesas" || vistaPrivada === "clientes"
       ? esAdmin
       : vistaPrivada === "producto"
       ? esProducto
       : vistaPrivada === "registro_metre"
       ? usuarioActual.perfil === "metre"
+      : vistaPrivada === "carta"
+      ? esProducto || esCliente
+      : vistaPrivada === "carrito"
+      ? esCliente
       : true;
 
   if (!accesoValido) {
@@ -156,19 +172,15 @@ function AppInterna() {
       <SafeAreaView className="flex-1 bg-vino">
         <View className="flex-1">
           <ScreenBackground />
-          <HomeScreen
-            usuario={usuarioActual}
-            onNavigate={irA}
-          />
+          <HomeScreen usuario={usuarioActual} onNavigate={irA} />
         </View>
       </SafeAreaView>
     );
   }
 
-  // Renderizado de la vista privada elegida
+  // 5. Renderizado de la Pantalla Interna Seleccionada
   return (
     <SafeAreaView className="flex-1 bg-vino">
-      {/* Barra superior con datos de sesión + botón Volver */}
       <View className="flex-row items-center justify-between border-b-2 border-caramelo bg-vino px-5 py-3">
         <View className="flex-row items-center flex-1">
           <Image
@@ -214,6 +226,22 @@ function AppInterna() {
           />
         )}
         {vistaPrivada === "registro_metre" && <RegistroClienteScreen modo="metre" />}
+        {vistaPrivada === "carta" && (
+          <CartaScreen
+            tipo={tipoCartaSeleccionada}
+            rolUsuario={usuarioActual.perfil}
+            onVolver={volverAlInicio}
+            onIrAlCarrito={() => setVistaPrivada("carrito")}
+          />
+        )}
+        {vistaPrivada === "carrito" && (
+          <CarritoScreen
+            onVolver={volverAlInicio}
+            onConfirmarPedido={() => {
+              // Lógica de confirmación
+            }}
+          />
+        )}
       </View>
     </SafeAreaView>
   );
