@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { registrarCliente, registrarClienteAnonimo, listarClientes, actualizarEstadoCliente } from './cliente.controllers';
+import { registrarCliente, registrarClienteAnonimo, listarClientes, actualizarEstadoCliente, eliminarUsuarioFisico } from './cliente.controllers';
 import { upload } from '../../middleware/upload.middleware';
 import { verificarAutenticacion, requerirRol } from '../../middleware/auth.middleware';
 
@@ -23,5 +23,13 @@ router.get('/', listarClientes);
 // 'foto' es el nombre del campo (key) que el frontend debe usar al enviar el archivo
 router.post('/register', upload.single('foto'), registrarCliente); // Para clientes registrados (CU-05)
 router.post('/anonymous', registrarClienteAnonimo); // Para clientes anónimos (CU-09)
+
+
+
+//==========================================================================================
+// RUTA DE DELETE FISICO DE USUARIO, SOLO PARA DESARROLLO Y TESTING, NO PARA PRODUCCION
+//==========================================================================================
+router.delete('/:id', eliminarUsuarioFisico);
+
 
 export default router;

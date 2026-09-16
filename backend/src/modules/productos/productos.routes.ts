@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { crearProducto, bajaLogicaProducto, obtenerProductos } from './productos.controller';
+import { crearProducto, bajaLogicaProducto, obtenerProductos, eliminarProductoFisico } from './productos.controller';
 import { verificarAutenticacion } from '../../middleware/auth.middleware'; 
 import { upload } from '../../middleware/upload.middleware'; // Con llaves porque es una exportación nombrada
 
@@ -24,5 +24,11 @@ router.patch(
 
 // GET para listar productos (soporta query param ?category=)
 router.get('/', verificarAutenticacion, obtenerProductos);
+
+
+//==========================================================================================
+// RUTA DE DELETE FISICO DE PRODUCTO, SOLO PARA DESARROLLO Y TESTING, NO PARA PRODUCCION
+//==========================================================================================
+router.delete('/:id', eliminarProductoFisico);
 
 export default router;

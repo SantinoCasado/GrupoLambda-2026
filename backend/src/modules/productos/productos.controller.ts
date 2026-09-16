@@ -149,3 +149,24 @@ export const obtenerProductos = async (req: Request, res: Response): Promise<Res
         return res.status(500).json({ error: 'Fallo al obtener los productos', detalle: error.message });
     }
 };
+
+
+//==========================================================================================
+// OPERACION DE DELETE FISICO DE PRODUCTO, SOLO PARA DESARROLLO Y TESTING, NO PARA PRODUCCION
+//==========================================================================================
+export const eliminarProductoFisico = async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    try {
+        const { error } = await supabase
+            .from('products')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
+        return res.status(200).json({ mensaje: 'Producto eliminado físicamente de forma exitosa' });
+    } catch (error: any) {
+        return res.status(500).json({ error: `Error al eliminar el producto: ${error.message}` });
+    }
+};
