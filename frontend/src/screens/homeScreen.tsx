@@ -49,37 +49,13 @@ export default function HomeScreen({ usuario, onNavigate }: Props) {
     <>
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: 50, paddingTop: insets.top }}
+        contentContainerStyle={{ paddingBottom: esCliente ? 140 : 50, paddingTop: insets.top }}
         showsVerticalScrollIndicator={false}
       >
         <StatusBar style="light" />
 
         {/* Saludo */}
         <View className="px-6 pt-5">
-          {esCliente && (
-            <View className="mb-1 flex-row items-center justify-between">
-              <View className="flex-row items-center flex-1 mr-2">
-                <Text className="text-3xl mr-3">{usuario.icono}</Text>
-                <View className="flex-1">
-                  <Text className="text-2xl font-black text-mostaza uppercase">
-                    Hola, {usuario.nombres}
-                  </Text>
-                  <Text className="text-xs font-bold text-vino uppercase">
-                    {usuario.tituloVisual}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Acceso directo al Carrito con contador */}
-              {/* <TouchableOpacity
-                onPress={() => navegar("carrito")}
-                className="mt-20 flex-row items-center rounded-2xl border-2 border-mostaza bg-vino px-3.5 py-2 active:bg-terracota"
-              >
-                <Text className="text-sm font-black text-mostaza">🛒 {carrito.length}</Text>
-              </TouchableOpacity> */}
-            </View>
-          )}
-
           <Image
             source={require("../../assets/images/logo-name.png")}
             className="mt-6 h-20 w-auto self-center"
@@ -167,11 +143,7 @@ export default function HomeScreen({ usuario, onNavigate }: Props) {
                 className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota"
               >
                 <Image
-                  source={
-                    perfil === "cocinero"
-                      ? require("../../assets/images/food-y.png")
-                      : require("../../assets/images/martini-glass-y.png")
-                  }
+                  source={require("../../assets/images/employeeRegistration-y.png")}
                   className="w-8 h-8 mr-3"
                   resizeMode="contain"
                 />
@@ -191,7 +163,11 @@ export default function HomeScreen({ usuario, onNavigate }: Props) {
                 onPress={() => navegar("carta", perfil === "cocinero" ? "comida" : "bebida")}
                 className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota"
               >
-                <Text className="text-2xl mr-3">{perfil === "cocinero" ? "🍲" : "🍹"}</Text>
+                <Image
+                  source={perfil === "cocinero" ? require("../../assets/images/food-y.png") : require("../../assets/images/martini-glass-y.png")}
+                  className="h-7 w-7 mr-3"
+                  resizeMode="contain"
+                />
                 <View className="flex-1">
                   <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
                     {perfil === "cocinero" ? "Ver Carta de Platos" : "Ver Carta de Bebidas"}
@@ -215,13 +191,13 @@ export default function HomeScreen({ usuario, onNavigate }: Props) {
                 onPress={() => navegar("carta", "comida")}
                 className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota"
               >
-                <Text className="text-3xl mr-3">🍲</Text>
+                <Image source={require("../../assets/images/food-y.png")} className="h-7 w-7 mr-3" resizeMode="contain" />
                 <View className="flex-1">
                   <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
                     Carta de Platos
                   </Text>
                   <Text className="text-[11px] font-semibold text-amber-100">
-                    Ver comidas y agregar al carrito
+                    Ver comidas
                   </Text>
                 </View>
                 <Image source={require("../../assets/images/right-arrow-y.png")} className="h-6 w-6" resizeMode="contain" />
@@ -232,33 +208,16 @@ export default function HomeScreen({ usuario, onNavigate }: Props) {
                 onPress={() => navegar("carta", "bebida")}
                 className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota"
               >
-                <Text className="text-3xl mr-3">🍹</Text>
+                <Image source={require("../../assets/images/martini-glass-y.png")} className="h-7 w-7 mr-3" resizeMode="contain" />
                 <View className="flex-1">
                   <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
                     Carta de Bebidas
                   </Text>
                   <Text className="text-[11px] font-semibold text-amber-100">
-                    Ver tragos y bebidas disponibles
+                    Ver tragos y bebidas
                   </Text>
                 </View>
                 <Image source={require("../../assets/images/right-arrow-y.png")} className="h-6 w-6" resizeMode="contain" />
-              </TouchableOpacity>
-
-              {/* Botón Carrito */}
-              <TouchableOpacity
-                onPress={() => navegar("carrito")}
-                className="flex-row items-center rounded-2xl border-2 border-calabaza bg-mostaza p-4 active:bg-mostaza/80"
-              >
-                <Text className="text-3xl mr-3">🛒</Text>
-                <View className="flex-1">
-                  <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-vino font-black">
-                    Mi Pedido ({carrito.length})
-                  </Text>
-                  <Text className="text-[11px] font-semibold text-stone-800">
-                    Revisar comanda y confirmar orden
-                  </Text>
-                </View>
-                <Image source={require("../../assets/images/right-arrow-y.png")} className="h-6 w-6 tint-vino" resizeMode="contain" />
               </TouchableOpacity>
             </View>
           )}
@@ -302,6 +261,27 @@ export default function HomeScreen({ usuario, onNavigate }: Props) {
           )}
         </View>
       </ScrollView>
+
+      {/* Botón Mi Pedido fijo al pie de la pantalla (solo clientes) */}
+      {esCliente && (
+        <View className="px-6 pb-6 pt-2">
+          <TouchableOpacity
+            onPress={() => navegar("carrito")}
+            className="flex-row items-center rounded-2xl border-2 border-vino bg-mostaza p-4 active:bg-mostaza/80"
+          >
+            <Image source={require("../../assets/images/cart-v.png")} className="h-7 w-7 mr-3" resizeMode="contain" />
+            <View className="flex-1">
+              <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-vino font-black">
+                Mi Pedido ({carrito.length})
+              </Text>
+              <Text className="text-[11px] font-semibold text-stone-800">
+                Revisar pedido y confirmar
+              </Text>
+            </View>
+            <Image source={require("../../assets/images/right-arrow-y.png")} className="h-6 w-6 tint-vino" resizeMode="contain" />
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Nombres del equipo */}
       <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + 16 }}>
