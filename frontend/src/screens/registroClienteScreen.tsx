@@ -315,7 +315,7 @@ export default function RegistroClienteScreen({ onVolverAlLogin, modo = "cliente
       )}
 
 {/* Nombres del equipo */}
-      <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + 60 }}>
+      <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + (modo === "metre" ? 16 : 60) }}>
         <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
         <Text className="text-[10px] text-vino/70">Santino Casado</Text>
         <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
@@ -323,7 +323,7 @@ export default function RegistroClienteScreen({ onVolverAlLogin, modo = "cliente
       </View>
 
       {/* Cabecera */}
-      <View className="px-5 pt-16">
+      <View className={`px-5 ${modo === "metre" ? "pt-4" : "pt-16"}`}>
         <View className="mb-4">
           <Image
             source={require("../../assets/images/logo-name.png")}
