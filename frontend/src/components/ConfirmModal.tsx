@@ -1,11 +1,11 @@
-import React from "react";
+import React, { ReactNode } from "react";
 import { Modal, View, Text, Image, TouchableOpacity } from "react-native";
 import { ChineseFrame } from "./ChineseFrame";
 
 interface ConfirmModalProps {
   visible: boolean;
   titulo: string;
-  mensaje?: string;
+  mensaje?: string | ReactNode;
   textoConfirmar?: string;
   textoCancelar?: string;
   cargando?: boolean;
@@ -29,7 +29,7 @@ export function ConfirmModal({
   const icono = esPeligro
     ? require("../../assets/images/important-y.png")
     : require("../../assets/images/confirm-y.png");
-  const colorBoton = esPeligro ? "bg-terracota" : "bg-mostaza";
+  const colorBoton = "bg-mostaza";
   const colorBotonActivo = esPeligro ? "active:bg-rose-700" : "active:bg-amber-600";
 
   return (

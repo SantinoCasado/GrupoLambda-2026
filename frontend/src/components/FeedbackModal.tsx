@@ -1,17 +1,18 @@
 // src/components/FeedbackModal.tsx
-import React from "react";
-import { Modal, View, Text, TouchableOpacity } from "react-native";
+import React, { ReactNode } from "react";
+import { Modal, View, Text, TouchableOpacity, Image, ImageSourcePropType } from "react-native";
 import { ChineseFrame } from "./ChineseFrame";
 
 interface FeedbackModalProps {
   visible: boolean;
   tipo: "exito" | "error" | "informacion";
   titulo: string;
-  mensaje: string;
+  mensaje: string | ReactNode;
   onClose: () => void;
+  iconoImagen?: ImageSourcePropType;
 }
 
-export function FeedbackModal({ visible, tipo, titulo, mensaje, onClose }: FeedbackModalProps) {
+export function FeedbackModal({ visible, tipo, titulo, mensaje, onClose, iconoImagen }: FeedbackModalProps) {
   const estilos = {
   exito: {
     marco: "#10b981",
@@ -35,14 +36,16 @@ export function FeedbackModal({ visible, tipo, titulo, mensaje, onClose }: Feedb
     colorButtonText: "text-[#FBE9DF]",
     icono: "✕",
   },
-  informacion: {
-    marco: "#f7b538",
-    fondo: "bg-terracota",
-    fondoIcono: "bg-calabaza",
-    colorIcono: "text-mostaza",
-    colorTitulo: "text-mostaza",
-    colorMensaje: "text-mostaza",
-    icono: "ℹ",
+informacion: {
+    marco: "#c32f27",
+    fondo: "bg-[#FBE9DF]",
+    fondoIcono: "bg-terracota",
+    colorIcono: "text-[#FBE9DF]",
+    colorTitulo: "text-vino",
+    colorMensaje: "text-vino",
+    colorButtonText: "text-[#FBE9DF]",
+    colorButton: "bg-terracota",
+    icono: "!",
   },
 }[tipo];
 
@@ -53,7 +56,11 @@ export function FeedbackModal({ visible, tipo, titulo, mensaje, onClose }: Feedb
           <View className={`w-full p-6`}>
             <View className="items-center">
               <View className={`mb-4 h-16 w-16 items-center justify-center rounded-full ${estilos.fondoIcono}`}>
-                <Text className={`text-3xl font-black ${estilos.colorIcono}`}>{estilos.icono}</Text>
+                {iconoImagen ? (
+                  <Image source={iconoImagen} className="h-12 w-12 mr-1" resizeMode="contain" />
+                ) : (
+                  <Text className={`text-3xl font-black ${estilos.colorIcono}`}>{estilos.icono}</Text>
+                )}
               </View>
               <Text className={`mb-2 text-center text-xl font-black tracking-wide ${estilos.colorTitulo}`}>
                 {titulo}
