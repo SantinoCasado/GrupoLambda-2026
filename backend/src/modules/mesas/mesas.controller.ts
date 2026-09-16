@@ -111,3 +111,24 @@ export const obtenerMesas = async (req: Request, res: Response): Promise<Respons
         return res.status(500).json({ error: 'Fallo al obtener las mesas', detalle: error.message });
     }
 };
+
+
+//==========================================================================================
+// OPERACION DE DELETE FISICO DE MESA, SOLO PARA DESARROLLO Y TESTING, NO PARA PRODUCCION
+//==========================================================================================
+export const eliminarMesaFisica = async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    try {
+        const { error } = await supabase
+            .from('restaurant_tables')
+            .delete()
+            .eq('id', id);
+
+        if (error) throw error;
+
+        return res.status(200).json({ mensaje: 'Mesa eliminada físicamente de la base de datos' });
+    } catch (error: any) {
+        return res.status(500).json({ error: `Error al eliminar la mesa: ${error.message}` });
+    }
+};

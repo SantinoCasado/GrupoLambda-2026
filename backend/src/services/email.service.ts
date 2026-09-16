@@ -26,7 +26,7 @@ export const enviarNotificacionAprobacion = async (email: string, nombre: string
             <p>Te escribimos para informarte que el estado de tu cuenta ha sido actualizado a: <strong>${esAprobado ? 'Aprobado' : 'Rechazado'}</strong>.</p>
             ${esAprobado 
                 ? '<p>Ya podés iniciar sesión en la aplicación para escanear tu mesa y disfrutar de la mejor comida china.</p>' 
-                : '<p>No hemos podido verificar tu identidad con la foto proporcionada. Acercate al local o intentá registrarte nuevamente.</p>'
+                : '<p>Lamentablemente, no hemos podido aprobar tu solicitud de registro en esta ocasión. Te sugerimos intentar registrarte nuevamente verificando que todos tus datos y tu fotografía sean claros y correctos, o acercate a alguno de nuestro empleados para más información.</p>'
             }
             <br>
             <p style="font-size: 12px; color: #718096; border-top: 1px solid #e2e8f0; padding-top: 10px;">Atentamente,<br>El equipo de Grupo Lambda</p>

@@ -61,42 +61,79 @@ export const registrarClienteAnonimoService = async (datos: RegistrarAnonimoDTO)
 
 // Actualizar el estado de un cliente registrado (CU-06)
 export const actualizarEstadoClienteService = async (id: string, status: 'approved' | 'rejected') => {
-    // Actualiza el estado en la tabla public.users
-    const { data, error } = await supabase
+    // trae los datos del cliente ANTES de tocar nada.
+    // nos asegura de tener el email y el push_token para notificarle pase lo que pase.
+    const { data: clienteOriginal, error: errorBusqueda } = await supabase
         .from('users')
-        .update({ status: status })
+        .select('*')
         .eq('id', id)
-        .eq('role', 'registered_client') // Seguridad extra para asegurar que modifica un cliente
-        .select()
-        .single(); // Trae el registro actualizado
+        .eq('role', 'registered_client')
+        .single();
 
-    if (error) {
-        throw new Error(`Error actualizando cliente en base de datos: ${error.message}`);
-    }
-
-    if (!data) {
+    if (errorBusqueda || !clienteOriginal) {
         throw new Error('Cliente no encontrado en la base de datos');
     }
 
-    // Dispara el correo electronico de forma asincrona mediante NodeMailer (no bloquea la respuesta al frontend)
-    await enviarNotificacionAprobacion(data.email, data.first_name, status);
+    let datosRespuesta = clienteOriginal;
 
-    // Si el cliente ya escaneo o se registro y tiene su Expo Push Token guardado:
-    if (data.push_token) {
+    // Evalua la accion del supervisor
+    if (status === 'approved') {
+        // SI APRUEBA: Solo actualiza el estado a 'approved'
+        const { data: clienteActualizado, error: errorUpdate } = await supabase
+            .from('users')
+            .update({ status: 'approved' })
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (errorUpdate) {
+            throw new Error(`Error actualizando cliente en base de datos: ${errorUpdate.message}`);
+        }
+        datosRespuesta = clienteActualizado;
+
+    } else if (status === 'rejected') {
+        // SI RECHAZA: Lo borra completamente del sistema
+        
+        // Borra el usuario del sistema de Autenticación (Libera el email para que vuelva a intentar)
+        const { error: errorAuth } = await supabase.auth.admin.deleteUser(id);
+        if (errorAuth) {
+            console.warn('Advertencia: No se pudo borrar el usuario de Auth:', errorAuth.message);
+        }
+
+        // Borramos el registro de la tabla pública (Por si no tienen configurado el borrado en cascada en Supabase)
+        const { error: errorDelete } = await supabase
+            .from('users')
+            .delete()
+            .eq('id', id);
+
+        if (errorDelete) {
+            throw new Error(`Error eliminando al cliente rechazado: ${errorDelete.message}`);
+        }
+        
+        // Forzamos el estado a rejected en la respuesta para que el frontend sepa qué pasó
+        datosRespuesta.status = 'rejected'; 
+    }
+
+    // Dispara el correo electronico de forma asincrona
+    await enviarNotificacionAprobacion(clienteOriginal.email, clienteOriginal.first_name, status);
+
+    // Dispara el Push Notification si tiene token guardado
+    if (clienteOriginal.push_token) {
         const tituloPush = status === 'approved' ? '¡Cuenta Aprobada! 🎉' : 'Actualización de cuenta';
         const cuerpoPush = status === 'approved' 
             ? 'Ya podés ingresar a la app del restaurante.' 
-            : 'Tu solicitud de registro fue rechazada.';
+            : 'Tu solicitud de registro fue rechazada por el local.';
         
         await enviarPushNotification(
-            data.push_token, 
+            clienteOriginal.push_token, 
             tituloPush, 
             cuerpoPush, 
-            { statusActualizado: status } // Datos extra opcionales para el front
+            { statusActualizado: status } 
         );
     }
 
-    return data;
+    // Devuelve el resultado al controlador
+    return datosRespuesta;
 };
 
 // Listar clientes (Sirve para el CU-06 de aprobaciones)
