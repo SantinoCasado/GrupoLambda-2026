@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { listarClientesService, registrarClienteService, registrarClienteAnonimoService, actualizarEstadoClienteService } from './cliente.service';
 import { crearClienteSchema, crearClienteAnonimoSchema, cambiarEstadoSchema } from './schema/cliente.schema';
 import { subirImagenSupabase } from '../../services/storage.service';
+import { supabase } from '../../config/supabase';
 
 export const registrarCliente = async (req: Request, res: Response): Promise<Response> => {
     // Verifica que el archivo "foto" haya llegado
@@ -97,5 +98,37 @@ export const actualizarEstadoCliente = async (req: Request, res: Response): Prom
         });
     } catch (error: any) {
         return res.status(500).json({ error: error.message });
+    }
+};
+
+
+//==========================================================================================
+// OPERACION DE DELETE FISICO DE USUARIO, SOLO PARA DESARROLLO Y TESTING, NO PARA PRODUCCION
+//==========================================================================================
+export const eliminarUsuarioFisico = async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    if (!id || typeof id !== 'string') {
+        return res.status(400).json({ error: 'Se requiere un ID válido en formato texto.' });
+    }
+
+    try {
+        // Borra de Auth para liberar el email
+        const { error: errorAuth } = await supabase.auth.admin.deleteUser(id);
+        if (errorAuth) {
+            console.warn('No se pudo borrar de Auth (tal vez no existía):', errorAuth.message);
+        }
+
+        // Borra de la tabla pública
+        const { error: errorDb } = await supabase
+            .from('users')
+            .delete()
+            .eq('id', id);
+
+        if (errorDb) throw errorDb;
+
+        return res.status(200).json({ mensaje: 'Usuario Cliente eliminado físicamente con éxito' });
+    } catch (error: any) {
+        return res.status(500).json({ error: `Error al eliminar el usuario: ${error.message}` });
     }
 };
