@@ -1,8 +1,11 @@
 // src/screens/CarritoScreen.tsx
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { View, Text, FlatList, TouchableOpacity, Image, Alert } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCart, ItemCarrito } from "../context/carritoContext";
+import { ConfirmModal } from "../components/ConfirmModal";
+import { CompanySpinner } from "../components/CompanySpinner";
+import { FeedbackModal } from "../components/FeedbackModal";
 
 interface CarritoScreenProps {
   onVolver: () => void;
@@ -10,6 +13,28 @@ interface CarritoScreenProps {
 }
 
 export function CarritoScreen({ onVolver, onConfirmarPedido }: CarritoScreenProps) {
+  const insets = useSafeAreaInsets();
+  const [confirmandoVaciar, setConfirmandoVaciar] = useState(false);
+  const [vaciando, setVaciando] = useState(false);
+  const [modalFeedback, setModalFeedback] = useState<{
+    visible: boolean;
+    tipo: "exito" | "error" | "informacion";
+    titulo: string;
+    mensaje: string;
+  }>({
+    visible: false,
+    tipo: "informacion",
+    titulo: "",
+    mensaje: "",
+  });
+  const vaciarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (vaciarTimerRef.current) clearTimeout(vaciarTimerRef.current);
+    };
+  }, []);
+
   const {
     carrito,
     eliminarDelCarrito,
@@ -26,6 +51,25 @@ export function CarritoScreen({ onVolver, onConfirmarPedido }: CarritoScreenProp
       return;
     }
     onConfirmarPedido();
+  };
+
+  const confirmarVaciar = () => {
+    setConfirmandoVaciar(false);
+    setVaciando(true);
+    vaciarTimerRef.current = setTimeout(() => {
+      vaciarCarrito();
+      setVaciando(false);
+      setModalFeedback({
+        visible: true,
+        tipo: "exito",
+        titulo: "¡Carrito vaciado!",
+        mensaje: "Se eliminaron todos los productos de tu pedido.",
+      });
+    }, 800);
+  };
+
+  const cancelarVaciar = () => {
+    setConfirmandoVaciar(false);
   };
 
   const renderItem = ({ item }: { item: ItemCarrito }) => {
@@ -96,23 +140,42 @@ export function CarritoScreen({ onVolver, onConfirmarPedido }: CarritoScreenProp
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-amber-50 px-4 pt-2">
+    <View className="flex-1 px-6 pt-4 bg-amber-50/40">
+      {/* Nombres del equipo */}
+      <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + 16 }}>
+        <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
+        <Text className="text-[10px] text-vino/70">Santino Casado</Text>
+        <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
+        <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
+      </View>
+
+      {/* Cabecera */}
+      <View className="mb-2">
+        <Image
+          source={require("../../assets/images/logo-name.png")}
+          className="h-16 w-auto self-center"
+          resizeMode="contain"
+        />
+        <Image
+          source={require("../../assets/images/separator.png")}
+          className="my-2 h-5 w-full"
+          resizeMode="contain"
+        />
+      </View>
+
       {/* Encabezado */}
-      <View className="flex-row items-center justify-between border-b border-mostaza/30 pb-3 mb-4">
-        <TouchableOpacity onPress={onVolver} className="px-2 py-1">
-          <Text className="text-vino font-bold">← Volver</Text>
-        </TouchableOpacity>
+      <View className="relative flex-row items-center justify-between mb-1 border-b border-mostaza/20 pb-5">
         
-        <Text style={{ fontFamily: "LaOriental" }} className="text-xl uppercase text-vino">
+        <Text style={{ fontFamily: "LaOriental" }} className="absolute inset-x-0 z-10 text-center text-xl uppercase text-vino pointer-events-none pb-3">
           Mi Pedido
         </Text>
 
-        {carrito.length > 0 ? (
-          <TouchableOpacity onPress={vaciarCarrito} className="px-2 py-1">
+         {carrito.length > 0 ? (
+          <TouchableOpacity onPress={() => setConfirmandoVaciar(true)} className="ml-auto h-8 items-center justify-center rounded-xl bg-terracota/10 px-3 active:bg-terracota/20 z-20">
             <Text className="text-terracota text-xs font-bold">Vaciar</Text>
           </TouchableOpacity>
         ) : (
-          <View className="w-12" />
+          <View className="ml-auto h-8" />
         )}
       </View>
 
@@ -124,7 +187,11 @@ export function CarritoScreen({ onVolver, onConfirmarPedido }: CarritoScreenProp
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View className="items-center justify-center py-24">
-            <Text className="text-5xl mb-3">🛒</Text>
+            <Image
+              source={require("../../assets/images/cart-y.png")}
+              className="h-16 w-16 mb-3"
+              resizeMode="contain"
+            />
             <Text style={{ fontFamily: "LaOriental" }} className="text-lg uppercase text-vino">
               Tu carrito está vacío
             </Text>
@@ -137,27 +204,61 @@ export function CarritoScreen({ onVolver, onConfirmarPedido }: CarritoScreenProp
 
       {/* Resumen final y botón de envío de comanda */}
       {carrito.length > 0 && (
-        <View className="border-t border-mostaza/30 pt-3 pb-4 bg-amber-50">
+        <View className="border-t border-mostaza/30 pt-3 pb-4">
           <View className="flex-row justify-between items-center mb-1">
-            <Text className="text-xs font-medium text-stone-600">Tiempo de cocina estimado:</Text>
+            <Text className="text-xs font-medium text-stone-600">Tiempo de preparación estimado:</Text>
             <Text className="text-xs font-bold text-vino">⏱ {tiempoEstimadoTotal} min</Text>
           </View>
 
           <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-base font-bold text-stone-800">Total comanda:</Text>
+            <Text className="text-base font-bold text-stone-800">Total pedido:</Text>
             <Text className="text-2xl font-black text-calabaza">${total}</Text>
           </View>
 
           <TouchableOpacity
             onPress={handleConfirmar}
-            className="rounded-2xl bg-vino py-3.5 items-center active:bg-terracota shadow-md border-2 border-mostaza"
+            className="flex-row items-center justify-center rounded-2xl border border-amber-400/40 bg-vino py-3 active:bg-terracota shadow-md"
           >
-            <Text style={{ fontFamily: "LaOriental" }} className="text-mostaza uppercase tracking-wider text-base font-bold">
-              Confirmar Comanda
+            <Image
+              source={require("../../assets/images/sello.png")}
+              className="h-7 w-7"
+              resizeMode="contain"
+            />
+            <Text style={{ fontFamily: "LaOriental" }} className="mx-5 text-center text-l uppercase tracking-wider text-mostaza">
+              Confirmar pedido
             </Text>
+            <Image
+              source={require("../../assets/images/sello.png")}
+              className="h-7 w-7"
+              resizeMode="contain"
+            />
           </TouchableOpacity>
         </View>
       )}
-    </SafeAreaView>
+    {/* Bottom padding for safe area */}
+      <View style={{ height: insets.bottom }} />
+
+      <ConfirmModal
+        visible={confirmandoVaciar}
+        titulo="Vaciar carrito"
+        mensaje="¿Desea vaciar el carrito? Se eliminarán todos los productos de tu pedido."
+        textoConfirmar="Vaciar"
+        textoCancelar="Cancelar"
+        tipo="peligro"
+        cargando={vaciando}
+        onConfirm={confirmarVaciar}
+        onCancel={cancelarVaciar}
+      />
+
+      <CompanySpinner visible={vaciando} mensaje="Vaciando carrito..." />
+
+      <FeedbackModal
+        visible={modalFeedback.visible}
+        tipo={modalFeedback.tipo}
+        titulo={modalFeedback.titulo}
+        mensaje={modalFeedback.mensaje}
+        onClose={() => setModalFeedback((p) => ({ ...p, visible: false }))}
+      />
+    </View>
   );
 }
