@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   Image,
-  ActivityIndicator,
   Dimensions,
   ScrollView,
   NativeSyntheticEvent,
@@ -13,6 +12,9 @@ import {
 import { useCart, ItemMenu } from "../context/carritoContext";
 import { supabase } from "../config/supabase";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { CompanySpinner } from "../components/CompanySpinner";
+import { ConfirmModal } from "../components/ConfirmModal";
+import { FeedbackModal } from "../components/FeedbackModal";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const CARD_WIDTH = SCREEN_WIDTH - 48; // ancho adaptado con padding
@@ -27,12 +29,13 @@ interface CartaScreenProps {
 interface TarjetaProductoProps {
   item: ItemMenu;
   esCliente: boolean;
+  esStaff: boolean;
   esCocinero: boolean;
   onAgregar: () => void;
   onEliminar: () => void;
 }
 
-function TarjetaProducto({ item, esCliente, esCocinero, onAgregar, onEliminar }: TarjetaProductoProps) {
+function TarjetaProducto({ item, esCliente, esStaff, esCocinero, onAgregar, onEliminar }: TarjetaProductoProps) {
   const [fotoActiva, setFotoActiva] = useState(0);
   const [mostrarDots, setMostrarDots] = useState(false);
   const scrollFotosRef = useRef<ScrollView>(null);
@@ -140,12 +143,19 @@ function TarjetaProducto({ item, esCliente, esCocinero, onAgregar, onEliminar }:
       )}
 
       {/* 3b. Botón Dar de Baja (solo cocinero) */}
-      {esCocinero && (
+      {esStaff && (
         <TouchableOpacity
           onPress={onEliminar}
-          className="mt-4 rounded-xl bg-terracota/20 py-2.5 items-center active:bg-terracota/40"
+          className="mt-8 flex-row items-center justify-center rounded-2xl border border-terracota/40 bg-terracota/20 py-3 active:bg-terracota/40"
         >
-          <Text className="font-bold text-terracota text-xs">🗑 Dar de baja producto</Text>
+          <Image
+            source={require("../../assets/images/trash-t.png")}
+            className="mr-3 h-6 w-6"
+            resizeMode="contain"
+          />
+          <Text style={{ fontFamily: "LaOriental" }} className="text-l uppercase tracking-wider text-terracota">
+            {esCocinero ? "Eliminar plato" : "Eliminar bebida"}
+          </Text>
         </TouchableOpacity>
       )}
     </View>
@@ -156,12 +166,26 @@ export function CartaScreen({ tipo, rolUsuario, onVolver, onIrAlCarrito }: Carta
   const [items, setItems] = useState<ItemMenu[]>([]);
   const [cargando, setCargando] = useState(true);
   const [pageHeight, setPageHeight] = useState(0);
+  const [itemAEliminar, setItemAEliminar] = useState<ItemMenu | null>(null);
+  const [eliminando, setEliminando] = useState(false);
+  const [modalFeedback, setModalFeedback] = useState<{
+    visible: boolean;
+    tipo: "exito" | "error" | "informacion";
+    titulo: string;
+    mensaje: string;
+  }>({
+    visible: false,
+    tipo: "informacion",
+    titulo: "",
+    mensaje: "",
+  });
 
   const { agregarAlCarrito, carrito } = useCart();
   const insets = useSafeAreaInsets();
 
   const esStaff = rolUsuario === "cocinero" || rolUsuario === "cantinero";
   const esCliente = !esStaff;
+  const mostrandoSpinner = cargando || (items.length > 0 && pageHeight === 0);
 
   const cartIcon =
     carrito.length === 0
@@ -213,7 +237,10 @@ export function CartaScreen({ tipo, rolUsuario, onVolver, onIrAlCarrito }: Carta
     }
   };
 
-  const handleEliminarProducto = async (id: string) => {
+  const confirmarEliminacion = async () => {
+    if (!itemAEliminar) return;
+    const { id, nombre } = itemAEliminar;
+    setEliminando(true);
     try {
       const { error } = await supabase
         .from("products")
@@ -222,11 +249,38 @@ export function CartaScreen({ tipo, rolUsuario, onVolver, onIrAlCarrito }: Carta
 
       if (!error) {
         setItems((prev) => prev.filter((item) => item.id !== id));
+        setItemAEliminar(null);
+        setModalFeedback({
+          visible: true,
+          tipo: "exito",
+          titulo: "¡Producto eliminado!",
+          mensaje: `"${nombre}" fue eliminado correctamente.`,
+        });
+      } else {
+        console.warn("Error al eliminar el producto:", error.message);
+        setItemAEliminar(null);
+        setModalFeedback({
+          visible: true,
+          tipo: "error",
+          titulo: "Error",
+          mensaje: `No se pudo eliminar "${nombre}". Intente nuevamente.`,
+        });
       }
     } catch (err: any) {
-      console.warn("⚠️ Error al dar de baja el producto:", err.message);
+      console.warn("Error al eliminar el producto:", err.message);
+      setItemAEliminar(null);
+      setModalFeedback({
+        visible: true,
+        tipo: "error",
+        titulo: "Error",
+        mensaje: `No se pudo eliminar "${nombre}". Intente nuevamente.`,
+      });
+    } finally {
+      setEliminando(false);
     }
   };
+
+  const cancelarEliminacion = () => setItemAEliminar(null);
 
   return (
     <View className="flex-1 px-6 pt-4 bg-amber-50/40">
@@ -284,10 +338,7 @@ export function CartaScreen({ tipo, rolUsuario, onVolver, onIrAlCarrito }: Carta
 
       {/* Loading state */}
       {cargando ? (
-        <View className="flex-1 justify-center items-center py-20">
-          <ActivityIndicator size="large" color="#800020" />
-          <Text className="text-vino mt-2 text-xs font-semibold">Cargando carta...</Text>
-        </View>
+        <View className="flex-1" />
       ) : items.length === 0 ? (
         <View className="flex-1 items-center justify-center py-20">
           <Text className="text-5xl mb-3">{tipo === "comida" ? "🍲" : "🍹"}</Text>
@@ -301,20 +352,44 @@ export function CartaScreen({ tipo, rolUsuario, onVolver, onIrAlCarrito }: Carta
           showsVerticalScrollIndicator={false}
           pagingEnabled
           onLayout={(e) => setPageHeight(e.nativeEvent.layout.height)}
+          style={pageHeight === 0 ? { opacity: 0 } : undefined}
         >
           {items.map((item) => (
             <View key={item.id} style={{ height: pageHeight }} className="w-full py-2">
               <TarjetaProducto
                 item={item}
                 esCliente={esCliente}
+                esStaff={esStaff}
                 esCocinero={rolUsuario === "cocinero"}
                 onAgregar={() => agregarAlCarrito(item)}
-                onEliminar={() => handleEliminarProducto(item.id)}
+                onEliminar={() => setItemAEliminar(item)}
               />
             </View>
           ))}
         </ScrollView>
       )}
+
+      <CompanySpinner visible={mostrandoSpinner} mensaje="Cargando carta..." />
+
+      <ConfirmModal
+        visible={!!itemAEliminar}
+        titulo="Eliminar producto"
+        mensaje={`¿Está seguro de que desea dar de baja "${itemAEliminar?.nombre}"?`}
+        textoConfirmar="Eliminar"
+        textoCancelar="Cancelar"
+        tipo="peligro"
+        cargando={eliminando}
+        onConfirm={confirmarEliminacion}
+        onCancel={cancelarEliminacion}
+      />
+
+      <FeedbackModal
+        visible={modalFeedback.visible}
+        tipo={modalFeedback.tipo}
+        titulo={modalFeedback.titulo}
+        mensaje={modalFeedback.mensaje}
+        onClose={() => setModalFeedback((p) => ({ ...p, visible: false }))}
+      />
     </View>
   );
 }
