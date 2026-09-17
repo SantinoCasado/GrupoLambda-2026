@@ -18,24 +18,83 @@ export const enviarNotificacionAprobacion = async (email: string, nombre: string
     const asunto = esAprobado ? '¡Tu cuenta ha sido aprobada! 🎉' : 'Actualización sobre tu cuenta';
     
     const contenidoHtml = `
-        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 600px; margin: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
-            <div style="text-align: center; margin-bottom: 20px;">
-                <img src="cid:logo_app" alt="Logo Restaurante" style="width: 120px; height: auto;" />
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8">
+            <style>
+                /* Intentamos importar la fuente o usar alternativas tipográficas coherentes con la temática oriental */
+                @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Poppins:wght@400;600&display=swap');
+                
+                body {
+                    font-family: 'Poppins', Arial, sans-serif;
+                    background-color: #f7fafc;
+                    margin: 0;
+                    padding: 0;
+                }
+                .container {
+                    background-color: #ffffff;
+                    padding: 30px;
+                    color: #2d3748;
+                    max-width: 600px;
+                    margin: 30px auto;
+                    border: 2px solid #780116; /* Rojo institucional */
+                    border-radius: 12px;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+                }
+                .header {
+                    text-align: center;
+                    margin-bottom: 25px;
+                    border-bottom: 2px solid #edf2f7;
+                    padding-bottom: 20px;
+                }
+                .logo {
+                    width: 130px;
+                    height: auto;
+                }
+                h2 {
+                    font-family: 'Cinzel', serif; /* Estilo elegante / tipo oriental */
+                    color: ${esAprobado ? '#780116' : '#D8572A'};
+                    font-size: 24px;
+                    margin-top: 0;
+                }
+                p {
+                    font-size: 15px;
+                    line-height: 1.6;
+                    color: #4a5568;
+                }
+                .footer {
+                    font-size: 12px;
+                    color: #718096;
+                    border-top: 1px solid #e2e8f0;
+                    padding-top: 15px;
+                    margin-top: 25px;
+                    text-align: center;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="header">
+                    <img src="cid:logo_app" alt="Logo Restaurante" class="logo" />
+                </div>
+                <h2>¡Hola, ${nombre}!</h2>
+                <p>Te escribimos para informarte que el estado de tu cuenta ha sido actualizado a: <strong>${esAprobado ? 'Aprobado' : 'Rechazado'}</strong>.</p>
+                ${esAprobado 
+                    ? '<p>Ya podés iniciar sesión en la aplicación para escanear tu mesa y disfrutar de la mejor experiencia y la mejor comida china.</p>' 
+                    : '<p>Lamentablemente, no hemos podido aprobar tu solicitud en esta ocasión. Te sugerimos intentar registrarte nuevamente verificando tus datos o acercarte a nuestro local.</p>'
+                }
+                <div class="footer">
+                    Atentamente,<br><strong>El equipo de Restaurante Chino / Grupo Lambda</strong>
+                </div>
             </div>
-            <h2 style="color: ${esAprobado ? '#780116' : '#D8572A'};">Hola ${nombre},</h2>
-            <p>Te escribimos para informarte que el estado de tu cuenta ha sido actualizado a: <strong>${esAprobado ? 'Aprobado' : 'Rechazado'}</strong>.</p>
-            ${esAprobado 
-                ? '<p>Ya podés iniciar sesión en la aplicación para escanear tu mesa y disfrutar de la mejor comida china.</p>' 
-                : '<p>Lamentablemente, no hemos podido aprobar tu solicitud de registro en esta ocasión. Te sugerimos intentar registrarte nuevamente verificando que todos tus datos y tu fotografía sean claros y correctos, o acercate a alguno de nuestro empleados para más información.</p>'
-            }
-            <br>
-            <p style="font-size: 12px; color: #718096; border-top: 1px solid #e2e8f0; padding-top: 10px;">Atentamente,<br>El equipo de Grupo Lambda</p>
-        </div>
+        </body>
+        </html>
     `;
 
     try {
         const info = await transporter.sendMail({
-            from: `"Restaurante App" <${process.env.GMAIL_USER}>`,
+            from: `"Restaurante Chino" <${process.env.GMAIL_USER}>`,
             to: email,
             subject: asunto,
             html: contenidoHtml,
@@ -43,12 +102,14 @@ export const enviarNotificacionAprobacion = async (email: string, nombre: string
                 {
                     filename: 'logo.png',
                     path: path.join(process.cwd(), '../assets/logo.png'), 
-                    cid: 'logo_app' // Tiene que coincidir exactamente con el "src" del <img>
+                    cid: 'logo_app'
                 }
             ]
         });
+        
+        console.log(`✉️ Correo estilizado enviado a: ${email}`);
         return info;
     } catch (error) {
-        console.error('Error enviando mail con Nodemailer:', error);
+        console.error('❌ Error enviando mail con Nodemailer:', error);
     }
 };
