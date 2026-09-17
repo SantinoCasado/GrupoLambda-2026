@@ -27,7 +27,8 @@ export const registrarClienteService = async (datos: CrearClienteDTO) => {
                 email: datos.email,
                 role: 'registered_client', 
                 status: 'pending',
-                photo_url: datos.photo_url // La base de datos lo exige como NOT NULL
+                photo_url: datos.photo_url, // La base de datos lo exige como NOT NULL
+                push_token: datos.push_token || null
             }
         ])
         .select();
