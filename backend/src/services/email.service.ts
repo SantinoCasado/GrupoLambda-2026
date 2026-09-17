@@ -16,15 +16,15 @@ const transporter = nodemailer.createTransport({
 export const enviarNotificacionAprobacion = async (email: string, nombre: string, status: 'approved' | 'rejected') => {
     const esAprobado = status === 'approved';
     const asunto = esAprobado ? '¡Tu cuenta ha sido aprobada! 🎉' : 'Actualización sobre tu cuenta';
-    
+
     const contenidoHtml = `
-        <!DOCTYPE html>
+    <!DOCTYPE html>
         <html>
         <head>
             <meta charset="utf-8">
             <style>
-                /* Intentamos importar la fuente o usar alternativas tipográficas coherentes con la temática oriental */
-                @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600&family=Poppins:wght@400;600&display=swap');
+                /* Importamos Shojumaru y Poppins desde Google Fonts */
+                @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&family=Shojumaru&display=swap');
                 
                 body {
                     font-family: 'Poppins', Arial, sans-serif;
@@ -53,10 +53,12 @@ export const enviarNotificacionAprobacion = async (email: string, nombre: string
                     height: auto;
                 }
                 h2 {
-                    font-family: 'Cinzel', serif; /* Estilo elegante / tipo oriental */
+                    font-family: 'Shojumaru', cursive, serif; /* Fuente oriental institucional */
                     color: ${esAprobado ? '#780116' : '#D8572A'};
-                    font-size: 24px;
+                    font-size: 22px;
                     margin-top: 0;
+                    text-align: center;
+                    letter-spacing: 1px;
                 }
                 p {
                     font-size: 15px;
@@ -80,10 +82,10 @@ export const enviarNotificacionAprobacion = async (email: string, nombre: string
                 </div>
                 <h2>¡Hola, ${nombre}!</h2>
                 <p>Te escribimos para informarte que el estado de tu cuenta ha sido actualizado a: <strong>${esAprobado ? 'Aprobado' : 'Rechazado'}</strong>.</p>
-                ${esAprobado 
-                    ? '<p>Ya podés iniciar sesión en la aplicación para escanear tu mesa y disfrutar de la mejor experiencia y la mejor comida china.</p>' 
-                    : '<p>Lamentablemente, no hemos podido aprobar tu solicitud en esta ocasión. Te sugerimos intentar registrarte nuevamente verificando tus datos o acercarte a nuestro local.</p>'
-                }
+                ${esAprobado
+            ? '<p>Ya podés iniciar sesión en la aplicación para escanear tu mesa y disfrutar de la mejor experiencia y la mejor comida china.</p>'
+            : '<p>Lamentablemente, no hemos podido aprobar tu solicitud en esta ocasión. Te sugerimos intentar registrarte nuevamente verificando tus datos o acercarte a nuestro local.</p>'
+        }
                 <div class="footer">
                     Atentamente,<br><strong>El equipo de Restaurante Chino / Grupo Lambda</strong>
                 </div>
@@ -91,7 +93,6 @@ export const enviarNotificacionAprobacion = async (email: string, nombre: string
         </body>
         </html>
     `;
-
     try {
         const info = await transporter.sendMail({
             from: `"Restaurante Chino" <${process.env.GMAIL_USER}>`,
@@ -101,12 +102,12 @@ export const enviarNotificacionAprobacion = async (email: string, nombre: string
             attachments: [
                 {
                     filename: 'logo.png',
-                    path: path.join(process.cwd(), '../assets/logo.png'), 
+                    path: path.join(process.cwd(), '../assets/logo.png'),
                     cid: 'logo_app'
                 }
             ]
         });
-        
+
         console.log(`✉️ Correo estilizado enviado a: ${email}`);
         return info;
     } catch (error) {
