@@ -7,6 +7,7 @@ import { eliminarClienteAnonimo } from "../services/clienteAnonimoService";
 interface Props {
   cliente: {
     id: string;
+    user_id?: string;
     client_name: string;
     client_photo: string;
     status: string;
@@ -19,12 +20,13 @@ export function EsperaMesaScreen({ cliente, onSalir }: Props) {
   const [qrEntradaEscaneado, setQrEntradaEscaneado] = useState(false);
   const [mesaAsignada, setMesaAsignada] = useState<string | null>(null);
   const [modalEncuestas, setModalEncuestas] = useState(false);
+  const [modalSalir, setModalSalir] = useState(false);
   const [saliendo, setSaliendo] = useState(false);
 
   const [permission, requestPermission] = useCameraPermissions();
   const scanLockRef = useRef(false);
 
-  // Suscripción Realtime a waiting_list para detectar asignación de mesa
+  // Suscripción Realtime a waiting_list
   useEffect(() => {
     if (!cliente?.id) return;
 
@@ -83,34 +85,21 @@ export function EsperaMesaScreen({ cliente, onSalir }: Props) {
     }
   };
 
-  const handleSalir = async () => {
-    Alert.alert(
-        "Abandonar lista",
-        "¿Deseas salir del local? Tu turno en la lista de espera será cancelado.",
-        [
-        { text: "Cancelar", style: "cancel" },
-        {
-            text: "Sí, salir",
-            style: "destructive",
-            onPress: async () => {
-            setSaliendo(true);
-            try {
-                // Pasa user_id (o id si coinciden) para borrar el registro de users
-                const targetId = (cliente as any)?.user_id || cliente?.id;
-                if (targetId) {
-                await eliminarClienteAnonimo(targetId, cliente.client_photo);
-                }
-            } catch (err: any) {
-                console.warn("Error al salir de la lista:", err.message);
-            } finally {
-                setSaliendo(false);
-                onSalir();
-            }
-            },
-        },
-        ]
-    );
-    };
+  const confirmarSalida = async () => {
+    setSaliendo(true);
+    try {
+      const targetUserId = cliente.user_id || cliente.id;
+      if (targetUserId) {
+        await eliminarClienteAnonimo(targetUserId, cliente.client_photo);
+      }
+    } catch (err: any) {
+      console.warn("Error al salir de la lista:", err.message);
+    } finally {
+      setSaliendo(false);
+      setModalSalir(false);
+      onSalir();
+    }
+  };
 
   return (
     <View className="flex-1 justify-center px-6 pt-12">
@@ -164,7 +153,7 @@ export function EsperaMesaScreen({ cliente, onSalir }: Props) {
         </TouchableOpacity>
 
         {/* 3. Indicador de Mesa */}
-        <View className="mt-5 w-full rounded-xl bg-black/30 p-3 text-center">
+        <View className="mt-5 w-full rounded-xl bg-black/30 p-3">
           <Text className="text-center text-xs text-amber-200">
             {mesaAsignada
               ? `Mesa asignada ID: ${mesaAsignada}`
@@ -172,15 +161,58 @@ export function EsperaMesaScreen({ cliente, onSalir }: Props) {
           </Text>
         </View>
 
-        {/* Botón Salir con confirmación y borrado en cascada */}
-        <TouchableOpacity onPress={handleSalir} disabled={saliendo} className="mt-6 py-2">
-          {saliendo ? (
-            <ActivityIndicator size="small" color="#D8572A" />
-          ) : (
-            <Text className="text-xs text-terracota underline">Salir del local</Text>
-          )}
+        {/* Botón Salir */}
+        <TouchableOpacity
+          onPress={() => setModalSalir(true)}
+          className="mt-6 py-2"
+        >
+          <Text className="text-xs text-terracota underline">Salir del local</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Modal Confirmación de Salida */}
+      <Modal visible={modalSalir} transparent animationType="fade">
+        <View className="flex-1 items-center justify-center bg-black/75 px-6">
+          <View className="w-full max-w-sm rounded-3xl border border-mostaza/50 bg-vino p-6 shadow-2xl">
+            <Text className="text-center text-3xl">🚪</Text>
+            <Text
+              style={{ fontFamily: "LaOriental" }}
+              className="mt-2 text-center text-xl text-mostaza"
+            >
+              ¿Abandonar lista?
+            </Text>
+            <Text className="mt-2 text-center text-xs text-amber-100/80 leading-relaxed">
+              Al salir del local se cancelará tu turno de espera y se eliminarán tus datos temporales.
+            </Text>
+
+            <View className="mt-6 flex-row gap-3">
+              <TouchableOpacity
+                disabled={saliendo}
+                onPress={() => setModalSalir(false)}
+                className="flex-1 rounded-xl border border-mostaza/40 bg-black/30 py-3"
+              >
+                <Text className="text-center text-xs font-semibold text-amber-200">
+                  Volver
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                disabled={saliendo}
+                onPress={confirmarSalida}
+                className="flex-1 items-center justify-center rounded-xl bg-terracota py-3 shadow"
+              >
+                {saliendo ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text className="text-center text-xs font-bold uppercase text-white">
+                    Sí, salir
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal Cámara QR */}
       <Modal visible={escaneandoQR} animationType="slide">
