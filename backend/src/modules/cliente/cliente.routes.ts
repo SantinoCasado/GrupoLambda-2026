@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { registrarCliente, registrarClienteAnonimo, listarClientes, actualizarEstadoCliente, eliminarUsuarioFisico } from './cliente.controllers';
+import { registrarCliente, registrarClienteAnonimo, listarClientes, actualizarEstadoCliente, eliminarUsuarioFisico, actualizarPushToken } from './cliente.controllers';
 import { upload } from '../../middleware/upload.middleware';
 import { verificarAutenticacion, requerirRol } from '../../middleware/auth.middleware';
 
@@ -24,6 +24,9 @@ router.get('/', listarClientes);
 router.post('/register', upload.single('foto'), registrarCliente); // Para clientes registrados (CU-05)
 router.post('/anonymous', registrarClienteAnonimo); // Para clientes anónimos (CU-09)
 
+
+// Ruta para actualizar el push token de un cliente registrado
+router.patch('/push-token', verificarAutenticacion, actualizarPushToken);
 
 
 //==========================================================================================

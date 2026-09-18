@@ -6,7 +6,8 @@ export const crearClienteSchema = z.object({
     first_name: z.string().min(2, "El nombre es obligatorio"),
     last_name: z.string().min(2, "El apellido es obligatorio"),
     dni: z.string().length(8, "El DNI debe tener exactamente 8 dígitos"),
-    photo_url: z.string().url("La URL de la foto es obligatoria y debe ser válida")
+    photo_url: z.string().url("La URL de la foto es obligatoria y debe ser válida"),
+    push_token: z.string().optional()
 });
 
 // Schema para cliente anónimo / lista de espera (CU-09)
