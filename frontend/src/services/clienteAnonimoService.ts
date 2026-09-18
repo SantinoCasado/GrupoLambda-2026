@@ -1,16 +1,17 @@
 import * as FileSystem from "expo-file-system/legacy";
 import { decode } from "base64-arraybuffer";
 import { supabase } from "../config/supabase";
+import { API_URL } from "../config/api";
 
 export interface ClienteAnonimoSesion {
   id: string; // ID en waiting_list
-  user_id: string; // ID en auth.users y public.users
+  user_id: string; // ID en users
   client_name: string;
   client_photo: string;
   status: string; // 'waiting'
 }
 
-/* Sube la foto usando FileSystem y base64 */
+/* Sube la foto tomada a Supabase Storage con base64-arraybuffer */
 export async function subirFotoAnonimo(uri: string): Promise<string> {
   try {
     const base64 = await FileSystem.readAsStringAsync(uri, {
@@ -42,77 +43,52 @@ export async function subirFotoAnonimo(uri: string): Promise<string> {
   }
 }
 
-/* Registra al anónimo usando signInAnonymously() nativo de Supabase Auth */
+/* Llama al endpoint de Express POST /api/clientes/anonymous */
 export async function registrarClienteAnonimo(
   nombre: string,
   fotoUri: string
 ): Promise<{ exito: boolean; cliente?: ClienteAnonimoSesion; error?: string }> {
   try {
-    // 1. Iniciar sesión anónima en Supabase Auth
-    const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
-
-    if (authError || !authData.user) {
-      throw new Error(`Error en auth anónimo: ${authError?.message || "Sin usuario"}`);
-    }
-
-    const authUserId = authData.user.id;
-
-    // 2. Subir selfie a Storage
+    // 1. Subir selfie a Storage y obtener URL
     const photoUrl = await subirFotoAnonimo(fotoUri);
 
-    // 3. Insertar en public.users (satisface users_id_fkey porque existe en auth.users)
-    const { error: userError } = await supabase
-      .from("users")
-      .insert([
-        {
-          id: authUserId,
-          first_name: nombre.trim(),
-          last_name: "Guest",
-          role: "anonymous_client",
-          status: "approved",
-          photo_url: photoUrl,
-        },
-      ]);
+    // 2. Pegar al endpoint de Express
+    const response = await fetch(`${API_URL}/api/clientes/anonymous`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        client_name: nombre.trim(),
+        client_photo: photoUrl,
+      }),
+    });
 
-    if (userError) {
-      // Si falla, cerramos la sesión anónima creada
-      await supabase.auth.signOut();
-      throw new Error(`Error al registrar en users: ${userError.message}`);
+    const json = await response.json();
+
+    if (!response.ok) {
+      throw new Error(json.error || json.detalle || "Error al registrar cliente anónimo");
     }
 
-    // 4. Insertar en waiting_list referenciando user_id
-    const { data: waitingData, error: waitingError } = await supabase
-      .from("waiting_list")
-      .insert([
-        {
-          user_id: authUserId,
-          client_name: nombre.trim(),
-          client_photo: photoUrl,
-          status: "waiting",
-        },
-      ])
-      .select()
-      .single();
+    // El backend devuelve { user: {...}, waiting_entry: {...} }
+    const waitingEntry = json.data?.waiting_entry || json.waiting_entry || json.data;
+    const userData = json.data?.user || json.user;
 
-    if (waitingError) {
-      // Limpieza si falla waiting_list
-      await supabase.from("users").delete().eq("id", authUserId);
-      await supabase.auth.signOut();
-      throw new Error(`Error en waiting_list: ${waitingError.message}`);
-    }
+    const waitingId = waitingEntry?.id || json.data?.id;
+    const userId = userData?.id || waitingEntry?.user_id;
 
     return {
       exito: true,
       cliente: {
-        id: waitingData.id,
-        user_id: authUserId,
-        client_name: waitingData.client_name,
-        client_photo: waitingData.client_photo,
-        status: waitingData.status || "waiting",
+        id: waitingId,
+        user_id: userId,
+        client_name: nombre.trim(),
+        client_photo: photoUrl,
+        status: waitingEntry?.status || "waiting",
       },
     };
   } catch (err: any) {
-    console.error("❌ Falló registro anónimo nativo:", err.message);
+    console.error("❌ Falló registro anónimo en Express:", err.message);
     return {
       exito: false,
       error: err.message,
@@ -120,13 +96,13 @@ export async function registrarClienteAnonimo(
   }
 }
 
-/* Borrado total al salir */
+/* Borra al usuario de 'users' al salir (CASCADE limpia waiting_list) y borra la foto */
 export async function eliminarClienteAnonimo(
   userId: string,
   photoUrl?: string
 ): Promise<void> {
   try {
-    // 1. Borrar de public.users -> CASCADE limpia waiting_list
+    // 1. Borrar de users -> PostgreSQL activa ON DELETE CASCADE sobre waiting_list
     const { error: dbError } = await supabase
       .from("users")
       .delete()
@@ -136,10 +112,7 @@ export async function eliminarClienteAnonimo(
       console.warn("⚠️ Error al eliminar usuario de users:", dbError.message);
     }
 
-    // 2. Cerrar la sesión de auth anónima
-    await supabase.auth.signOut();
-
-    // 3. Eliminar la foto de Storage
+    // 2. Eliminar la foto en fotos_usuarios
     if (photoUrl && photoUrl.includes("/fotos_usuarios/")) {
       const fileName = photoUrl.split("/fotos_usuarios/").pop();
       if (fileName) {

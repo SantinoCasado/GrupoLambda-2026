@@ -44,20 +44,62 @@ export const registrarClienteService = async (datos: CrearClienteDTO) => {
 
 // Registrar un cliente anónimo (CU-09)
 export const registrarClienteAnonimoService = async (datos: RegistrarAnonimoDTO) => {
-    // Los anónimos no van a Auth, van directo a la lista de espera (CU-09)
-    const { data, error } = await supabase
+    // 1. Creamos la sesión anónima en Supabase Auth para tener un id real
+    const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
+
+    if (authError || !authData.user) {
+        throw new Error(`Fallo de Autenticación Anónima: ${authError?.message}`);
+    }
+
+    const anonUserId = authData.user.id;
+
+    // 2. Insertamos en public.users para satisfacer foreign keys
+    const { error: userError } = await supabase
+        .from('users')
+        .insert([
+            {
+                id: anonUserId,
+                first_name: datos.client_name,
+                photo_url: datos.client_photo,
+                role: 'anonymous_client',
+                status: 'approved'
+            }
+        ]);
+
+    if (userError) {
+        throw new Error(`Error al crear usuario anónimo en users: ${userError.message}`);
+    }
+
+    // 3. Insertamos en la lista de espera con todos los campos requeridos
+    const { data: waitingData, error: waitingError } = await supabase
         .from('waiting_list')
         .insert([
             {
+                user_id: anonUserId,
                 client_name: datos.client_name,
                 client_photo: datos.client_photo,
-                status: 'waiting' // Estado inicial en la lista de espera
+                status: 'waiting'
             }
         ])
-        .select();
+        .select()
+        .single();
 
-    if (error) throw new Error(`Fallo al registrar cliente anónimo en lista de espera: ${error.message}`);
-    return data;
+    if (waitingError) {
+        // Borrado preventivo si falla la lista de espera
+        await supabase.from('users').delete().eq('id', anonUserId);
+        throw new Error(`Fallo al registrar en lista de espera: ${waitingError.message}`);
+    }
+
+    return {
+        user: {
+            id: anonUserId,
+            name: datos.client_name,
+            photo_url: datos.client_photo,
+            role: 'anonymous_client',
+            session: authData.session
+        },
+        waiting_entry: waitingData
+    };
 };
 
 // Actualizar el estado de un cliente registrado (CU-06)
