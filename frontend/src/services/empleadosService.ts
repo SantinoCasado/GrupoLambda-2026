@@ -1,5 +1,5 @@
 // src/services/empleadosService.ts
-import { API_BASE_URL } from "./apiConfig";
+import { API_BASE_URL } from "../.././apiConfig";
 import { File } from "expo-file-system";
 import { fetch } from "expo/fetch";
 import { headersConToken } from "./tokenService";
