@@ -1,8 +1,19 @@
 import { registerRootComponent } from 'expo';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
+import * as Notifications from 'expo-notifications';
 
 import App from './App';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldVibrate: true,
+  }),
+});
 
 function Root() {
   const [fontsLoaded] = useFonts({

@@ -1,7 +1,8 @@
 import "./global.css";
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { View, Text, Image, TouchableOpacity, Vibration } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as Notifications from "expo-notifications";
 import { UsuarioSeed } from "./src/data/usuariosPrecargados";
 import { LoginScreen } from "./src/screens/loginScreen";
 import HomeScreen, { HomeDestino } from "./src/screens/homeScreen";
@@ -54,6 +55,47 @@ function AppInterna() {
   const [vistaPublica, setVistaPublica] = useState<"login" | "registro_cliente">("login");
   const [perfilAltaEmpleado, setPerfilAltaEmpleado] = useState<string | null>(null);
   const [tipoCartaSeleccionada, setTipoCartaSeleccionada] = useState<"comida" | "bebida" | "todo">("comida");
+  const [notifNuevoClientePendiente, setNotifNuevoClientePendiente] = useState(false);
+
+  // Réplicas actualizadas del usuario para usarlas dentro del listener de notificaciones
+  const usuarioActualRef = useRef(usuarioActual);
+  usuarioActualRef.current = usuarioActual;
+
+  useEffect(() => {
+    const manejarRespuestaNotificacion = (respuesta?: Notifications.NotificationResponse | null) => {
+      const datosCrudos = respuesta?.notification?.request?.content?.data;
+      let datos: any = datosCrudos;
+      if (typeof datosCrudos === "string") {
+        try {
+          datos = JSON.parse(datosCrudos);
+        } catch {
+          datos = null;
+        }
+      }
+
+      if (datos?.tipo !== "nuevo_cliente") return;
+
+      const usuario = usuarioActualRef.current;
+      const esAdmin = usuario?.perfil === "dueño" || usuario?.perfil === "supervisor";
+
+      if (usuario && esAdmin) {
+        setVistaPrivada("clientes");
+      } else {
+        setNotifNuevoClientePendiente(true);
+      }
+    };
+
+    // App abierta tocando la notificación (cold start)
+    try {
+      manejarRespuestaNotificacion(Notifications.getLastNotificationResponse());
+    } catch (error: any) {
+      console.warn("⚠️ [Push] No se pudo leer la última respuesta de notificación:", error?.message);
+    }
+    // App abierta y el usuario toca la notificación
+    const suscripcion = Notifications.addNotificationResponseReceivedListener(manejarRespuestaNotificacion);
+
+    return () => suscripcion.remove();
+  }, []);
 
   const cerrarSesion = () => {
     Vibration.vibrate([0, 50, 50, 50]);
@@ -100,7 +142,15 @@ function AppInterna() {
         <LoginScreen
           onLoginSuccess={(usuario) => {
             setUsuarioActual(usuario);
-            setVistaPrivada("home");
+            if (
+              notifNuevoClientePendiente &&
+              (usuario.perfil === "dueño" || usuario.perfil === "supervisor")
+            ) {
+              setNotifNuevoClientePendiente(false);
+              setVistaPrivada("clientes");
+            } else {
+              setVistaPrivada("home");
+            }
           }}
           onNavigateRegistroCliente={() => {
             setVistaPublica("registro_cliente");
