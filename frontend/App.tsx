@@ -3,11 +3,11 @@ import React, { useState } from "react";
 import { View, Text, Image, TouchableOpacity, Vibration } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { UsuarioSeed } from "./src/data/usuariosPrecargados";
-import { LoginScreen } from "./src/screens/loginScreen";
 import HomeScreen, { HomeDestino } from "./src/screens/homeScreen";
 import { AuthProvider } from "./src/context/AuthContext";
 import { CartProvider } from "./src/context/carritoContext";
 import { getSupabaseClient } from "./src/config/supabase";
+import { ClienteAnonimoSesion } from "./src/services/clienteAnonimoService";
 
 // Pantallas
 import AltaEmpleadoScreen from "./src/screens/altaEmpleadoScreen";
@@ -15,9 +15,12 @@ import AltaProductoScreen from "./src/screens/altaProducto";
 import AltaMesaScreen from "./src/screens/altaMesaScreen";
 import RegistroClienteScreen from "./src/screens/registroClienteScreen";
 import AprobacionClientesScreen from "./src/screens/aprobacionClientesScreen";
+import { LoginScreen } from "./src/screens/loginScreen";
 import { CartaScreen } from "./src/screens/cartaScreen";
 import { CarritoScreen } from "./src/screens/carritoScreen";
 import ScreenBackground from "./src/components/ScreenBackground";
+import { RegistroAnonimoScreen } from "./src/screens/registroAnonimoScreen";
+import { EsperaMesaScreen } from "./src/screens/esperaMesaScreen";
 
 const NO_PHOTO = require("./assets/images/no-photo.jpg");
 
@@ -51,7 +54,8 @@ export default function App() {
 function AppInterna() {
   const [usuarioActual, setUsuarioActual] = useState<UsuarioSeed | null>(null);
   const [vistaPrivada, setVistaPrivada] = useState<VistaPrivada>("home");
-  const [vistaPublica, setVistaPublica] = useState<"login" | "registro_cliente">("login");
+  const [vistaPublica, setVistaPublica] = useState<"login" | "registro_cliente" | "registro_anonimo" | "espera_mesa">("login");  
+  const [clienteAnonimo, setClienteAnonimo] = useState<ClienteAnonimoSesion | null>(null);
   const [perfilAltaEmpleado, setPerfilAltaEmpleado] = useState<string | null>(null);
   const [tipoCartaSeleccionada, setTipoCartaSeleccionada] = useState<"comida" | "bebida" | "todo">("comida");
 
@@ -94,6 +98,36 @@ function AppInterna() {
       );
     }
 
+    if (vistaPublica === "registro_anonimo") {
+      return (
+        <>
+          <ScreenBackground />
+          <RegistroAnonimoScreen
+            onVolver={() => setVistaPublica("login")}
+            onRegistroExitoso={(cliente) => {
+              setClienteAnonimo(cliente);
+              setVistaPublica("espera_mesa");
+            }}
+          />
+        </>
+      );
+    }
+
+    if (vistaPublica === "espera_mesa") {
+      return (
+        <>
+          <ScreenBackground />
+          <EsperaMesaScreen
+            cliente={clienteAnonimo!}
+            onSalir={() => {
+              setClienteAnonimo(null);
+              setVistaPublica("login");
+            }}
+          />
+        </>
+      );
+    }
+
     return (
       <>
         <ScreenBackground />
@@ -104,6 +138,9 @@ function AppInterna() {
           }}
           onNavigateRegistroCliente={() => {
             setVistaPublica("registro_cliente");
+          }}
+          onNavigateRegistroAnonimo={() => {
+            setVistaPublica("registro_anonimo");
           }}
         />
       </>

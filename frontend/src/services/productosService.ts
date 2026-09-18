@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "./apiConfig";
+import { API_BASE_URL } from "../.././apiConfig";
 import { File } from "expo-file-system";
 import { fetch as expoFetch } from "expo/fetch";
 import { obtenerTokenValido } from "./tokenService";

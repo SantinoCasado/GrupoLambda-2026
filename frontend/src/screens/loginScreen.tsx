@@ -20,9 +20,14 @@ import { ChineseFrame } from "../components/ChineseFrame";
 interface LoginScreenProps {
   onLoginSuccess: (usuario: UsuarioSeed) => void;
   onNavigateRegistroCliente: () => void;
+  onNavigateRegistroAnonimo: () => void;
 }
 
-export function LoginScreen({ onLoginSuccess, onNavigateRegistroCliente }: LoginScreenProps) {
+export function LoginScreen({
+  onLoginSuccess,
+  onNavigateRegistroCliente,
+  onNavigateRegistroAnonimo 
+}: LoginScreenProps) {
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [clave, setClave] = useState("");
@@ -217,7 +222,23 @@ export function LoginScreen({ onLoginSuccess, onNavigateRegistroCliente }: Login
               resizeMode="contain"
             />
           </TouchableOpacity>
-
+          {/* Botón de acceso para Cliente Anónimo / Invitado */}
+          <TouchableOpacity
+            onPress={() => {
+              vibrar("toque");
+              onNavigateRegistroAnonimo();
+            }}
+            activeOpacity={0.8}
+            className="mt-3 flex-row items-center justify-center rounded-2xl border-2 border-dashed border-mostaza/70 bg-calabaza/20 py-3 active:bg-calabaza/40"
+          >
+            <Text className="mr-2 text-base">👤</Text>
+            <Text
+              style={{ fontFamily: "LaOriental" }}
+              className="text-center uppercase tracking-wider text-mostaza font-bold"
+            >
+              Ingresar como Invitado
+            </Text>
+          </TouchableOpacity>
           {/* Enlace para nuevo cliente */}
           <TouchableOpacity
             onPress={() => {

@@ -1,7 +1,7 @@
 import { USUARIOS_PRECARGADOS, UsuarioSeed, PerfilUsuario } from "../data/usuariosPrecargados";
-import { getSupabaseClient, isSupabaseConfigured, supabase } from "../config/supabase";
+import { getSupabaseClient, isSupabaseConfigured } from "../config/supabase";
 
-// Mapea el rol en inglés (tabla 'users') al perfil en español del frontend
+// Mapeo unívoco de la columna 'role' (inglés) a PerfilUsuario de la UI
 const ROLE_TO_PERFIL: Record<string, PerfilUsuario> = {
   owner: "dueño",
   supervisor: "supervisor",
@@ -9,14 +9,10 @@ const ROLE_TO_PERFIL: Record<string, PerfilUsuario> = {
   bartender: "cantinero",
   waiter: "mozo",
   maitre: "metre",
-  delivery: "mozo",
-  cliente: "cliente_registrado",
-  cliente_registrado: "cliente_registrado",
   registered_client: "cliente_registrado",
-  cliente_anonimo: "cliente_anonimo",
+  anonymous_client: "cliente_anonimo",
 };
 
-// Intenta autenticar contra Supabase Auth directamente
 async function loginConSupabase(email: string, clave: string): Promise<UsuarioSeed> {
   const client = getSupabaseClient();
   if (!client) {
@@ -32,7 +28,6 @@ async function loginConSupabase(email: string, clave: string): Promise<UsuarioSe
     throw new Error(error?.message || "Credenciales inválidas.");
   }
 
-  // Obtiene el perfil desde la tabla pública 'users'
   const { data: perfil, error: perfilError } = await client
     .from("users")
     .select("*")
@@ -43,19 +38,19 @@ async function loginConSupabase(email: string, clave: string): Promise<UsuarioSe
     throw new Error("No se encontró el perfil del usuario en la base de datos.");
   }
 
-  const rol = (perfil.role || "").toLowerCase();
+  const rol = (perfil.role || "").trim().toLowerCase();
   const perfilUsuario: PerfilUsuario = ROLE_TO_PERFIL[rol] || "cliente_registrado";
 
-  // VALIDACIÓN DE ESTADO PARA CLIENTES REGISTRADOS
+  // Verificación de status en inglés
   if (perfilUsuario === "cliente_registrado") {
-    const estado = (perfil.status || "").toLowerCase();
+    const status = (perfil.status || "").trim().toLowerCase();
 
-    if (estado === "pending" || estado === "pendiente") {
+    if (status === "pending") {
       await client.auth.signOut();
       throw new Error("Tu cuenta está pendiente de aprobación por parte de un dueño o supervisor.");
     }
 
-    if (estado === "rejected" || estado === "rechazado") {
+    if (status === "rejected") {
       await client.auth.signOut();
       throw new Error("Tu solicitud de registro ha sido rechazada.");
     }
@@ -69,15 +64,14 @@ async function loginConSupabase(email: string, clave: string): Promise<UsuarioSe
     clave: clave,
     perfil: perfilUsuario,
     tituloVisual: perfilUsuario.charAt(0).toUpperCase() + perfilUsuario.slice(1),
-    nombres: perfil.first_name || perfil.nombre || "Usuario",
-    apellidos: perfil.last_name || perfil.apellido || "",
+    nombres: perfil.first_name || "Usuario",
+    apellidos: perfil.last_name || "",
     documento: perfil.dni || "00000000",
     foto: esSinFoto ? "" : perfil.photo_url || "",
     icono: "👤",
   };
 }
 
-// Login local contra los usuarios precargados
 async function loginLocal(email: string, clave: string): Promise<UsuarioSeed> {
   await new Promise((resolve) => setTimeout(resolve, 300));
 
@@ -99,7 +93,6 @@ export async function login(email: string, clave: string): Promise<UsuarioSeed> 
     } catch (error: any) {
       const mensaje = error?.message || "";
 
-      // 🛑 Si el error es de bloqueo de cuenta (pendiente o rechazada), se corta acá y se lanza el error directo a la UI
       if (
         mensaje.includes("pendiente de aprobación") ||
         mensaje.includes("rechazada")
@@ -111,6 +104,5 @@ export async function login(email: string, clave: string): Promise<UsuarioSeed> 
     }
   }
 
-  // Fallback local únicamente para credenciales precargadas de testing
   return loginLocal(email, clave);
 }
