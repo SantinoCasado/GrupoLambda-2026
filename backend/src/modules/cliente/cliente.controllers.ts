@@ -3,6 +3,8 @@ import { listarClientesService, registrarClienteService, registrarClienteAnonimo
 import { crearClienteSchema, crearClienteAnonimoSchema, cambiarEstadoSchema } from './schema/cliente.schema';
 import { subirImagenSupabase } from '../../services/storage.service';
 import { supabase } from '../../config/supabase';
+import { AuthRequest } from '../../middleware/auth.middleware';
+import { enviarPushNotification } from '../../services/pushNotifications.service';
 
 export const registrarCliente = async (req: Request, res: Response): Promise<Response> => {
     // Verifica que el archivo "foto" haya llegado
@@ -32,7 +34,38 @@ export const registrarCliente = async (req: Request, res: Response): Promise<Res
     try {
         // Llamada del servicio para registrar un cliente registrado en Auth y en la tabla publica
         const nuevoCliente = await registrarClienteService(validacion.data);
+
+        // --- INICIO LÓGICA DE NOTIFICACIONES PUSH ---
+        try {
+            // Buscamos a los dueños y supervisores que tengan token
+            const { data: admins, error: fetchError } = await supabase
+                .from('users')
+                .select('push_token')
+                .in('role', ['owner', 'supervisor'])
+                .not('push_token', 'is', null);
+
+            if (fetchError) {
+                console.error('⚠️ No se pudieron obtener admins para notificar:', fetchError);
+            } else if (admins && admins.length > 0) {
+                // Disparamos la notificación a cada uno
+                for (const admin of admins) {
+                    if (admin.push_token) {
+                        await enviarPushNotification(
+                            admin.push_token,
+                            '¡Nuevo Cliente Registrado!',
+                            'Hay un nuevo cliente esperando aprobación en el sistema.',
+                            { tipo: 'nuevo_cliente' } // Dato que lee el frontend
+                        );
+                    }
+                }
+            }
+        } catch (notifError) {
+            // Este catch evita que un error de notificaciones rompa el registro del cliente
+            console.error('⚠️ Error inesperado al procesar notificaciones push:', notifError);
+        }
+
         return res.status(201).json({ data: nuevoCliente });
+
     } catch (error: any) {
         return res.status(500).json({ error: error.message });
     }
@@ -98,6 +131,34 @@ export const actualizarEstadoCliente = async (req: Request, res: Response): Prom
         });
     } catch (error: any) {
         return res.status(500).json({ error: error.message });
+    }
+};
+
+export const actualizarPushToken = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        // req.user existe seguro porque paso por verificarAutenticacion
+        const userId = req.user!.id; 
+        const { push_token } = req.body;
+
+        if (!push_token) {
+            res.status(400).json({ error: 'Falta el push_token en el body' });
+            return;
+        }
+
+        // Actualiza el token en Supabase para este usuario
+        const { error } = await supabase
+            .from('users')
+            .update({ push_token: push_token })
+            .eq('id', userId);
+
+        if (error) {
+            throw error;
+        }
+
+        res.status(200).json({ message: 'Push token guardado exitosamente' });
+    } catch (error: any) {
+        console.error('Error al guardar push token:', error);
+        res.status(500).json({ error: 'Error interno del servidor', detalle: error.message });
     }
 };
 
