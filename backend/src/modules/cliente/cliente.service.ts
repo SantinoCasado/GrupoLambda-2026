@@ -1,6 +1,7 @@
 import { supabase } from '../../config/supabase';
 import { CrearClienteDTO } from './schema/cliente.schema';
 import { RegistrarAnonimoDTO } from './interface/registrarClienteAnonimo';
+import { DatosListaEspera } from './interface/datosListaEspera';
 import { enviarNotificacionAprobacion } from '../../services/email.service';
 import { enviarPushNotification } from '../../services/pushNotifications.service';
 
@@ -194,4 +195,23 @@ export const listarClientesService = async (statusFilter?: string) => {
 
     if (error) throw new Error(`Fallo al listar clientes: ${error.message}`);
     return data;
-}; 
+};
+
+export const ingresarClienteListaService = async (datos: DatosListaEspera) => {
+    const { data: waitingRecord, error: insertError } = await supabase
+        .from('waiting_list')
+        .insert([{ 
+            user_id: datos.user_id, 
+            client_name: datos.client_name, 
+            client_photo: datos.client_photo 
+            // status asume 'waiting' por defecto
+        }])
+        .select()
+        .single();
+
+    if (insertError) {
+        throw new Error(`Error al insertar en lista de espera: ${insertError.message}`);
+    }
+
+    return waitingRecord;
+};

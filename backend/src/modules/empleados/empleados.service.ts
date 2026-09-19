@@ -50,3 +50,17 @@ export const listarEmpleadosDb = async () => {
     if (error) throw new Error(`Fallo al listar el staff: ${error.message}`);
     return data;
 };
+
+export const obtenerListaEsperaService = async () => {
+    const { data, error } = await supabase
+        .from('waiting_list')
+        .select('*')
+        .eq('status', 'waiting')
+        .order('joined_at', { ascending: true }); // Clave: Orden cronológico de llegada
+
+    if (error) {
+        throw new Error(`Error al obtener lista de espera: ${error.message}`);
+    }
+
+    return data;
+};
