@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
 import { crearMesaSchema, cambiarEstadoMesaSchema } from './schema/mesas.schema';
-import { insertarMesaService, cambiarEstadoMesaService, obtenerMesasService } from './mesas.service';
+import { insertarMesaService, cambiarEstadoMesaService, obtenerMesasService, asignarMesaService } from './mesas.service';
 import { supabase } from '../../config/supabase';
 import { subirImagenSupabase } from '../../services/storage.service';
+import { AuthRequest } from '../../middleware/auth.middleware';
+import { enviarPushNotification } from '../../services/pushNotifications.service';
 
 export const crearMesa = async (req: Request, res: Response): Promise<Response> => {
     try {
@@ -109,6 +111,44 @@ export const obtenerMesas = async (req: Request, res: Response): Promise<Respons
         return res.status(200).json({ data: mesas });
     } catch (error: any) {
         return res.status(500).json({ error: 'Fallo al obtener las mesas', detalle: error.message });
+    }
+};
+
+export const asignarMesa = async (req: AuthRequest, res: Response): Promise<Response | void> => {
+    const { waiting_id, table_id } = req.body;
+
+    if (!waiting_id || !table_id) {
+        return res.status(400).json({ error: 'Faltan datos obligatorios (waiting_id, table_id)' });
+    }
+
+    try {
+        // 1. Ejecutamos la lógica de BD en el servicio
+        const resultado = await asignarMesaService({ waiting_id, table_id });
+
+        // 2. Disparamos la notificación al CLIENTE (si tiene token guardado)
+        // Como hicimos el select('*, users(push_token)') en el servicio, lo sacamos de ahí
+        const tokenCliente = resultado.users?.push_token;
+
+        if (tokenCliente) {
+            try {
+                await enviarPushNotification(
+                    tokenCliente,
+                    '¡Tu mesa está lista! 🍽️',
+                    'El metre te ha asignado una mesa. Por favor, acercate para sentarte.',
+                    { tipo: 'mesa_asignada', table_id: table_id } // Data para que la app del cliente reaccione
+                );
+            } catch (notifError) {
+                console.error('⚠️ Error al notificar al cliente:', notifError);
+            }
+        }
+
+        return res.status(200).json({ 
+            message: 'Mesa asignada con éxito', 
+            data: resultado 
+        });
+
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
     }
 };
 
