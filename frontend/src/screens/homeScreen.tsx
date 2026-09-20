@@ -12,6 +12,7 @@ export type HomeDestino =
   | "clientes"
   | "producto"
   | "registro_metre"
+  | "metre"
   | "carta"
   | "carrito";
 
@@ -266,21 +267,25 @@ export default function HomeScreen({ usuario, onNavigate }: Props) {
           {/* 4. METRE */}
           {perfil === "metre" && (
             <View className="gap-y-4">
-              <Text className="mb-1 text-xs font-bold text-vino uppercase">Operación</Text>
+              <Text className="mb-1 text-xs font-bold text-vino uppercase">Operación del Salón</Text>
               <TouchableOpacity
-                onPress={() => navegar("registro_metre")}
-                className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota"
+                onPress={() => navegar("metre")}
+                className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota shadow-md"
               >
-                <Text className="text-2xl mr-3">🛎️</Text>
+                <Text className="text-3xl mr-3">🪑</Text>
                 <View className="flex-1">
-                  <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
-                    Registrar Cliente
+                  <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza font-bold">
+                    Gestión de Mesas y Espera
                   </Text>
                   <Text className="text-[11px] font-semibold text-amber-100">
-                    Carga asistida de un cliente (Metre)
+                    Ver lista de espera y asignar mesas libres
                   </Text>
                 </View>
-                <Text className="text-mostaza text-xl">›</Text>
+                <Image
+                  source={require("../../assets/images/right-arrow-y.png")}
+                  className="h-6 w-6"
+                  resizeMode="contain"
+                />
               </TouchableOpacity>
             </View>
           )}

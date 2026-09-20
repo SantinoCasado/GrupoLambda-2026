@@ -1,4 +1,5 @@
 import { supabase } from '../../config/supabase'; 
+import { DatosAsignacion } from './interfaces/datosAsignacion';
 
 export const insertarMesaService = async (
     table_number: number, 
@@ -61,4 +62,34 @@ export const obtenerMesasService = async () => {
     }
 
     return data;
+};
+
+export const asignarMesaService = async (datos: DatosAsignacion) => {
+    // 1. Actualizamos el registro en waiting_list a 'assigned'
+    const { data: waitingRecord, error: updateWaitingError } = await supabase
+        .from('waiting_list')
+        .update({ 
+            status: 'assigned', 
+            assigned_table_id: datos.table_id 
+        })
+        .eq('id', datos.waiting_id)
+        .select('*, users(push_token)') // Traemos el token del cliente relacionado
+        .single();
+
+    if (updateWaitingError) {
+        throw new Error(`Error al asignar mesa en lista de espera: ${updateWaitingError.message}`);
+    }
+
+    // 2. Opcional pero recomendado: Actualizamos la tabla de mesas para marcarla como ocupada
+    // (Ajustá 'estado' u 'ocupada' según los nombres de columnas que tengas en restaurant_tables)
+    const { error: updateTableError } = await supabase
+        .from('restaurant_tables')
+        .update({ status: 'ocupada' }) 
+        .eq('id', datos.table_id);
+
+    if (updateTableError) {
+        console.warn('⚠️ No se pudo actualizar el estado de la mesa:', updateTableError.message);
+    }
+
+    return waitingRecord;
 };

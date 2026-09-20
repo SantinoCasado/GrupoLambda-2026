@@ -6,8 +6,8 @@ import { UsuarioSeed } from "./src/data/usuariosPrecargados";
 import HomeScreen, { HomeDestino } from "./src/screens/homeScreen";
 import { AuthProvider } from "./src/context/AuthContext";
 import { CartProvider } from "./src/context/carritoContext";
-import { getSupabaseClient } from "./src/config/supabase";
-import { ClienteAnonimoSesion } from "./src/services/clienteAnonimoService";
+import { getSupabaseClient, supabase } from "./src/config/supabase";
+import { ClienteAnonimoSesion, eliminarClienteAnonimo } from "./src/services/clienteAnonimoService";
 
 // Pantallas
 import AltaEmpleadoScreen from "./src/screens/altaEmpleadoScreen";
@@ -21,6 +21,7 @@ import { CarritoScreen } from "./src/screens/carritoScreen";
 import ScreenBackground from "./src/components/ScreenBackground";
 import { RegistroAnonimoScreen } from "./src/screens/registroAnonimoScreen";
 import { EsperaMesaScreen } from "./src/screens/esperaMesaScreen";
+import { MetreScreen } from "./src/screens/metreScreen";
 
 const NO_PHOTO = require("./assets/images/no-photo.jpg");
 
@@ -38,6 +39,7 @@ type VistaPrivada =
   | "clientes"
   | "producto"
   | "registro_metre"
+  | "metre" 
   | "carta"
   | "carrito";
 
@@ -59,14 +61,50 @@ function AppInterna() {
   const [perfilAltaEmpleado, setPerfilAltaEmpleado] = useState<string | null>(null);
   const [tipoCartaSeleccionada, setTipoCartaSeleccionada] = useState<"comida" | "bebida" | "todo">("comida");
 
-  const cerrarSesion = () => {
+  const cerrarSesion = async () => {
     Vibration.vibrate([0, 50, 50, 50]);
-    getSupabaseClient()?.auth.signOut().catch((error: any) => {
-      console.warn("Error al cerrar sesión en Supabase:", error.message);
-    });
-    setUsuarioActual(null);
-    setVistaPrivada("home");
-    setVistaPublica("login");
+
+    try {
+      const clienteId = usuarioActual?.id || clienteAnonimo?.user_id || clienteAnonimo?.id;
+
+      if (clienteId) {
+        // 1. Busca si tenía entrada en waiting_list (por si tiene mesa asignada)
+        const { data: espera } = await supabase
+          .from("waiting_list")
+          .select("id, assigned_table_id")
+          .eq("user_id", clienteId)
+          .maybeSingle();
+
+        // 2. Si tenía mesa asignada, la libera a 'free'
+        if (espera?.assigned_table_id) {
+          await supabase
+            .from("restaurant_tables")
+            .update({ availability: "free" })
+            .eq("id", espera.assigned_table_id);
+        }
+
+        // 3. Borra la entrada de la lista de espera
+        if (espera?.id) {
+          await supabase.from("waiting_list").delete().eq("id", espera.id);
+        }
+
+        // 4. Si era anónimo, limpia el usuario temporal y su foto
+        if (usuarioActual?.perfil === "cliente_anonimo" || clienteAnonimo) {
+          const foto = clienteAnonimo?.client_photo || usuarioActual?.foto;
+          await eliminarClienteAnonimo(clienteId, foto);
+        }
+      }
+    } catch (err: any) {
+      console.warn("⚠️ Error durante la limpieza al cerrar sesión:", err.message);
+    } finally {
+      getSupabaseClient()?.auth.signOut().catch((error: any) => {
+        console.warn("Error al cerrar sesión en Supabase:", error.message);
+      });
+      setUsuarioActual(null);
+      setClienteAnonimo(null);
+      setVistaPrivada("home");
+      setVistaPublica("login");
+    }
   };
 
   const irA = (destino: HomeDestino, parametro?: string) => {
@@ -196,7 +234,7 @@ function AppInterna() {
       ? esAdmin
       : vistaPrivada === "producto"
       ? esProducto
-      : vistaPrivada === "registro_metre"
+      : vistaPrivada === "registro_metre" || vistaPrivada === "metre"
       ? usuarioActual.perfil === "metre"
       : vistaPrivada === "carta"
       ? esProducto || esCliente
@@ -262,7 +300,9 @@ function AppInterna() {
             categoria={usuarioActual.perfil === "cocinero" ? "comida" : "bebida"}
           />
         )}
-        {vistaPrivada === "registro_metre" && <RegistroClienteScreen modo="metre" />}
+        {(vistaPrivada === "registro_metre" || vistaPrivada === "metre") && (
+          <MetreScreen onCerrarSesion={cerrarSesion} />
+        )}
         {vistaPrivada === "carta" && (
           <CartaScreen
             tipo={tipoCartaSeleccionada}

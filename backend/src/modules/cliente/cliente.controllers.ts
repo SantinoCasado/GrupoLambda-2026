@@ -1,8 +1,10 @@
 import { Request, Response } from 'express';
-import { listarClientesService, registrarClienteService, registrarClienteAnonimoService, actualizarEstadoClienteService } from './cliente.service';
+import { listarClientesService, registrarClienteService, registrarClienteAnonimoService, actualizarEstadoClienteService, ingresarClienteListaService } from './cliente.service';
 import { crearClienteSchema, crearClienteAnonimoSchema, cambiarEstadoSchema } from './schema/cliente.schema';
 import { subirImagenSupabase } from '../../services/storage.service';
 import { supabase } from '../../config/supabase';
+import { AuthRequest } from '../../middleware/auth.middleware';
+import { enviarPushNotification } from '../../services/pushNotifications.service';
 
 export const registrarCliente = async (req: Request, res: Response): Promise<Response> => {
     // Verifica que el archivo "foto" haya llegado
@@ -32,7 +34,38 @@ export const registrarCliente = async (req: Request, res: Response): Promise<Res
     try {
         // Llamada del servicio para registrar un cliente registrado en Auth y en la tabla publica
         const nuevoCliente = await registrarClienteService(validacion.data);
+
+        // --- INICIO LÓGICA DE NOTIFICACIONES PUSH ---
+        try {
+            // Buscamos a los dueños y supervisores que tengan token
+            const { data: admins, error: fetchError } = await supabase
+                .from('users')
+                .select('push_token')
+                .in('role', ['owner', 'supervisor'])
+                .not('push_token', 'is', null);
+
+            if (fetchError) {
+                console.error('⚠️ No se pudieron obtener admins para notificar:', fetchError);
+            } else if (admins && admins.length > 0) {
+                // Disparamos la notificación a cada uno
+                for (const admin of admins) {
+                    if (admin.push_token) {
+                        await enviarPushNotification(
+                            admin.push_token,
+                            '¡Nuevo Cliente Registrado!',
+                            'Hay un nuevo cliente esperando aprobación en el sistema.',
+                            { tipo: 'nuevo_cliente' } // Dato que lee el frontend
+                        );
+                    }
+                }
+            }
+        } catch (notifError) {
+            // Este catch evita que un error de notificaciones rompa el registro del cliente
+            console.error('⚠️ Error inesperado al procesar notificaciones push:', notifError);
+        }
+
         return res.status(201).json({ data: nuevoCliente });
+
     } catch (error: any) {
         return res.status(500).json({ error: error.message });
     }
@@ -101,6 +134,80 @@ export const actualizarEstadoCliente = async (req: Request, res: Response): Prom
     }
 };
 
+export const actualizarPushToken = async (req: AuthRequest, res: Response): Promise<void> => {
+    try {
+        // req.user existe seguro porque paso por verificarAutenticacion
+        const userId = req.user!.id; 
+        const { push_token } = req.body;
+
+        if (!push_token) {
+            res.status(400).json({ error: 'Falta el push_token en el body' });
+            return;
+        }
+
+        // Actualiza el token en Supabase para este usuario
+        const { error } = await supabase
+            .from('users')
+            .update({ push_token: push_token })
+            .eq('id', userId);
+
+        if (error) {
+            throw error;
+        }
+
+        res.status(200).json({ message: 'Push token guardado exitosamente' });
+    } catch (error: any) {
+        console.error('Error al guardar push token:', error);
+        res.status(500).json({ error: 'Error interno del servidor', detalle: error.message });
+    }
+};
+
+
+export const ingresarListaEspera = async (req: Request, res: Response): Promise<Response | void> => {
+    const { user_id, client_name, client_photo } = req.body;
+
+    // Podés reemplazar esto con Zod schema validation como hiciste en clientes
+    if (!user_id || !client_name || !client_photo) {
+        return res.status(400).json({ error: 'Faltan datos obligatorios (user_id, client_name, client_photo)' });
+    }
+
+    try {
+        const waitingRecord = await ingresarClienteListaService({ user_id, client_name, client_photo });
+
+        // logica de notificaciones al metre
+        try {
+            const { data: metres, error: fetchError } = await supabase
+                .from('users')
+                .select('push_token')
+                .eq('role', 'metre')
+                .not('push_token', 'is', null);
+
+            if (fetchError) {
+                console.error('⚠️ Error buscando metres para notificar:', fetchError);
+            } else if (metres && metres.length > 0) {
+                for (const metre of metres) {
+                    if (metre.push_token) {
+                        await enviarPushNotification(
+                            metre.push_token,
+                            '¡Nuevo cliente en espera!',
+                            `${client_name} se anotó en la lista de espera.`,
+                            { tipo: 'actualizacion_lista_espera' } 
+                        );
+                    }
+                }
+            }
+        } catch (notifError) {
+            console.error('⚠️ Error al procesar notificaciones al metre:', notifError);
+        }
+
+        return res.status(201).json({ 
+            message: 'Anotado en la lista de espera con éxito', 
+            data: waitingRecord 
+        });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
+    }
+};
 
 //==========================================================================================
 // OPERACION DE DELETE FISICO DE USUARIO, SOLO PARA DESARROLLO Y TESTING, NO PARA PRODUCCION
