@@ -44,8 +44,11 @@ export const guardarPedido = async (
       throw new Error(`Producto con ID ${item.id_producto} no existe`);
     }
     totalAcumulado += Number(prod.price) * item.cantidad;
-    const tiempoItem = Number(prod.prep_time || 0) * item.cantidad;
-    tiempoElaboracionTotal += tiempoItem;
+    // Tomamos el tiempo del plato que más tarde
+    const prepTime = Number(prod.prep_time || 0);
+    if (prepTime > tiempoElaboracionTotal) {
+      tiempoElaboracionTotal = prepTime;
+    }
   }
 
   // Se usa total_amount y order_type
@@ -163,4 +166,7 @@ export const confirmarPedidoPorMozo = async (
   }
 
   return pedidoActualizado;
+
+
+
 };
