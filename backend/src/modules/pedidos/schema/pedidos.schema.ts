@@ -20,7 +20,18 @@ export const confirmarPedidoSchema = z.object({
   waiter_id: z.string().uuid('El ID del mozo debe ser un UUID válido'),
   estado: z.enum(['in_preparation', 'cancelled']).default('in_preparation'),
   rejection_reason: z.string().optional(),
-});
+}).refine(
+  (data) => {
+    if (data.estado === 'cancelled') {
+      return !!data.rejection_reason && data.rejection_reason.trim().length > 0;
+    }
+    return true;
+  },
+  {
+    message: 'El motivo de rechazo es obligatorio cuando el pedido es cancelado',
+    path: ['rejection_reason'],
+  }
+);
 
 export type CrearPedidoDTO = z.infer<typeof crearPedidoSchema>;
 export type ConfirmarPedidoDTO = z.infer<typeof confirmarPedidoSchema>;
