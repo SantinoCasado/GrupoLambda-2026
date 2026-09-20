@@ -166,7 +166,74 @@ export const confirmarPedidoPorMozo = async (
   }
 
   return pedidoActualizado;
+};
 
+// Punto 16: Listado de pedidos pendientes para Cocina (platos / comida)
+export const obtenerPedidosPendientesCocina = async () => {
+  const { data, error } = await supabase
+    .from('orders')
+    .select(`
+      id,
+      created_at,
+      status,
+      restaurant_tables (table_number),
+      order_items (
+        id,
+        quantity,
+        products (id, name, category)
+      )
+    `)
+    .eq('status', 'in_preparation')
+    .order('created_at', { ascending: true });
 
+  if (error) {
+    throw new Error(`Error al consultar pedidos de cocina: ${error.message}`);
+  }
 
+  return (data || [])
+    .map((orden) => {
+      const itemsCocina = (orden.order_items || []).filter(
+        (item: any) => item.products?.category === 'dish' || item.products?.category === 'food'
+      );
+      return {
+        ...orden,
+        order_items: itemsCocina,
+      };
+    })
+    .filter((orden) => orden.order_items.length > 0);
+};
+
+// Punto 17: Listado de pedidos pendientes para Bar (bebidas)
+export const obtenerPedidosPendientesBar = async () => {
+  const { data, error } = await supabase
+    .from('orders')
+    .select(`
+      id,
+      created_at,
+      status,
+      restaurant_tables (table_number),
+      order_items (
+        id,
+        quantity,
+        products (id, name, category)
+      )
+    `)
+    .eq('status', 'in_preparation')
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    throw new Error(`Error al consultar pedidos de bar: ${error.message}`);
+  }
+
+  return (data || [])
+    .map((orden) => {
+      const itemsBar = (orden.order_items || []).filter(
+        (item: any) => item.products?.category === 'drink'
+      );
+      return {
+        ...orden,
+        order_items: itemsBar,
+      };
+    })
+    .filter((orden) => orden.order_items.length > 0);
 };
