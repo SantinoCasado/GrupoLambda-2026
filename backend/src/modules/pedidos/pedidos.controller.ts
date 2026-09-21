@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { guardarPedido, obtenerEstadoPedido, confirmarPedidoPorMozo, obtenerPedidosPendientesBar, obtenerPedidosPendientesCocina } from './pedidos.service';
+import { guardarPedido, obtenerEstadoPedido, confirmarPedidoPorMozo, obtenerPedidosPendientesBar, obtenerPedidosPendientesCocina, modificarPedidoRechazado } from './pedidos.service';
 import { crearPedidoSchema, confirmarPedidoSchema } from './schema/pedidos.schema';
 
 export const crearPedido = async (req: Request, res: Response) => {
@@ -71,6 +71,33 @@ export const confirmarPedido = async (req: Request, res: Response) => {
   } catch (error: any) {
     return res.status(400).json({
       error: 'No se pudo confirmar el pedido.',
+      detalle: error.message,
+    });
+  }
+};
+
+// Punto 13: Cliente modifica pedido rechazado
+export const modificarPedido = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { productos } = req.body;
+
+    if (!productos || !Array.isArray(productos) || productos.length === 0) {
+      return res.status(400).json({
+        error: 'Debe incluir al menos un producto para modificar el pedido',
+      });
+    }
+
+    const resultado = await modificarPedidoRechazado(id as string, productos);
+
+    return res.status(200).json({
+      status: 'OK',
+      mensaje: 'Pedido modificado y reenviado a aprobación',
+      data: resultado,
+    });
+  } catch (error: any) {
+    return res.status(400).json({
+      error: 'Error al modificar el pedido',
       detalle: error.message,
     });
   }
