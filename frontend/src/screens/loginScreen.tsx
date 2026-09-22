@@ -229,12 +229,16 @@ export function LoginScreen({
               onNavigateRegistroAnonimo();
             }}
             activeOpacity={0.8}
-            className="mt-3 flex-row items-center justify-center rounded-2xl border-2 border-dashed border-mostaza/70 bg-calabaza/20 py-3 active:bg-calabaza/40"
+            className="mt-3 self-center px-6 flex-row items-center justify-center rounded-2xl border-2 border-dashed border-calabaza/70 bg-calabaza/20 py-3 active:bg-calabaza/40"
           >
-            <Text className="mr-2 text-base">👤</Text>
+            <Image
+              source={require("../../assets/images/guest-c.png")}
+              className="mr-2 h-6 w-6"
+              resizeMode="contain"
+            />
             <Text
               style={{ fontFamily: "LaOriental" }}
-              className="text-center uppercase tracking-wider text-mostaza font-bold"
+              className="text-center uppercase tracking-wider text-calabaza"
             >
               Ingresar como Invitado
             </Text>
