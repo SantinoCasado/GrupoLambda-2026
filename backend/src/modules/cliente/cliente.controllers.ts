@@ -166,7 +166,6 @@ export const actualizarPushToken = async (req: AuthRequest, res: Response): Prom
 export const ingresarListaEspera = async (req: Request, res: Response): Promise<Response | void> => {
     const { user_id, client_name, client_photo } = req.body;
 
-    // Podés reemplazar esto con Zod schema validation como hiciste en clientes
     if (!user_id || !client_name || !client_photo) {
         return res.status(400).json({ error: 'Faltan datos obligatorios (user_id, client_name, client_photo)' });
     }
