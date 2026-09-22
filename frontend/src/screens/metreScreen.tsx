@@ -346,7 +346,7 @@ export function MetreScreen({ onCerrarSesion }: Props) {
                     onPress={() => confirmarAsignacion(m)}
                     className="mb-2.5 flex-row items-center justify-between rounded-xl border border-mostaza/30 bg-black/30 p-3.5 active:bg-black/50"
                   >
-                    <View>
+                    <View className="flex-1 mr-3">
                       <Text className="text-base font-bold text-mostaza">
                         Mesa #{m.numero}
                       </Text>
