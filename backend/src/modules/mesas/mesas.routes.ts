@@ -1,7 +1,7 @@
 import { Router } from 'express';
-import { verificarAutenticacion } from '../../middleware/auth.middleware';
+import { verificarAutenticacion, requerirRol } from '../../middleware/auth.middleware';
 import { upload } from '../../middleware/upload.middleware';
-import { crearMesa, actualizarEstadoMesa, obtenerMesas, eliminarMesaFisica } from './mesas.controller';
+import { crearMesa, actualizarEstadoMesa, obtenerMesas, eliminarMesaFisica, asignarMesa } from './mesas.controller';
 import express from 'express';
 
 const router = Router();
@@ -20,6 +20,13 @@ router.patch('/:id/estado', verificarAutenticacion, actualizarEstadoMesa);
 // Endpoint GET para listar todas las mesas
 router.get('/', verificarAutenticacion, obtenerMesas);
 
+
+// Solo perfiles autorizados pueden ejecutar el PATCH de asignación
+router.patch('/asignar-mesa', 
+    verificarAutenticacion, 
+    requerirRol(['metre', 'dueño', 'supervisor']), 
+    asignarMesa
+);
 
 //==========================================================================================
 // RUTA DE DELETE FISICO DE MESA, SOLO PARA DESARROLLO Y TESTING, NO PARA PRODUCCION

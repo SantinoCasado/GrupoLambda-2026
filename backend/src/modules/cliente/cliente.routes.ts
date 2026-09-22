@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { registrarCliente, registrarClienteAnonimo, listarClientes, actualizarEstadoCliente, eliminarUsuarioFisico, actualizarPushToken } from './cliente.controllers';
+import { registrarCliente, registrarClienteAnonimo, listarClientes, actualizarEstadoCliente, eliminarUsuarioFisico, actualizarPushToken, ingresarListaEspera } from './cliente.controllers';
 import { upload } from '../../middleware/upload.middleware';
 import { verificarAutenticacion, requerirRol } from '../../middleware/auth.middleware';
 
@@ -28,6 +28,8 @@ router.post('/anonymous', registrarClienteAnonimo); // Para clientes anónimos (
 // Ruta para actualizar el push token de un cliente registrado
 router.patch('/push-token', verificarAutenticacion, actualizarPushToken);
 
+// Ruta para ingresar a la lista de espera
+router.post('/ingresar', ingresarListaEspera);
 
 //==========================================================================================
 // RUTA DE DELETE FISICO DE USUARIO, SOLO PARA DESARROLLO Y TESTING, NO PARA PRODUCCION
