@@ -43,9 +43,8 @@ export const registrarClienteService = async (datos: CrearClienteDTO) => {
     return userData;
 };
 
-// Registrar un cliente anónimo (CU-09)
+// Registrar un cliente anónimo 
 export const registrarClienteAnonimoService = async (datos: RegistrarAnonimoDTO) => {
-    // 1. Creamos la sesión anónima en Supabase Auth para tener un id real
     const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
 
     if (authError || !authData.user) {
@@ -54,7 +53,6 @@ export const registrarClienteAnonimoService = async (datos: RegistrarAnonimoDTO)
 
     const anonUserId = authData.user.id;
 
-    // 2. Insertamos en public.users para satisfacer foreign keys
     const { error: userError } = await supabase
         .from('users')
         .insert([
@@ -71,7 +69,6 @@ export const registrarClienteAnonimoService = async (datos: RegistrarAnonimoDTO)
         throw new Error(`Error al crear usuario anónimo en users: ${userError.message}`);
     }
 
-    // 3. Insertamos en la lista de espera con todos los campos requeridos
     const { data: waitingData, error: waitingError } = await supabase
         .from('waiting_list')
         .insert([
@@ -103,7 +100,7 @@ export const registrarClienteAnonimoService = async (datos: RegistrarAnonimoDTO)
     };
 };
 
-// Actualizar el estado de un cliente registrado (CU-06)
+// Actualizar el estado de un cliente registrado 
 export const actualizarEstadoClienteService = async (id: string, status: 'approved' | 'rejected') => {
     // trae los datos del cliente ANTES de tocar nada.
     // nos asegura de tener el email y el push_token para notificarle pase lo que pase.

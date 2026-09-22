@@ -96,22 +96,27 @@ export const guardarPedido = async (
   // Busca si hay un mozo o personal de cocina al que notificar, o puede buscar el token del cliente.
   // Por ejemplo, si quiere notificar al personal de cocina/mozos de la mesa:
   try {
-    const { data: clienteData } = await supabase
+    // Buscamos a los mozos para avisarles que tienen un pedido pendiente de revisión
+    const { data: mozos } = await supabase
       .from('users')
       .select('push_token')
-      .eq('id', idCliente)
-      .single();
+      .eq('role', 'mozo')
+      .not('push_token', 'is', null);
 
-    if (clienteData?.push_token) {
-      await enviarPushNotification(
-        clienteData.push_token,
-        '🍽️ ¡Pedido Registrado!',
-        `Tu pedido para la Mesa #${numeroMesa} fue enviado a cocina. Tiempo estimado: ${tiempoElaboracionTotal} mins.`,
-        { orderId: ordenCreada.id }
-      );
+    if (mozos && mozos.length > 0) {
+      for (const mozo of mozos) {
+        if (mozo.push_token) {
+          await enviarPushNotification(
+            mozo.push_token,
+            '📝 Nuevo pedido a confirmar',
+            `La Mesa #${numeroMesa} armó su pedido. Revisalo para enviarlo a preparación.`,
+            { orderId: ordenCreada.id, tipo: 'nuevo_pedido' }
+          );
+        }
+      }
     }
   } catch (pushError) {
-    console.error('No se pudo enviar la push de creación de pedido:', pushError);
+    console.error('No se pudo enviar la push de creación de pedido a los mozos:', pushError);
   }
 
   return {
@@ -293,19 +298,21 @@ export const obtenerPedidosPendientesBar = async () => {
 // Punto 13: Modificar productos de un pedido rechazado/cancelado
 export const modificarPedidoRechazado = async (
   idPedido: string,
-  items: ProductoItem[]
+  items: ProductoItem[],
+  numeroMesa: number,
+  idCliente: string
 ) => {
   // 1. Verificar estado actual del pedido
   const { data: pedidoActual, error: errorBusqueda } = await supabase
     .from('orders')
-    .select('id, status')
+    .select('id, status, user_id, table_id')
     .eq('id', idPedido)
     .single();
-
+  
   if (errorBusqueda || !pedidoActual) {
     throw new Error('El pedido especificado no existe');
   }
-
+  
   if (pedidoActual.status !== 'cancelled') {
     throw new Error('Solo se pueden modificar pedidos que hayan sido rechazados/cancelados');
   }
@@ -382,6 +389,30 @@ export const modificarPedidoRechazado = async (
 
   if (errorUpdate || !pedidoActualizado) {
     throw new Error(`Error al actualizar la orden: ${errorUpdate?.message}`);
+  }
+
+  // 6. Notificar a los MOZOS que el cliente corrigió el pedido
+  try {
+    const { data: mozos } = await supabase
+      .from('users')
+      .select('push_token')
+      .eq('role', 'mozo')
+      .not('push_token', 'is', null);
+
+    if (mozos && mozos.length > 0) {
+      for (const mozo of mozos) {
+        if (mozo.push_token) {
+          await enviarPushNotification(
+            mozo.push_token,
+            '🔄 Pedido Modificado',
+            `El cliente corrigió el pedido. Requiere tu confirmación nuevamente.`,
+            { orderId: pedidoActualizado.id, tipo: 'pedido_modificado' }
+          );
+        }
+      }
+    }
+  } catch (pushError) {
+    console.error('No se pudo enviar la push de modificación al mozo:', pushError);
   }
 
   return {
