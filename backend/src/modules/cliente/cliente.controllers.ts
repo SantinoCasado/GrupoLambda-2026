@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { listarClientesService, registrarClienteService, registrarClienteAnonimoService, actualizarEstadoClienteService } from './cliente.service';
+import { listarClientesService, registrarClienteService, registrarClienteAnonimoService, actualizarEstadoClienteService, ingresarClienteListaService } from './cliente.service';
 import { crearClienteSchema, crearClienteAnonimoSchema, cambiarEstadoSchema } from './schema/cliente.schema';
 import { subirImagenSupabase } from '../../services/storage.service';
 import { supabase } from '../../config/supabase';
@@ -162,6 +162,52 @@ export const actualizarPushToken = async (req: AuthRequest, res: Response): Prom
     }
 };
 
+
+export const ingresarListaEspera = async (req: Request, res: Response): Promise<Response | void> => {
+    const { user_id, client_name, client_photo } = req.body;
+
+    // Podés reemplazar esto con Zod schema validation como hiciste en clientes
+    if (!user_id || !client_name || !client_photo) {
+        return res.status(400).json({ error: 'Faltan datos obligatorios (user_id, client_name, client_photo)' });
+    }
+
+    try {
+        const waitingRecord = await ingresarClienteListaService({ user_id, client_name, client_photo });
+
+        // logica de notificaciones al metre
+        try {
+            const { data: metres, error: fetchError } = await supabase
+                .from('users')
+                .select('push_token')
+                .eq('role', 'metre')
+                .not('push_token', 'is', null);
+
+            if (fetchError) {
+                console.error('⚠️ Error buscando metres para notificar:', fetchError);
+            } else if (metres && metres.length > 0) {
+                for (const metre of metres) {
+                    if (metre.push_token) {
+                        await enviarPushNotification(
+                            metre.push_token,
+                            '¡Nuevo cliente en espera!',
+                            `${client_name} se anotó en la lista de espera.`,
+                            { tipo: 'actualizacion_lista_espera' } 
+                        );
+                    }
+                }
+            }
+        } catch (notifError) {
+            console.error('⚠️ Error al procesar notificaciones al metre:', notifError);
+        }
+
+        return res.status(201).json({ 
+            message: 'Anotado en la lista de espera con éxito', 
+            data: waitingRecord 
+        });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
+    }
+};
 
 //==========================================================================================
 // OPERACION DE DELETE FISICO DE USUARIO, SOLO PARA DESARROLLO Y TESTING, NO PARA PRODUCCION

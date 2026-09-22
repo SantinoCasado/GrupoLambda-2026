@@ -1,8 +1,9 @@
 import { Request, Response } from 'express';
 import { crearEmpleadoSchema } from './schema/empleado.schema';
-import { registrarEmpleado, listarEmpleadosDb } from './empleados.service';
+import { registrarEmpleado, listarEmpleadosDb, obtenerListaEsperaService } from './empleados.service';
 import { subirImagenSupabase } from '../../services/storage.service';
 import { supabase } from '../../config/supabase';
+import { AuthRequest } from '../../middleware/auth.middleware';
 
 export const listarEmpleados = async (req: Request, res: Response) => {
     try {
@@ -63,6 +64,19 @@ export const crearEmpleado = async (req: Request, res: Response): Promise<Respon
         });
     } catch (error: any) {
         return res.status(500).json({ error: 'Fallo al registrar en Base de Datos', detalle: error.message });
+    }
+};
+
+export const obtenerListaEspera = async (req: AuthRequest, res: Response): Promise<Response | void> => {
+    try {
+        const lista = await obtenerListaEsperaService();
+        
+        return res.status(200).json({ 
+            message: 'Lista de espera recuperada con éxito',
+            data: lista
+        });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
     }
 };
 

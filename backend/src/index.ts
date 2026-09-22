@@ -9,6 +9,7 @@ import productosRoutes from './modules/productos/productos.routes';
 import pedidosRoutes from './modules/pedidos/pedidos.routes';
 import chatRoutes from './modules/chat/chat.routes';
 import mesasRoutes from './modules/mesas/mesas.routes';
+import juegosRoutes from './modules/juegos/juegos.routes';
 
 dotenv.config();
 
@@ -33,6 +34,7 @@ app.use('/api/productos', productosRoutes);
 app.use('/api/pedidos', pedidosRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/mesas', mesasRoutes);
+app.use('/api/juegos', juegosRoutes);
 
 // Ruta base
 app.get('/', (req: Request, res: Response) => {
