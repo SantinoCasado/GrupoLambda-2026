@@ -7,4 +7,5 @@ tsx
 multer
 @types/multer
 nodemailer
-@types/nodemailer
+@types/nodemaile
+expo-server-sdk

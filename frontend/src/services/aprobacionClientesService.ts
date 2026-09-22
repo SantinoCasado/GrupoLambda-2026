@@ -23,7 +23,7 @@ export async function obtenerClientesPendientes(): Promise<ClientePendiente[]> {
   try {
     const token = await obtenerTokenAuth();
 
-    // GET /api/clientes?estado=pending
+    // Query param en inglés estricto: ?estado=pending o ?status=pending
     const response = await fetch(`${API_URL}/api/clientes?estado=pending`, {
       method: "GET",
       headers: {
@@ -50,10 +50,10 @@ export async function obtenerClientesPendientes(): Promise<ClientePendiente[]> {
       }));
     }
   } catch (err: any) {
-    console.warn("⚠️ [Aprobación] Falló GET al backend, intentando directo en Supabase:", err.message);
+    console.warn("⚠️ [Aprobación] Falló GET al backend, aplicando fallback a Supabase:", err.message);
   }
 
-  // Fallback directo a Supabase con el rol y status exactos del backend
+  // Fallback directo en Supabase con role y status en inglés
   const { data, error } = await supabase
     .from("users")
     .select("*")
@@ -84,9 +84,11 @@ export async function responderSolicitudCliente(
   id: string,
   decision: "aprobado" | "rechazado"
 ): Promise<{ exito: boolean; mensaje: string }> {
+  // Conversión a valor en inglés de la BD
+  const nextStatus = decision === "aprobado" ? "approved" : "rejected";
+
   try {
     const token = await obtenerTokenAuth();
-    const nuevoEstado = decision === "aprobado" ? "approved" : "rejected";
 
     const response = await fetch(`${API_URL}/api/clientes/${id}/status`, {
       method: "PATCH",
@@ -95,7 +97,7 @@ export async function responderSolicitudCliente(
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify({
-        status: nuevoEstado,
+        status: nextStatus,
       }),
     });
 
@@ -112,10 +114,9 @@ export async function responderSolicitudCliente(
   } catch (err: any) {
     console.warn("⚠️ [Aprobación] Falló PATCH en backend, aplicando directo en Supabase:", err.message);
 
-    const nuevoEstado = decision === "aprobado" ? "approved" : "rejected";
     const { error } = await supabase
       .from("users")
-      .update({ status: nuevoEstado })
+      .update({ status: nextStatus })
       .eq("id", id)
       .eq("role", "registered_client");
 

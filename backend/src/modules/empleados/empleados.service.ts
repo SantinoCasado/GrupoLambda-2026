@@ -2,7 +2,6 @@ import { supabase } from '../../config/supabase';
 import { CrearEmpleadoDTO } from './schema/empleado.schema';
 
 export const registrarEmpleado = async (datos: CrearEmpleadoDTO) => {
-    
     //  el usuario como Administrador (sin loguearlo)
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email: datos.email,
@@ -48,5 +47,19 @@ export const listarEmpleadosDb = async () => {
         .in('role', ['owner', 'supervisor', 'metre', 'mozo', 'cocinero', 'cantinero']);
 
     if (error) throw new Error(`Fallo al listar el staff: ${error.message}`);
+    return data;
+};
+
+export const obtenerListaEsperaService = async () => {
+    const { data, error } = await supabase
+        .from('waiting_list')
+        .select('*')
+        .eq('status', 'waiting')
+        .order('joined_at', { ascending: true }); // Clave: Orden cronológico de llegada
+
+    if (error) {
+        throw new Error(`Error al obtener lista de espera: ${error.message}`);
+    }
+
     return data;
 };

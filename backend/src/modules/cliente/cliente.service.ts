@@ -1,6 +1,7 @@
 import { supabase } from '../../config/supabase';
 import { CrearClienteDTO } from './schema/cliente.schema';
 import { RegistrarAnonimoDTO } from './interface/registrarClienteAnonimo';
+import { DatosListaEspera } from './interface/datosListaEspera';
 import { enviarNotificacionAprobacion } from '../../services/email.service';
 import { enviarPushNotification } from '../../services/pushNotifications.service';
 
@@ -42,25 +43,64 @@ export const registrarClienteService = async (datos: CrearClienteDTO) => {
     return userData;
 };
 
-// Registrar un cliente anónimo (CU-09)
+// Registrar un cliente anónimo 
 export const registrarClienteAnonimoService = async (datos: RegistrarAnonimoDTO) => {
-    // Los anónimos no van a Auth, van directo a la lista de espera (CU-09)
-    const { data, error } = await supabase
+    const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
+
+    if (authError || !authData.user) {
+        throw new Error(`Fallo de Autenticación Anónima: ${authError?.message}`);
+    }
+
+    const anonUserId = authData.user.id;
+
+    const { error: userError } = await supabase
+        .from('users')
+        .insert([
+            {
+                id: anonUserId,
+                first_name: datos.client_name,
+                photo_url: datos.client_photo,
+                role: 'anonymous_client',
+                status: 'approved'
+            }
+        ]);
+
+    if (userError) {
+        throw new Error(`Error al crear usuario anónimo en users: ${userError.message}`);
+    }
+
+    const { data: waitingData, error: waitingError } = await supabase
         .from('waiting_list')
         .insert([
             {
+                user_id: anonUserId,
                 client_name: datos.client_name,
                 client_photo: datos.client_photo,
-                status: 'waiting' // Estado inicial en la lista de espera
+                status: 'waiting'
             }
         ])
-        .select();
+        .select()
+        .single();
 
-    if (error) throw new Error(`Fallo al registrar cliente anónimo en lista de espera: ${error.message}`);
-    return data;
+    if (waitingError) {
+        // Borrado preventivo si falla la lista de espera
+        await supabase.from('users').delete().eq('id', anonUserId);
+        throw new Error(`Fallo al registrar en lista de espera: ${waitingError.message}`);
+    }
+
+    return {
+        user: {
+            id: anonUserId,
+            name: datos.client_name,
+            photo_url: datos.client_photo,
+            role: 'anonymous_client',
+            session: authData.session
+        },
+        waiting_entry: waitingData
+    };
 };
 
-// Actualizar el estado de un cliente registrado (CU-06)
+// Actualizar el estado de un cliente registrado 
 export const actualizarEstadoClienteService = async (id: string, status: 'approved' | 'rejected') => {
     // trae los datos del cliente ANTES de tocar nada.
     // nos asegura de tener el email y el push_token para notificarle pase lo que pase.
@@ -152,4 +192,23 @@ export const listarClientesService = async (statusFilter?: string) => {
 
     if (error) throw new Error(`Fallo al listar clientes: ${error.message}`);
     return data;
-}; 
+};
+
+export const ingresarClienteListaService = async (datos: DatosListaEspera) => {
+    const { data: waitingRecord, error: insertError } = await supabase
+        .from('waiting_list')
+        .insert([{ 
+            user_id: datos.user_id, 
+            client_name: datos.client_name, 
+            client_photo: datos.client_photo 
+            // status asume 'waiting' por defecto
+        }])
+        .select()
+        .single();
+
+    if (insertError) {
+        throw new Error(`Error al insertar en lista de espera: ${insertError.message}`);
+    }
+
+    return waitingRecord;
+};
