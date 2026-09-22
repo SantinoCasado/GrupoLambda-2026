@@ -1,5 +1,6 @@
 import "./global.css";
 import React, { useState, useEffect, useRef } from "react";
+import { registrarPushToken } from "./src/services/pushNotificationClientService";
 import { View, Text, Image, TouchableOpacity, Vibration } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import type { NotificationResponse } from "expo-notifications";
@@ -7,8 +8,8 @@ import { UsuarioSeed } from "./src/data/usuariosPrecargados";
 import HomeScreen, { HomeDestino } from "./src/screens/homeScreen";
 import { AuthProvider } from "./src/context/AuthContext";
 import { CartProvider } from "./src/context/carritoContext";
-import { getSupabaseClient } from "./src/config/supabase";
-import { ClienteAnonimoSesion } from "./src/services/clienteAnonimoService";
+import { getSupabaseClient, supabase } from "./src/config/supabase";
+import { ClienteAnonimoSesion, eliminarClienteAnonimo } from "./src/services/clienteAnonimoService";
 import { obtenerModuloNotificaciones } from "./src/services/notificationsGateway";
 
 // Pantallas
@@ -23,6 +24,10 @@ import { CarritoScreen } from "./src/screens/carritoScreen";
 import ScreenBackground from "./src/components/ScreenBackground";
 import { RegistroAnonimoScreen } from "./src/screens/registroAnonimoScreen";
 import { EsperaMesaScreen } from "./src/screens/esperaMesaScreen";
+import { ChatMozoScreen as ChatScreen } from "./src/screens/chatScreen";
+import { MozoScreen } from "./src/screens/mozoScreen";
+import { MetreScreen } from "./src/screens/metreScreen";
+import { EstadoPedidoScreen } from "./src/screens/estadoPedidoScreen";
 
 const NO_PHOTO = require("./assets/images/no-photo.jpg");
 
@@ -40,8 +45,12 @@ type VistaPrivada =
   | "clientes"
   | "producto"
   | "registro_metre"
+  | "metre"
+  | "mozo"
+  | "chat_mozo"
   | "carta"
-  | "carrito";
+  | "carrito"
+  | "estado_pedido";
 
 export default function App() {
   return (
@@ -56,10 +65,14 @@ export default function App() {
 function AppInterna() {
   const [usuarioActual, setUsuarioActual] = useState<UsuarioSeed | null>(null);
   const [vistaPrivada, setVistaPrivada] = useState<VistaPrivada>("home");
-  const [vistaPublica, setVistaPublica] = useState<"login" | "registro_cliente" | "registro_anonimo" | "espera_mesa">("login");  
+  const [vistaPublica, setVistaPublica] = useState<"login" | "registro_cliente" | "registro_anonimo" | "espera_mesa">("login");
   const [clienteAnonimo, setClienteAnonimo] = useState<ClienteAnonimoSesion | null>(null);
   const [perfilAltaEmpleado, setPerfilAltaEmpleado] = useState<string | null>(null);
   const [tipoCartaSeleccionada, setTipoCartaSeleccionada] = useState<"comida" | "bebida" | "todo">("comida");
+  const [numeroMesaCliente, setNumeroMesaCliente] = useState<number | null>(null);
+  const [enEsperaRegistrado, setEnEsperaRegistrado] = useState(false);
+  const [idMesaCliente, setIdMesaCliente] = useState<string | null>(null);
+  const [idPedidoActivo, setIdPedidoActivo] = useState<string | null>(null);
   const [notifNuevoClientePendiente, setNotifNuevoClientePendiente] = useState(false);
 
   // Réplicas actualizadas del usuario para usarlas dentro del listener de notificaciones
@@ -105,18 +118,57 @@ function AppInterna() {
     return () => suscripcion.remove();
   }, []);
 
-  const cerrarSesion = () => {
+  const cerrarSesion = async () => {
     Vibration.vibrate([0, 50, 50, 50]);
-    getSupabaseClient()?.auth.signOut().catch((error: any) => {
-      console.warn("Error al cerrar sesión en Supabase:", error.message);
-    });
-    setUsuarioActual(null);
-    setVistaPrivada("home");
-    setVistaPublica("login");
+
+    try {
+      const clienteId = usuarioActual?.id || clienteAnonimo?.user_id || clienteAnonimo?.id;
+
+      if (clienteId) {
+        // 1. Busca si tenía entrada en waiting_list (por si tiene mesa asignada)
+        const { data: espera } = await supabase
+          .from("waiting_list")
+          .select("id, assigned_table_id")
+          .eq("user_id", clienteId)
+          .maybeSingle();
+
+        // 2. Si tenía mesa asignada, la libera a 'free'
+        if (espera?.assigned_table_id) {
+          await supabase
+            .from("restaurant_tables")
+            .update({ availability: "free" })
+            .eq("id", espera.assigned_table_id);
+        }
+
+        // 3. Borra la entrada de la lista de espera
+        if (espera?.id) {
+          await supabase.from("waiting_list").delete().eq("id", espera.id);
+        }
+
+        // 4. Si era anónimo, limpia el usuario temporal y su foto
+        if (usuarioActual?.perfil === "cliente_anonimo" || clienteAnonimo) {
+          const foto = clienteAnonimo?.client_photo || usuarioActual?.foto;
+          await eliminarClienteAnonimo(clienteId, foto);
+        }
+      }
+    } catch (err: any) {
+      console.warn("⚠️ Error durante la limpieza al cerrar sesión:", err.message);
+    } finally {
+      getSupabaseClient()?.auth.signOut().catch((error: any) => {
+        console.warn("Error al cerrar sesión en Supabase:", error.message);
+      });
+      setUsuarioActual(null);
+      setClienteAnonimo(null);
+      setNumeroMesaCliente(null);
+      setIdMesaCliente(null);
+      setIdPedidoActivo(null); // Limpieza al salir
+      setVistaPrivada("home");
+      setVistaPublica("login");
+    }
   };
 
   const irA = (destino: HomeDestino, parametro?: string) => {
-    setVistaPrivada(destino);
+    setVistaPrivada(destino as VistaPrivada);
     if (destino === "empleados" && parametro) {
       setPerfilAltaEmpleado(parametro);
     }
@@ -178,14 +230,59 @@ function AppInterna() {
       <>
         <ScreenBackground />
         <LoginScreen
-          onLoginSuccess={(usuario) => {
+          onLoginSuccess={async (usuario) => {
             setUsuarioActual(usuario);
+            registrarPushToken(usuario.id);
+
             if (
               notifNuevoClientePendiente &&
               (usuario.perfil === "dueño" || usuario.perfil === "supervisor")
             ) {
               setNotifNuevoClientePendiente(false);
               setVistaPrivada("clientes");
+              return;
+            }
+
+            if (usuario.perfil === "cliente_registrado") {
+              // 1. Consulta si ya tiene mesa activa en waiting_list
+              const { data: espera } = await supabase
+                .from("waiting_list")
+                .select("assigned_table_id, status")
+                .eq("user_id", usuario.id)
+                .maybeSingle();
+
+              if (espera?.assigned_table_id && espera.status === "seated") {
+                const { data: mesaData } = await supabase
+                  .from("restaurant_tables")
+                  .select("id, table_number")
+                  .eq("id", espera.assigned_table_id)
+                  .maybeSingle();
+
+                setIdMesaCliente(mesaData?.id ?? espera.assigned_table_id);
+                setNumeroMesaCliente(mesaData?.table_number ?? 1);
+                setEnEsperaRegistrado(false);
+              } else {
+                setNumeroMesaCliente(null);
+                setEnEsperaRegistrado(true);
+              }
+
+              // 2. Consulta si tiene comanda activa en preparación
+              const { data: pedidoEnCurso } = await supabase
+                .from("orders")
+                .select("id")
+                .eq("client_id", usuario.id)
+                .in("status", ["pending", "in_preparation", "ready"])
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              if (pedidoEnCurso) {
+                setIdPedidoActivo(pedidoEnCurso.id);
+              } else {
+                setIdPedidoActivo(null);
+              }
+
+              setVistaPrivada("home");
             } else {
               setVistaPrivada("home");
             }
@@ -195,6 +292,36 @@ function AppInterna() {
           }}
           onNavigateRegistroAnonimo={() => {
             setVistaPublica("registro_anonimo");
+          }}
+        />
+      </>
+    );
+  }
+
+  // 1.1 Si el cliente registrado está en espera o en la puerta
+  if (usuarioActual && usuarioActual.perfil === "cliente_registrado" && enEsperaRegistrado) {
+    return (
+      <>
+        <ScreenBackground />
+        <EsperaMesaScreen
+          cliente={{
+            id: usuarioActual.id,
+            user_id: usuarioActual.id,
+            client_name: `${usuarioActual.nombres} ${usuarioActual.apellidos}`,
+            client_photo: usuarioActual.foto || "",
+            status: "door",
+          }}
+          onSalir={cerrarSesion}
+          onMesaConfirmada={async (numMesa) => {
+            setNumeroMesaCliente(numMesa);
+            const { data: mesaData } = await supabase
+              .from("restaurant_tables")
+              .select("id")
+              .eq("table_number", numMesa)
+              .maybeSingle();
+            if (mesaData?.id) setIdMesaCliente(mesaData.id);
+            setEnEsperaRegistrado(false);
+            setVistaPrivada("home");
           }}
         />
       </>
@@ -238,7 +365,14 @@ function AppInterna() {
 
         <View className="flex-1">
           <ScreenBackground />
-          <HomeScreen usuario={usuarioActual} onNavigate={irA} />
+          <HomeScreen
+            usuario={usuarioActual}
+            onNavigate={irA}
+            numeroMesa={numeroMesaCliente}
+            onSolicitarMesa={() => setEnEsperaRegistrado(true)}
+            pedidoActivoId={idPedidoActivo}
+            onVerEstadoPedido={() => setVistaPrivada("estado_pedido")}
+          />
         </View>
       </SafeAreaView>
     );
@@ -250,11 +384,13 @@ function AppInterna() {
       ? esAdmin
       : vistaPrivada === "producto"
       ? esProducto
-      : vistaPrivada === "registro_metre"
-      ? usuarioActual.perfil === "metre"
+      : vistaPrivada === "registro_metre" || vistaPrivada === "metre"
+      ? usuarioActual.perfil === "metre" || esAdmin
+      : vistaPrivada === "mozo"
+      ? usuarioActual.perfil === "mozo" || esAdmin
       : vistaPrivada === "carta"
       ? esProducto || esCliente
-      : vistaPrivada === "carrito"
+      : vistaPrivada === "carrito" || vistaPrivada === "estado_pedido"
       ? esCliente
       : true;
 
@@ -263,7 +399,14 @@ function AppInterna() {
       <SafeAreaView className="flex-1 bg-vino">
         <View className="flex-1">
           <ScreenBackground />
-          <HomeScreen usuario={usuarioActual} onNavigate={irA} />
+          <HomeScreen
+            usuario={usuarioActual}
+            onNavigate={irA}
+            numeroMesa={numeroMesaCliente}
+            onSolicitarMesa={() => setEnEsperaRegistrado(true)}
+            pedidoActivoId={idPedidoActivo}
+            onVerEstadoPedido={() => setVistaPrivada("estado_pedido")}
+          />
         </View>
       </SafeAreaView>
     );
@@ -316,21 +459,72 @@ function AppInterna() {
             categoria={usuarioActual.perfil === "cocinero" ? "comida" : "bebida"}
           />
         )}
-        {vistaPrivada === "registro_metre" && <RegistroClienteScreen modo="metre" />}
+        {vistaPrivada === "metre" && (
+          <MetreScreen
+            onCerrarSesion={cerrarSesion}
+          />
+        )}
+        {vistaPrivada === "registro_metre" && (
+          <RegistroClienteScreen
+            modo="cliente"
+            onVolverAlLogin={volverAlInicio}
+          />
+        )}
         {vistaPrivada === "carta" && (
           <CartaScreen
             tipo={tipoCartaSeleccionada}
             rolUsuario={usuarioActual.perfil}
+            numeroMesa={numeroMesaCliente ?? undefined}
             onVolver={volverAlInicio}
             onIrAlCarrito={() => setVistaPrivada("carrito")}
+            onAbrirChatMozo={() => setVistaPrivada("chat_mozo")}
           />
         )}
+
+        {/* Carrito / Comanda */}
         {vistaPrivada === "carrito" && (
           <CarritoScreen
+            numeroMesa={numeroMesaCliente || 1}
+            clienteId={usuarioActual.id}
             onVolver={volverAlInicio}
-            onConfirmarPedido={() => {
-              // Lógica de confirmación
+            onPedidoConfirmado={(pedido) => {
+              setIdPedidoActivo(pedido.id);
+              setVistaPrivada("estado_pedido");
             }}
+          />
+        )}
+
+        {/* Seguimiento de Estado del Pedido */}
+        {vistaPrivada === "estado_pedido" && (
+          <EstadoPedidoScreen
+            pedidoId={idPedidoActivo || ""}
+            onVolver={volverAlInicio}
+            onIrAJuegos={() => {
+              // Navegación a juegos de la mesa
+            }}
+          />
+        )}
+
+        {/* Vista del Mozo */}
+        {vistaPrivada === "mozo" && (
+          <MozoScreen
+            usuarioActual={usuarioActual}
+            onAbrirChatMesa={(tableId, numMesa) => {
+              setIdMesaCliente(tableId);
+              setNumeroMesaCliente(numMesa);
+              setVistaPrivada("chat_mozo");
+            }}
+            onCerrarSesion={cerrarSesion}
+          />
+        )}
+
+        {/* Chat con el Mozo */}
+        {vistaPrivada === "chat_mozo" && (
+          <ChatScreen
+            tableId={idMesaCliente || ""}
+            numeroMesa={numeroMesaCliente || 1}
+            usuarioActual={usuarioActual}
+            onVolver={() => setVistaPrivada(usuarioActual.perfil === "mozo" ? "mozo" : "home")}
           />
         )}
       </View>

@@ -1,19 +1,42 @@
-// src/screens/CarritoScreen.tsx
+// src/screens/carritoScreen.tsx
+import { notificarMozos } from "../services/pushNotificationClientService";
 import React, { useState, useRef, useEffect } from "react";
-import { View, Text, FlatList, TouchableOpacity, Image, Alert } from "react-native";
+import { View, Text, FlatList, TouchableOpacity, Image, Alert, ActivityIndicator, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCart, ItemCarrito } from "../context/carritoContext";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { CompanySpinner } from "../components/CompanySpinner";
 import { FeedbackModal } from "../components/FeedbackModal";
+import { crearPedidoApi, Pedido } from "../services/pedidosService";
+import { supabase } from "../config/supabase";
 
 interface CarritoScreenProps {
+  numeroMesa: number;
+  clienteId: string;
   onVolver: () => void;
-  onConfirmarPedido: () => void;
+  onPedidoConfirmado: (pedido: Pedido) => void;
 }
 
-export function CarritoScreen({ onVolver, onConfirmarPedido }: CarritoScreenProps) {
+export function CarritoScreen({
+  numeroMesa,
+  clienteId,
+  onVolver,
+  onPedidoConfirmado,
+}: CarritoScreenProps) {
   const insets = useSafeAreaInsets();
+  const {
+    carrito,
+    eliminarDelCarrito,
+    agregarAlCarrito,
+    restarDelCarrito,
+    total,
+    tiempoEstimadoTotal,
+    vaciarCarrito,
+  } = useCart();
+
+  const [enviando, setEnviando] = useState(false);
+  const [modalEsperaMozo, setModalEsperaMozo] = useState(false);
+  const [pedidoCreado, setPedidoCreado] = useState<Pedido | null>(null);
   const [confirmandoVaciar, setConfirmandoVaciar] = useState(false);
   const [vaciando, setVaciando] = useState(false);
   const [modalFeedback, setModalFeedback] = useState<{
@@ -29,28 +52,133 @@ export function CarritoScreen({ onVolver, onConfirmarPedido }: CarritoScreenProp
   });
   const vaciarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const abrirAviso = (
+    titulo: string,
+    mensaje: string,
+    tipo: "exito" | "error" | "informacion" = "informacion"
+  ) => {
+    setModalFeedback({
+      visible: true,
+      tipo,
+      titulo,
+      mensaje,
+    });
+  };
+
   useEffect(() => {
     return () => {
       if (vaciarTimerRef.current) clearTimeout(vaciarTimerRef.current);
     };
   }, []);
 
-  const {
-    carrito,
-    eliminarDelCarrito,
-    agregarAlCarrito,
-    restarDelCarrito,
-    total,
-    tiempoEstimadoTotal,
-    vaciarCarrito,
-  } = useCart();
-
-  const handleConfirmar = () => {
+  const handleRealizarPedido = async () => {
     if (carrito.length === 0) {
-      Alert.alert("Carrito Vacío", "Agrega productos antes de confirmar el pedido.");
+      abrirAviso("Carrito Vacío", "Agregá productos antes de confirmar el pedido.", "informacion");
       return;
     }
-    onConfirmarPedido();
+
+    setEnviando(true);
+    try {
+      const productosPayload = carrito.map((item) => ({
+        id_producto: item.id,
+        cantidad: Number(item.cantidad),
+      }));
+
+      const resBackend: any = await crearPedidoApi({
+        id_cliente: clienteId,
+        numero_mesa: Number(numeroMesa),
+        productos: productosPayload,
+        order_type: "dine_in",
+      });
+
+      // Se extrae la orden real enviada por el backend
+      const orden: Pedido = resBackend?.pedido || resBackend;
+      const pedidoId = orden.id;
+
+      if (!pedidoId) {
+        throw new Error("No se pudo identificar el pedido creado.");
+      }
+
+      await notificarMozos(
+        `🍽️ Nuevo Pedido - Mesa #${numeroMesa}`,
+        `Comanda por $${total.toLocaleString("es-AR")} lista para ser revisada y confirmada.`,
+        { order_id: pedidoId, table_id: orden.table_id }
+      );
+
+      setPedidoCreado(orden);
+      setModalEsperaMozo(true);
+      vaciarCarrito();
+
+      // Polling de respaldo cada 2.5s para no depender únicamente del websocket
+      const timer = setInterval(async () => {
+        try {
+          const { data: ordenActual } = await supabase
+            .from("orders")
+            .select("id, status, rejection_reason")
+            .eq("id", pedidoId)
+            .maybeSingle();
+
+          if (ordenActual) {
+            if (ordenActual.status === "in_preparation" || ordenActual.status === "confirmed") {
+              clearInterval(timer);
+              supabase.removeChannel(canal);
+              setModalEsperaMozo(false);
+              onPedidoConfirmado(ordenActual as any);
+            } else if (ordenActual.status === "cancelled") {
+              clearInterval(timer);
+              supabase.removeChannel(canal);
+              setModalEsperaMozo(false);
+              abrirAviso(
+                "Pedido Cancelado",
+                ordenActual.rejection_reason || "El mozo no pudo confirmar tu pedido.",
+                "error"
+              );
+            }
+          }
+        } catch {
+          // Ignorado en microcorte
+        }
+      }, 2500);
+
+      // Suscripción Realtime con el ID exacto
+      const canal = supabase
+        .channel(`pedido_${pedidoId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "UPDATE",
+            schema: "public",
+            table: "orders",
+            filter: `id=eq.${pedidoId}`,
+          },
+          (payload) => {
+            const pedidoActualizado = payload.new as Pedido;
+            if (
+              pedidoActualizado.status === "in_preparation" ||
+              pedidoActualizado.status === "confirmed"
+            ) {
+              clearInterval(timer);
+              supabase.removeChannel(canal);
+              setModalEsperaMozo(false);
+              onPedidoConfirmado(pedidoActualizado);
+            } else if (pedidoActualizado.status === "cancelled") {
+              clearInterval(timer);
+              supabase.removeChannel(canal);
+              setModalEsperaMozo(false);
+              abrirAviso(
+                "Pedido Cancelado",
+                pedidoActualizado.rejection_reason || "El mozo no pudo confirmar tu pedido en este momento.",
+                "error"
+              );
+            }
+          }
+        )
+        .subscribe();
+    } catch (err: any) {
+      abrirAviso("Error al enviar pedido", err.message || "Intente nuevamente.", "error");
+    } finally {
+      setEnviando(false);
+    }
   };
 
   const confirmarVaciar = () => {
@@ -96,7 +224,7 @@ export function CarritoScreen({ onVolver, onConfirmarPedido }: CarritoScreenProp
             {item.nombre}
           </Text>
           <Text className="text-[11px] text-stone-500">⏱ {item.tiempoElaboracion} min</Text>
-          
+
           <Text className="text-xs font-semibold text-stone-700 mt-1">
             ${item.precio} x {item.cantidad} ={" "}
             <Text className="font-black text-calabaza">${item.precio * item.cantidad}</Text>
@@ -165,12 +293,11 @@ export function CarritoScreen({ onVolver, onConfirmarPedido }: CarritoScreenProp
 
       {/* Encabezado */}
       <View className="relative flex-row items-center justify-between mb-1 border-b border-mostaza/20 pb-5">
-        
         <Text style={{ fontFamily: "LaOriental" }} className="absolute inset-x-0 z-10 text-center text-xl uppercase text-vino pointer-events-none pb-3">
-          Mi Pedido
+          Comanda Mesa #{numeroMesa}
         </Text>
-
-         {carrito.length > 0 ? (
+        <Text className="text-sm font-bold text-vino">🛒</Text>
+        {carrito.length > 0 ? (
           <TouchableOpacity onPress={() => setConfirmandoVaciar(true)} className="ml-auto h-8 items-center justify-center rounded-xl bg-terracota/10 px-3 active:bg-terracota/20 z-20">
             <Text className="text-terracota text-xs font-bold">Vaciar</Text>
           </TouchableOpacity>
@@ -193,7 +320,7 @@ export function CarritoScreen({ onVolver, onConfirmarPedido }: CarritoScreenProp
               resizeMode="contain"
             />
             <Text style={{ fontFamily: "LaOriental" }} className="text-lg uppercase text-vino">
-              Tu carrito está vacío
+              Tu comanda está vacía
             </Text>
             <Text className="text-xs text-stone-500 mt-1">
               Agregá platos o bebidas desde la carta para armar tu pedido.
@@ -212,31 +339,60 @@ export function CarritoScreen({ onVolver, onConfirmarPedido }: CarritoScreenProp
 
           <View className="flex-row justify-between items-center mb-4">
             <Text className="text-base font-bold text-stone-800">Total pedido:</Text>
-            <Text className="text-2xl font-black text-calabaza">${total}</Text>
+            <Text className="text-2xl font-black text-calabaza">${total.toLocaleString("es-AR")}</Text>
           </View>
 
           <TouchableOpacity
-            onPress={handleConfirmar}
+            disabled={enviando}
+            onPress={handleRealizarPedido}
             className="flex-row items-center justify-center rounded-2xl border border-amber-400/40 bg-vino py-3 active:bg-terracota shadow-md"
           >
-            <Image
-              source={require("../../assets/images/sello.png")}
-              className="h-7 w-7"
-              resizeMode="contain"
-            />
-            <Text style={{ fontFamily: "LaOriental" }} className="mx-5 text-center text-l uppercase tracking-wider text-mostaza">
-              Confirmar pedido
-            </Text>
-            <Image
-              source={require("../../assets/images/sello.png")}
-              className="h-7 w-7"
-              resizeMode="contain"
-            />
+            {enviando ? (
+              <ActivityIndicator size="small" color="#E5B25D" />
+            ) : (
+              <>
+                <Image
+                  source={require("../../assets/images/sello.png")}
+                  className="h-7 w-7"
+                  resizeMode="contain"
+                />
+                <Text style={{ fontFamily: "LaOriental" }} className="mx-5 text-center text-l uppercase tracking-wider text-mostaza">
+                  Enviar Pedido al Mozo
+                </Text>
+                <Image
+                  source={require("../../assets/images/sello.png")}
+                  className="h-7 w-7"
+                  resizeMode="contain"
+                />
+              </>
+            )}
           </TouchableOpacity>
         </View>
       )}
-    {/* Bottom padding for safe area */}
+
+      {/* Bottom padding for safe area */}
       <View style={{ height: insets.bottom }} />
+
+      {/* MODAL DE ESPERA: ESPERANDO CONFIRMACIÓN DEL MOZO */}
+      <Modal visible={modalEsperaMozo} transparent animationType="fade">
+        <View className="flex-1 items-center justify-center bg-black/80 px-6">
+          <View className="w-full max-w-sm rounded-3xl border-2 border-mostaza bg-vino p-6 shadow-2xl items-center">
+            <ActivityIndicator size="large" color="#E5B25D" className="mb-3" />
+            <Text
+              style={{ fontFamily: "LaOriental" }}
+              className="text-xl uppercase text-mostaza text-center"
+            >
+              Esperando al Mozo
+            </Text>
+            <Text className="mt-2 text-center text-xs text-amber-100/90 leading-relaxed">
+              Tu pedido para la <Text className="font-bold text-mostaza">Mesa #{numeroMesa}</Text> fue recibido.
+            </Text>
+            <Text className="mt-2 text-center text-[11px] text-amber-200/70">
+              El pedido no se enviará a cocina ni barra hasta que el mozo lo confirme.
+            </Text>
+          </View>
+        </View>
+      </Modal>
 
       <ConfirmModal
         visible={confirmandoVaciar}

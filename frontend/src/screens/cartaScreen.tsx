@@ -2,170 +2,45 @@ import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
+  FlatList,
   TouchableOpacity,
   Image,
-  Dimensions,
+  ActivityIndicator,
   ScrollView,
   NativeSyntheticEvent,
   NativeScrollEvent,
+  LayoutChangeEvent,
 } from "react-native";
 import { useCart, ItemMenu } from "../context/carritoContext";
 import { supabase } from "../config/supabase";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { CompanySpinner } from "../components/CompanySpinner";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { FeedbackModal } from "../components/FeedbackModal";
 
-const { width: SCREEN_WIDTH } = Dimensions.get("window");
-const CARD_WIDTH = SCREEN_WIDTH - 48; // ancho adaptado con padding
-
 interface CartaScreenProps {
-  tipo: "comida" | "bebida" | "todo";
+  tipo?: "comida" | "bebida" | "postre" | "todo";
   rolUsuario: "cocinero" | "cantinero" | "cliente_registrado" | "cliente_anonimo" | string;
+  numeroMesa?: number;
   onVolver?: () => void;
   onIrAlCarrito?: () => void;
+  onAbrirChatMozo?: () => void;
 }
 
-interface TarjetaProductoProps {
-  item: ItemMenu;
-  esCliente: boolean;
-  esStaff: boolean;
-  esCocinero: boolean;
-  onAgregar: () => void;
-  onEliminar: () => void;
-}
-
-function TarjetaProducto({ item, esCliente, esStaff, esCocinero, onAgregar, onEliminar }: TarjetaProductoProps) {
-  const [fotoActiva, setFotoActiva] = useState(0);
-  const [mostrarDots, setMostrarDots] = useState(false);
-  const scrollFotosRef = useRef<ScrollView>(null);
-  const ocultarDotsRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleScrollFotos = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const slide = Math.round(event.nativeEvent.contentOffset.x / CARD_WIDTH);
-    if (slide !== fotoActiva) {
-      setFotoActiva(slide);
-    }
-    setMostrarDots(true);
-    if (ocultarDotsRef.current) clearTimeout(ocultarDotsRef.current);
-    ocultarDotsRef.current = setTimeout(() => setMostrarDots(false), 1200);
-  };
-
-  return (
-    <View className="flex-1 rounded-3xl bg-white p-4 shadow-xl border-2 border-vino">
-      {/* Título del producto */}
-      <Text style={{ fontFamily: "LaOriental" }} className="mb-5 text-xl font-black text-vino">
-        {item.nombre}
-      </Text>
-
-      {/* 1. Carrusel horizontal de fotos */}
-      <View className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-stone-100">
-        {item.fotos && item.fotos.length > 0 ? (
-          <>
-            <ScrollView
-              ref={scrollFotosRef}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onScroll={handleScrollFotos}
-              scrollEventThrottle={16}
-              className="h-full w-full"
-            >
-              {item.fotos.map((url, index) => (
-                <Image
-                  key={`${item.id}-foto-${index}`}
-                  source={{ uri: url }}
-                  style={{ width: CARD_WIDTH - 32, height: "100%" }}
-                  resizeMode="contain"
-                />
-              ))}
-            </ScrollView>
-
-            {item.fotos.length > 1 && mostrarDots && (
-              <View className="absolute bottom-2 left-0 right-0 flex-row justify-center">
-                <View className="flex-row items-center gap-1.5 rounded-full bg-black/20 px-2.5 py-1">
-                  {item.fotos.map((_, i) => (
-                    <View
-                      key={`dot-${i}`}
-                      className={`h-2 rounded-full ${
-                        i === fotoActiva ? "w-5 bg-mostaza" : "w-2 bg-white/70"
-                      }`}
-                    />
-                  ))}
-                </View>
-              </View>
-            )}
-          </>
-        ) : (
-          <View className="h-full w-full items-center justify-center">
-            <Text className="text-6xl">{item.categoria === "dish" ? "🍲" : "🍹"}</Text>
-          </View>
-        )}
-      </View>
-
-      {/* 2. Información del Plato */}
-      <View className="mt-4 flex-1">
-        <Text className="text-2xl font-black text-calabaza">
-          ${item.precio}
-        </Text>
-
-        <View className="mt-3 flex-row items-center">
-          <Text className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-900">
-            ⏱ {item.tiempoElaboracion} min de preparación
-          </Text>
-        </View>
-
-        <Text className="mt-3 text-sm leading-5 text-stone-600">
-          {item.descripcion}
-        </Text>
-      </View>
-
-      {/* 3. Botón Agregar al Carrito (solo clientes) */}
-      {esCliente && (
-        <TouchableOpacity
-          onPress={onAgregar}
-          className="mt-8 flex-row items-center justify-center rounded-2xl border border-amber-400/40 bg-vino py-3 active:bg-terracota"
-        >
-          <Image
-            source={require("../../assets/images/sello.png")}
-            className="h-7 w-7"
-            resizeMode="contain"
-          />
-          <Text style={{ fontFamily: "LaOriental" }} className="mx-5 text-center text-l uppercase tracking-wider text-mostaza">
-            Agregar al Carrito
-          </Text>
-          <Image
-            source={require("../../assets/images/sello.png")}
-            className="h-7 w-7"
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
-      )}
-
-      {/* 3b. Botón Dar de Baja (solo cocinero) */}
-      {esStaff && (
-        <TouchableOpacity
-          onPress={onEliminar}
-          className="mt-8 flex-row items-center justify-center rounded-2xl border border-terracota/40 bg-terracota/20 py-3 active:bg-terracota/40"
-        >
-          <Image
-            source={require("../../assets/images/trash-t.png")}
-            className="mr-3 h-6 w-6"
-            resizeMode="contain"
-          />
-          <Text style={{ fontFamily: "LaOriental" }} className="text-l uppercase tracking-wider text-terracota">
-            {esCocinero ? "Eliminar plato" : "Eliminar bebida"}
-          </Text>
-        </TouchableOpacity>
-      )}
-    </View>
+export function CartaScreen({
+  tipo = "comida",
+  rolUsuario,
+  numeroMesa,
+  onVolver,
+  onIrAlCarrito,
+  onAbrirChatMozo,
+}: CartaScreenProps) {
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<"dish" | "drink" | "dessert">(
+    tipo === "bebida" ? "drink" : tipo === "postre" ? "dessert" : "dish"
   );
-}
-
-export function CartaScreen({ tipo, rolUsuario, onVolver, onIrAlCarrito }: CartaScreenProps) {
   const [items, setItems] = useState<ItemMenu[]>([]);
   const [cargando, setCargando] = useState(true);
-  const [pageHeight, setPageHeight] = useState(0);
+  const [indiceActual, setIndiceActual] = useState(0);
+  const [fotoActiva, setFotoActiva] = useState(0);
+  const [anchoContenedorFoto, setAnchoContenedorFoto] = useState(0);
   const [itemAEliminar, setItemAEliminar] = useState<ItemMenu | null>(null);
   const [eliminando, setEliminando] = useState(false);
   const [modalFeedback, setModalFeedback] = useState<{
@@ -181,22 +56,29 @@ export function CartaScreen({ tipo, rolUsuario, onVolver, onIrAlCarrito }: Carta
   });
 
   const { agregarAlCarrito, carrito } = useCart();
-  const insets = useSafeAreaInsets();
+  const scrollFotosRef = useRef<ScrollView>(null);
 
   const esStaff = rolUsuario === "cocinero" || rolUsuario === "cantinero";
   const esCliente = !esStaff;
-  const mostrandoSpinner = cargando || (items.length > 0 && pageHeight === 0);
 
-  const cartIcon =
-    carrito.length === 0
-      ? require("../../assets/images/cart-c.png")
-      : require("../../assets/images/cart-y.png");
-
-  const categoriaSupabase = tipo === "comida" ? "dish" : tipo === "bebida" ? "drink" : null;
+  // Cálculo del total acumulado y tiempo acumulado para mostrar siempre visible (Punto 12)
+  const importeAcumulado = carrito.reduce(
+    (total, item) => total + (item.precio || 0) * (item.cantidad || 1),
+    0
+  );
+  const tiempoEstimadoMax = carrito.reduce(
+    (max, item) => Math.max(max, item.tiempoElaboracion || 0),
+    0
+  );
 
   useEffect(() => {
     cargarProductos();
-  }, [tipo]);
+  }, [categoriaSeleccionada]);
+
+  useEffect(() => {
+    setFotoActiva(0);
+    scrollFotosRef.current?.scrollTo({ x: 0, animated: false });
+  }, [indiceActual]);
 
   const cargarProductos = async () => {
     try {
@@ -204,11 +86,8 @@ export function CartaScreen({ tipo, rolUsuario, onVolver, onIrAlCarrito }: Carta
       let query = supabase
         .from("products")
         .select("id, name, description, prep_time, price, photos, category, status")
-        .eq("status", "active");
-
-      if (categoriaSupabase) {
-        query = query.eq("category", categoriaSupabase);
-      }
+        .eq("status", "active")
+        .eq("category", categoriaSeleccionada);
 
       const { data, error } = await query;
 
@@ -229,6 +108,7 @@ export function CartaScreen({ tipo, rolUsuario, onVolver, onIrAlCarrito }: Carta
       }));
 
       setItems(formateados);
+      setIndiceActual(0);
     } catch (err: any) {
       console.warn("⚠️ [Carta] Falló la carga de productos:", err.message);
       setItems([]);
@@ -282,94 +162,363 @@ export function CartaScreen({ tipo, rolUsuario, onVolver, onIrAlCarrito }: Carta
 
   const cancelarEliminacion = () => setItemAEliminar(null);
 
+  const platoAnterior = () => {
+    if (items.length === 0) return;
+    setIndiceActual((prev) => (prev === 0 ? items.length - 1 : prev - 1));
+  };
+
+  const platoSiguiente = () => {
+    if (items.length === 0) return;
+    setIndiceActual((prev) => (prev === items.length - 1 ? 0 : prev + 1));
+  };
+
+  const handleScrollFotos = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (anchoContenedorFoto <= 0) return;
+    const slide = Math.round(event.nativeEvent.contentOffset.x / anchoContenedorFoto);
+    if (slide !== fotoActiva) {
+      setFotoActiva(slide);
+    }
+  };
+
+  const cambiarFotoDirecta = (nuevaFotoIndex: number) => {
+    if (anchoContenedorFoto > 0) {
+      scrollFotosRef.current?.scrollTo({
+        x: nuevaFotoIndex * anchoContenedorFoto,
+        animated: true,
+      });
+      setFotoActiva(nuevaFotoIndex);
+    }
+  };
+
+  const onLayoutContenedorFoto = (event: LayoutChangeEvent) => {
+    const { width } = event.nativeEvent.layout;
+    if (width > 0 && width !== anchoContenedorFoto) {
+      setAnchoContenedorFoto(width);
+    }
+  };
+
+  const itemActual = items[indiceActual];
+
   return (
-    <View className="flex-1 px-6 pt-4 bg-amber-50/40">
-      {/* Nombres del equipo */}
-      <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + 16 }}>
-        <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
-        <Text className="text-[10px] text-vino/70">Santino Casado</Text>
-        <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
-        <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
-      </View>
-
-      {/* Cabecera */}
-      <View className="mb-2">
-        <Image
-          source={require("../../assets/images/logo-name.png")}
-          className="h-16 w-auto self-center"
-          resizeMode="contain"
-        />
-        <Image
-          source={require("../../assets/images/separator.png")}
-          className="my-2 h-5 w-full"
-          resizeMode="contain"
-        />
-      </View>
-
-      {/* Header */}
-      <View className="relative flex-row items-center justify-between mb-1 border-b border-mostaza/20 pb-5">
-        {esCliente && onIrAlCarrito ? (
-          <TouchableOpacity
-            onPress={onIrAlCarrito}
-            className={`z-20 flex-row items-center justify-center rounded-xl px-3 py-1.5 shadow-sm active:bg-terracota ${carrito.length === 0 ? "bg-[#FBE9DF]" : "bg-vino"}`}
-          >
-            <Image
-              source={cartIcon}
-              className="mr-1 h-5 w-5"
-              resizeMode="contain"
-            />
-            <Text className={`font-bold text-sm translate-y-0.5 ${carrito.length === 0 ? "text-calabaza" : "text-mostaza"}`}>
-              {carrito.length}
-            </Text>
+    <View className="flex-1 bg-amber-50/40">
+      {/* 1. Header con Mesa y Consulta al Mozo */}
+      <View className="flex-row items-center justify-between border-b border-mostaza/20 bg-vino px-5 py-3 shadow-md">
+        {onVolver ? (
+          <TouchableOpacity onPress={onVolver} className="py-1 pr-3">
+            <Text className="text-sm font-bold text-amber-100">← Volver</Text>
           </TouchableOpacity>
         ) : (
           <View className="w-10" />
         )}
 
-        <Text
-          style={{ fontFamily: "LaOriental" }}
-          className="absolute inset-x-0 z-10 text-center text-xl uppercase text-vino pointer-events-none pb-3"
-        >
-          {tipo === "comida" ? "Carta de Platos" : tipo === "bebida" ? "Carta de Bebidas" : "Menú"}
-        </Text>
+        <View className="items-center">
+          <Text style={{ fontFamily: "LaOriental" }} className="text-xl uppercase text-mostaza">
+            Carta Digital
+          </Text>
+          {numeroMesa ? (
+            <Text className="text-[11px] font-bold text-amber-200">
+              Mesa #{numeroMesa}
+            </Text>
+          ) : null}
+        </View>
 
-        
+        {/* Botón Consulta al Mozo (Punto 11) */}
+        {esCliente && onAbrirChatMozo ? (
+          <TouchableOpacity
+            onPress={onAbrirChatMozo}
+            className="flex-row items-center rounded-xl border border-mostaza/60 bg-calabaza/90 px-2.5 py-1.5 active:bg-calabaza"
+          >
+            <Text className="mr-1 text-sm">💬</Text>
+            <Text className="text-[11px] font-extrabold text-white uppercase">Mozo</Text>
+          </TouchableOpacity>
+        ) : (
+          <View className="w-10" />
+        )}
       </View>
 
-      {/* Loading state */}
-      {cargando ? (
-        <View className="flex-1" />
-      ) : items.length === 0 ? (
-        <View className="flex-1 items-center justify-center py-20">
-          <Text className="text-5xl mb-3">{tipo === "comida" ? "🍲" : "🍹"}</Text>
-          <Text className="text-base font-bold text-vino">No hay productos disponibles</Text>
-          <Text className="text-xs text-stone-500 mt-1">Vuelve a consultar más tarde.</Text>
+      {/* 2. Pestañas de Categoría (Platos, Bebidas, Postres) */}
+      {esCliente && (
+        <View className="flex-row border-b border-mostaza/20 bg-vino/95 px-4 py-2 justify-around">
+          <TouchableOpacity
+            onPress={() => setCategoriaSeleccionada("dish")}
+            className={`rounded-xl px-4 py-1.5 ${
+              categoriaSeleccionada === "dish" ? "bg-mostaza" : "bg-black/20"
+            }`}
+          >
+            <Text
+              className={`text-xs font-bold ${
+                categoriaSeleccionada === "dish" ? "text-vino" : "text-amber-100/70"
+              }`}
+            >
+              🍲 Comidas
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setCategoriaSeleccionada("drink")}
+            className={`rounded-xl px-4 py-1.5 ${
+              categoriaSeleccionada === "drink" ? "bg-mostaza" : "bg-black/20"
+            }`}
+          >
+            <Text
+              className={`text-xs font-bold ${
+                categoriaSeleccionada === "drink" ? "text-vino" : "text-amber-100/70"
+              }`}
+            >
+              🍹 Bebidas
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => setCategoriaSeleccionada("dessert")}
+            className={`rounded-xl px-4 py-1.5 ${
+              categoriaSeleccionada === "dessert" ? "bg-mostaza" : "bg-black/20"
+            }`}
+          >
+            <Text
+              className={`text-xs font-bold ${
+                categoriaSeleccionada === "dessert" ? "text-vino" : "text-amber-100/70"
+              }`}
+            >
+              🍰 Postres
+            </Text>
+          </TouchableOpacity>
         </View>
-      ) : (
-        /* VISTA: REEL VERTICAL tipo TikTok/Reels */
-        <ScrollView
-          className="flex-1"
-          showsVerticalScrollIndicator={false}
-          pagingEnabled
-          onLayout={(e) => setPageHeight(e.nativeEvent.layout.height)}
-          style={pageHeight === 0 ? { opacity: 0 } : undefined}
-        >
-          {items.map((item) => (
-            <View key={item.id} style={{ height: pageHeight }} className="w-full py-2">
-              <TarjetaProducto
-                item={item}
-                esCliente={esCliente}
-                esStaff={esStaff}
-                esCocinero={rolUsuario === "cocinero"}
-                onAgregar={() => agregarAlCarrito(item)}
-                onEliminar={() => setItemAEliminar(item)}
-              />
-            </View>
-          ))}
-        </ScrollView>
       )}
 
-      <CompanySpinner visible={mostrandoSpinner} mensaje="Cargando carta..." />
+      {/* 3. Contenido Principal */}
+      <View className="flex-1 px-5 pt-3">
+        {cargando ? (
+          <View className="flex-1 items-center justify-center py-20">
+            <ActivityIndicator size="large" color="#800020" />
+            <Text className="mt-2 text-xs font-semibold text-vino">Cargando delicias...</Text>
+          </View>
+        ) : items.length === 0 ? (
+          <View className="flex-1 items-center justify-center py-20">
+            <Text className="mb-2 text-5xl">
+              {categoriaSeleccionada === "dish" ? "🍲" : categoriaSeleccionada === "drink" ? "🍹" : "🍰"}
+            </Text>
+            <Text className="text-base font-bold text-vino">No hay productos en esta sección</Text>
+            <Text className="mt-1 text-xs text-stone-500">Pronto agregaremos más opciones.</Text>
+          </View>
+        ) : esStaff ? (
+          /* VISTA STAFF */
+          <FlatList
+            data={items}
+            keyExtractor={(item) => item.id}
+            showsVerticalScrollIndicator={false}
+            renderItem={({ item }) => (
+              <View className="mb-3 rounded-2xl border border-mostaza/30 bg-white p-3.5 shadow-sm">
+                <View className="flex-row">
+                  {item.fotos.length > 0 && item.fotos[0] ? (
+                    <Image
+                      source={{ uri: item.fotos[0] }}
+                      className="h-20 w-20 rounded-xl"
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View className="h-20 w-20 items-center justify-center rounded-xl bg-stone-200">
+                      <Text className="text-2xl">🍲</Text>
+                    </View>
+                  )}
+                  <View className="ml-3 flex-1 justify-between">
+                    <View>
+                      <Text className="text-base font-bold text-vino">{item.nombre}</Text>
+                      <Text className="text-xs text-stone-500" numberOfLines={2}>
+                        {item.descripcion}
+                      </Text>
+                    </View>
+                    <View className="mt-2 flex-row items-center justify-between">
+                      <Text className="font-bold text-calabaza">${item.precio}</Text>
+                      <Text className="text-[11px] text-stone-400">⏱ {item.tiempoElaboracion} min</Text>
+                    </View>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  onPress={() => setItemAEliminar(item)}
+                  className="mt-3 items-center rounded-xl bg-terracota/20 py-2 active:bg-terracota/40"
+                >
+                  <Text className="text-xs font-bold text-terracota">🗑 Dar de baja producto</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          />
+        ) : (
+          /* VISTA CLIENTE: TARJETA CON 3 FOTOS INDIVIDUALES (Punto 11) */
+          <ScrollView
+            className="flex-1"
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={{ paddingBottom: 110 }}
+          >
+            <View className="rounded-3xl border-2 border-mostaza/40 bg-white p-4 shadow-xl">
+              {/* Contenedor exacto de imágenes */}
+              <View
+                onLayout={onLayoutContenedorFoto}
+                className="relative h-64 w-full overflow-hidden rounded-2xl bg-stone-100"
+              >
+                {itemActual.fotos && itemActual.fotos.length > 0 && anchoContenedorFoto > 0 ? (
+                  <>
+                    <ScrollView
+                      ref={scrollFotosRef}
+                      horizontal
+                      pagingEnabled
+                      showsHorizontalScrollIndicator={false}
+                      onScroll={handleScrollFotos}
+                      scrollEventThrottle={16}
+                      className="h-full w-full"
+                    >
+                      {itemActual.fotos.map((url, index) => (
+                        <View
+                          key={`${itemActual.id}-foto-${index}`}
+                          style={{ width: anchoContenedorFoto, height: 256 }}
+                          className="items-center justify-center bg-stone-900/5"
+                        >
+                          <Image
+                            source={{ uri: url }}
+                            style={{ width: "100%", height: "100%" }}
+                            resizeMode="cover"
+                          />
+                        </View>
+                      ))}
+                    </ScrollView>
+
+                    {/* Flechas para cambiar de foto individualmente (Punto 11) */}
+                    {itemActual.fotos.length > 1 && (
+                      <>
+                        {fotoActiva > 0 && (
+                          <TouchableOpacity
+                            onPress={() => cambiarFotoDirecta(fotoActiva - 1)}
+                            className="absolute left-2 top-1/2 -mt-4 h-8 w-8 items-center justify-center rounded-full bg-black/50"
+                          >
+                            <Text className="text-base font-bold text-white">‹</Text>
+                          </TouchableOpacity>
+                        )}
+                        {fotoActiva < itemActual.fotos.length - 1 && (
+                          <TouchableOpacity
+                            onPress={() => cambiarFotoDirecta(fotoActiva + 1)}
+                            className="absolute right-2 top-1/2 -mt-4 h-8 w-8 items-center justify-center rounded-full bg-black/50"
+                          >
+                            <Text className="text-base font-bold text-white">›</Text>
+                          </TouchableOpacity>
+                        )}
+                      </>
+                    )}
+
+                    {/* Indicador de fotos (Punto 11: 3 imágenes individuales) */}
+                    <View className="absolute bottom-2 left-0 right-0 flex-row items-center justify-center gap-1.5">
+                      <View className="flex-row rounded-full bg-black/60 px-2 py-0.5">
+                        <Text className="text-[10px] font-bold text-white">
+                          Foto {fotoActiva + 1} de {itemActual.fotos.length}
+                        </Text>
+                      </View>
+                    </View>
+                  </>
+                ) : (
+                  <View className="h-full w-full items-center justify-center">
+                    <Text className="text-6xl">
+                      {categoriaSeleccionada === "dish" ? "🍲" : categoriaSeleccionada === "drink" ? "🍹" : "🍰"}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* Ficha descriptiva */}
+              <View className="mt-3.5">
+                <View className="flex-row items-start justify-between">
+                  <Text className="mr-2 flex-1 text-lg font-black text-vino">
+                    {itemActual.nombre}
+                  </Text>
+                  <Text className="text-2xl font-black text-calabaza">
+                    ${itemActual.precio}
+                  </Text>
+                </View>
+
+                <View className="mt-1 flex-row items-center">
+                  <View className="rounded-md bg-amber-100 px-2 py-0.5">
+                    <Text className="text-[11px] font-bold text-amber-900">
+                      ⏱ {itemActual.tiempoElaboracion} min elaboración
+                    </Text>
+                  </View>
+                  <Text className="ml-2 text-xs font-semibold text-stone-400">
+                    {indiceActual + 1} de {items.length}
+                  </Text>
+                </View>
+
+                <Text className="mt-2 text-xs leading-relaxed text-stone-600">
+                  {itemActual.descripcion}
+                </Text>
+              </View>
+
+              {/* Botón Agregar al Carrito */}
+              <TouchableOpacity
+                onPress={() => agregarAlCarrito(itemActual)}
+                className="mt-4 flex-row items-center justify-center rounded-2xl bg-vino py-3 shadow active:bg-terracota"
+              >
+                <Text className="mr-2 text-base">🛒</Text>
+                <Text
+                  style={{ fontFamily: "LaOriental" }}
+                  className="text-sm font-bold uppercase tracking-wider text-mostaza"
+                >
+                  Agregar a la Mesa
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Controles de Navegación de Productos */}
+            <View className="mt-3 flex-row items-center justify-between gap-x-3">
+              <TouchableOpacity
+                onPress={platoAnterior}
+                className="flex-1 flex-row items-center justify-center rounded-2xl border-2 border-mostaza bg-vino py-2.5 active:bg-terracota"
+              >
+                <Text className="mr-1 text-base font-black text-mostaza">‹</Text>
+                <Text style={{ fontFamily: "LaOriental" }} className="text-xs uppercase text-mostaza">
+                  Anterior
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={platoSiguiente}
+                className="flex-1 flex-row items-center justify-center rounded-2xl border-2 border-mostaza bg-vino py-2.5 active:bg-terracota"
+              >
+                <Text style={{ fontFamily: "LaOriental" }} className="text-xs uppercase text-mostaza">
+                  Siguiente
+                </Text>
+                <Text className="ml-1 text-base font-black text-mostaza">›</Text>
+              </TouchableOpacity>
+            </View>
+          </ScrollView>
+        )}
+      </View>
+
+      {/* 4. BARRA INFERIOR FIJA: IMPORTE ACUMULADO VISIBLE EN TODO MOMENTO (Punto 12) */}
+      {esCliente && carrito.length > 0 && onIrAlCarrito && (
+        <View className="absolute bottom-0 left-0 right-0 border-t-2 border-mostaza bg-vino px-5 py-3 shadow-2xl">
+          <View className="flex-row items-center justify-between">
+            <View>
+              <Text className="text-[10px] font-bold uppercase text-amber-200">
+                Importe acumulado ({carrito.length} ítems):
+              </Text>
+              {/* Buen tamaño requerido por Punto 12 */}
+              <Text className="text-2xl font-black text-mostaza">
+                ${importeAcumulado.toLocaleString("es-AR")}
+              </Text>
+              <Text className="text-[10px] text-amber-100/70">
+                ⏱ Tiempo estimado: ~{tiempoEstimadoMax} min
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              onPress={onIrAlCarrito}
+              className="flex-row items-center rounded-2xl bg-calabaza px-4 py-2.5 shadow active:bg-calabaza/80"
+            >
+              <Text style={{ fontFamily: "LaOriental" }} className="mr-1.5 text-xs font-black uppercase text-white">
+                Ver Comanda
+              </Text>
+              <Text className="text-base">➔</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
 
       <ConfirmModal
         visible={!!itemAEliminar}

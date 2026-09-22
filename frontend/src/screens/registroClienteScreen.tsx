@@ -270,51 +270,7 @@ export default function RegistroClienteScreen({ onVolverAlLogin, modo = "cliente
   return (
     <View style={{ flex: 1, overflow: "hidden" }}>
       <StatusBar style="light" />
-
-      {/* Botón Volver al Login */}
-      {/* <View className="flex-row justify-end items-center px-5 pt-3 z-20"> */}
-        {/* <TouchableOpacity
-          onPress={onVolverAlLogin}
-          className="rounded-xl border border-mostaza bg-vino px-3 py-1.5 active:bg-terracota"
-        >
-          <Text className="text-xs font-bold text-mostaza">← Volver al Login</Text>
-        </TouchableOpacity> */}
-
-        {/* Nombres del equipo */}
-        {/* <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + 16 }}>
-            <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
-            <Text className="text-[10px] text-vino/70">Santino Casado</Text>
-            <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
-            <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
-        </View>
-      </View> */}
-
-      {/* Cabecera */}
-      {/* <View className="px-5 pt-1">
-        <View className="mb-2">
-          <Image
-            source={require("../../assets/images/logo-name.png")}
-            className="h-16 w-auto self-center"
-            resizeMode="contain"
-          />
-          <Image
-            source={require("../../assets/images/separator.png")}
-            className="my-2 h-5 w-full"
-            resizeMode="contain"
-          />
-          <ChineseFrame className="mt-2 bg-vino">
-            <View className="items-center rounded-xl bg-mostaza/15 px-4 py-4">
-              <Text style={{ fontFamily: "LaOriental" }} className="text-2xl text-mostaza uppercase">
-                Registro de Cliente
-              </Text>
-              <Text className="mt-1 text-xs font-semibold text-amber-100">
-                Dispositivo 2 • <Text className="text-mostaza font-bold">Estado: Pendiente de Aprobación</Text>
-              </Text>
-            </View>
-          </ChineseFrame>
-        </View>
-      </View> */}
-{/* Botón Volver al Login (top right) */}
+      {/* Botón Volver al Login (top right) */}
       {onVolverAlLogin && (
         <TouchableOpacity
           onPress={() => {
