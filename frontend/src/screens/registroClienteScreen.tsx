@@ -15,6 +15,7 @@ import { StatusBar } from "expo-status-bar";
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from "expo-camera";
 import { parseDniData } from "../utils/dniParser";
 import { validateClienteForm, validarPaso1Cliente, registrarCliente, ClienteFormErrors } from "../services/clientesService";
+import { obtenerTokenPush } from "../services/pushNotificationsService";
 import { FeedbackModal } from "../components/FeedbackModal";
 import { CompanySpinner } from "../components/CompanySpinner";
 import { ChineseFrame } from "../components/ChineseFrame";
@@ -223,6 +224,18 @@ export default function RegistroClienteScreen({ onVolverAlLogin, modo = "cliente
 
     try {
       setIsSubmitting(true);
+
+      // Solo el cliente registrándose desde su propio dispositivo adjunta su token de push,
+      // así las notificaciones de aprobación llegan a su teléfono y no al del metre.
+      let pushToken: string | null = null;
+      if (modo === "cliente") {
+        try {
+          pushToken = await obtenerTokenPush();
+        } catch (error) {
+          console.warn("⚠️ No se pudo obtener el token de push al registrarse:", error);
+        }
+      }
+
       await registrarCliente({
         nombres: nombres.trim(),
         apellidos: apellidos.trim(),
@@ -230,6 +243,7 @@ export default function RegistroClienteScreen({ onVolverAlLogin, modo = "cliente
         email: email.trim(),
         password,
         fotoUri: fotoUri!,
+        pushToken,
       });
 
       mostrarMensaje(

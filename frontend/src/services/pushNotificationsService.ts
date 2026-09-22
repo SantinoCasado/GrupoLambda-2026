@@ -1,18 +1,40 @@
 // src/services/pushNotificationsService.ts
-import * as Notifications from "expo-notifications";
 import * as Device from "expo-device";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
-import { API_BASE_URL } from "./apiConfig";
-import { headersConToken } from "./tokenService";
+import { API_BASE_URL } from "../../apiConfig";
+import { headersConToken, obtenerTokenValido } from "./tokenService";
+import { obtenerModuloNotificaciones } from "./notificationsGateway";
 
 const PROJECT_ID = Constants.expoConfig?.extra?.eas?.projectId;
 
 // Obtiene el Expo Push Token del dispositivo físico, solicitando permisos si hace falta
 export async function obtenerTokenPush(): Promise<string | null> {
-  if (!Device.isDevice) {
-    console.warn("⏭️ [Push] Los tokens Expo solo se generan en dispositivos físicos.");
+  // En desarrollo se puede inyectar un token real (copiado desde un teléfono) para probar el flujo completo
+  if (__DEV__ && process.env.EXPO_PUBLIC_TEST_PUSH_TOKEN) {
+    console.log("🧪 [Push] Usando EXPO_PUBLIC_TEST_PUSH_TOKEN (modo desarrollo).");
+    return process.env.EXPO_PUBLIC_TEST_PUSH_TOKEN;
+  }
+
+  const Notifications = obtenerModuloNotificaciones();
+  if (!Notifications) {
+    console.warn("⚠️ [Push] Notificaciones no disponibles en este entorno (Expo Go en Android).");
     return null;
+  }
+
+  const esSimulador = !Device.isDevice;
+
+  // iOS simulator y web no pueden generar tokens de push remotos
+  if (esSimulador && Platform.OS !== "android") {
+    console.warn(
+      "⏭️ [Push] iOS simulator y web no generan tokens de push remotos. Usá un dispositivo físico o un emulador Android."
+    );
+    return null;
+  }
+
+  // Los emuladores Android con Google Play Services sí pueden obtener un token FCM/Expo
+  if (esSimulador && Platform.OS === "android") {
+    console.log("🤖 [Push] Emulador Android detectado; se intentará obtener el token de Expo.");
   }
 
   const { status: estadoActual } = await Notifications.getPermissionsAsync();
@@ -48,17 +70,26 @@ export async function obtenerTokenPush(): Promise<string | null> {
 export async function guardarTokenEnBackend(token: string): Promise<boolean> {
   if (!token.startsWith("ExponentPushToken")) return false;
 
+  // En el login local de demo no hay sesión de Supabase → el backend respondería 401
+  const tokenSesion = await obtenerTokenValido();
+  if (!tokenSesion) {
+    console.warn(
+      "⚠️ [Push] Sin sesión de Supabase activa (login local de demo), no se guarda el push token."
+    );
+    return false;
+  }
+
   try {
     const headers = await headersConToken({ "Content-Type": "application/json" });
     const respuesta = await fetch(`${API_BASE_URL}/clientes/push-token`, {
       method: "PATCH",
       headers,
-      body: JSON.stringify({ pushToken: token }),
+      body: JSON.stringify({ push_token: token }),
     });
 
     if (!respuesta.ok) {
       console.warn(
-        `⚠️ [Push] El backend no guardó el token (HTTP ${respuesta.status}). Endpoint aún no disponible?`
+        `⚠️ [Push] El backend no guardó el token (HTTP ${respuesta.status}). Posible columna 'push_token' faltante en la tabla users: ALTER TABLE public.users ADD COLUMN IF NOT EXISTS push_token text;`
       );
       return false;
     }

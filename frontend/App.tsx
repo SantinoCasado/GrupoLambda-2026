@@ -2,13 +2,14 @@ import "./global.css";
 import React, { useState, useEffect, useRef } from "react";
 import { View, Text, Image, TouchableOpacity, Vibration } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import * as Notifications from "expo-notifications";
+import type { NotificationResponse } from "expo-notifications";
 import { UsuarioSeed } from "./src/data/usuariosPrecargados";
 import HomeScreen, { HomeDestino } from "./src/screens/homeScreen";
 import { AuthProvider } from "./src/context/AuthContext";
 import { CartProvider } from "./src/context/carritoContext";
 import { getSupabaseClient } from "./src/config/supabase";
 import { ClienteAnonimoSesion } from "./src/services/clienteAnonimoService";
+import { obtenerModuloNotificaciones } from "./src/services/notificationsGateway";
 
 // Pantallas
 import AltaEmpleadoScreen from "./src/screens/altaEmpleadoScreen";
@@ -66,7 +67,10 @@ function AppInterna() {
   usuarioActualRef.current = usuarioActual;
 
   useEffect(() => {
-    const manejarRespuestaNotificacion = (respuesta?: Notifications.NotificationResponse | null) => {
+    const Notifications = obtenerModuloNotificaciones();
+    if (!Notifications) return;
+
+    const manejarRespuestaNotificacion = (respuesta?: NotificationResponse | null) => {
       const datosCrudos = respuesta?.notification?.request?.content?.data;
       let datos: any = datosCrudos;
       if (typeof datosCrudos === "string") {
