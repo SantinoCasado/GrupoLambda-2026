@@ -63,25 +63,10 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
 
         {/* Saludo */}
         <View className="px-6 pt-5">
-          {esCliente && (
-            <View className="mb-1 flex-row items-center justify-between">
-              <View className="flex-row items-center flex-1 mr-2">
-                <Text className="text-3xl mr-3">{usuario.icono}</Text>
-                <View className="flex-1">
-                  <Text className="text-2xl font-black text-mostaza uppercase">
-                    Hola, {usuario.nombres}
-                  </Text>
-                  <Text className="text-xs font-bold text-vino uppercase">
-                    {usuario.tituloVisual}
-                  </Text>
-                </View>
-              </View>
-            </View>
-          )}
-
+          
           <Image
             source={require("../../assets/images/logo-name.png")}
-            className="mt-6 h-20 w-auto self-center"
+            className="mt-5 h-20 w-auto self-center"
             resizeMode="contain"
           />
           <Image
@@ -305,7 +290,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
               >
                 <Image source={require("../../assets/images/table-y.png")} className="h-7 w-7 mr-3" resizeMode="contain" />
                 <View className="flex-1">
-                  <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza font-bold">
+                  <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
                     Gestión de Mesas y Espera
                   </Text>
                   <Text className="text-[11px] font-semibold text-amber-100">
@@ -322,7 +307,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
               >
                 <Image source={require("../../assets/images/employeeRegistration-y.png")} className="h-7 w-7 mr-3" resizeMode="contain" />
                 <View className="flex-1">
-                  <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza font-bold">
+                  <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
                     Registrar Cliente
                   </Text>
                   <Text className="text-[11px] font-semibold text-amber-100">

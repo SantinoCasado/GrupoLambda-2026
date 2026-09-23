@@ -467,6 +467,8 @@ function AppInterna() {
         {vistaPrivada === "registro_metre" && (
           <RegistroClienteScreen
             modo="cliente"
+            usuarioLogueado
+            mostrarBotonVolverAlLogin={false}
             onVolverAlLogin={volverAlInicio}
           />
         )}

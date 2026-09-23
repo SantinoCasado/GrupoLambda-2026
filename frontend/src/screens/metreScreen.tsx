@@ -10,6 +10,11 @@ import {
   ScrollView,
 } from "react-native";
 import { supabase } from "../config/supabase";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { ChineseFrame } from "../components/ChineseFrame";
+import { ConfirmModal } from "../components/ConfirmModal";
+import { CompanySpinner } from "../components/CompanySpinner";
+import { FeedbackModal } from "../components/FeedbackModal";
 import {
   obtenerMesas,
   obtenerListaEspera,
@@ -19,19 +24,31 @@ import {
   ClienteEnEspera,
 } from "../services/mesasService";
 
+const TIPO_MESA_INFO = {
+  estandar: { icono: require("../../assets/images/table-y.png"), etiqueta: "ESTANDAR" },
+  vip: { icono: require("../../assets/images/vip-y.png"), etiqueta: "VIP" },
+  movilidad_reducida: {
+    icono: require("../../assets/images/wheel-chair-y.png"),
+    etiqueta: "MOV. REDUCIDA",
+  },
+} as const;
+
 interface Props {
   onCerrarSesion: () => void;
 }
 
-interface ModalMensajeInfo {
+interface ModalFeedbackInfo {
   visible: boolean;
+  tipo: "exito" | "error" | "informacion";
   titulo: string;
-  descripcion: string;
-  tipo: "exito" | "error" | "info";
-  icono: string;
+  mensaje: string;
 }
 
+const MESAS_POR_PAGINA = 4;
+const ALTO_PAGINA_MESAS = 288;
+
 export function MetreScreen({ onCerrarSesion }: Props) {
+  const insets = useSafeAreaInsets();
   const [clientesEspera, setClientesEspera] = useState<ClienteEnEspera[]>([]);
   const [mesas, setMesas] = useState<Mesa[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -47,26 +64,23 @@ export function MetreScreen({ onCerrarSesion }: Props) {
   const [eliminando, setEliminando] = useState(false);
 
   // Modal Informativo / Feedback
-  const [modalMensaje, setModalMensaje] = useState<ModalMensajeInfo>({
+  const [modalFeedback, setModalFeedback] = useState<ModalFeedbackInfo>({
     visible: false,
+    tipo: "informacion",
     titulo: "",
-    descripcion: "",
-    tipo: "info",
-    icono: "ℹ️",
+    mensaje: "",
   });
 
   const mostrarMensaje = (
+    tipo: "exito" | "error" | "informacion",
     titulo: string,
-    descripcion: string,
-    tipo: "exito" | "error" | "info" = "info",
-    icono: string = "ℹ️"
+    mensaje: string
   ) => {
-    setModalMensaje({
+    setModalFeedback({
       visible: true,
-      titulo,
-      descripcion,
       tipo,
-      icono,
+      titulo,
+      mensaje,
     });
   };
 
@@ -111,25 +125,24 @@ export function MetreScreen({ onCerrarSesion }: Props) {
   const confirmarEliminacion = async () => {
     if (!clienteAEliminar) return;
 
-    setEliminando(true);
-    const ok = await eliminarDeListaEspera(clienteAEliminar.id);
-    setEliminando(false);
+    const cliente = clienteAEliminar;
     setModalEliminar(false);
+    setEliminando(true);
+    const ok = await eliminarDeListaEspera(cliente.id);
+    setEliminando(false);
 
     if (ok) {
-      setClientesEspera((prev) => prev.filter((c) => c.id !== clienteAEliminar.id));
+      setClientesEspera((prev) => prev.filter((c) => c.id !== cliente.id));
       mostrarMensaje(
+        "exito",
         "Cliente Removido",
-        `${clienteAEliminar.client_name} fue quitado de la lista de espera.`,
-        "info",
-        "🗑️"
+        `${cliente.client_name} fue quitado de la lista de espera.`
       );
     } else {
       mostrarMensaje(
-        "Error",
-        "No se pudo eliminar al cliente de la lista de espera.",
         "error",
-        "⚠️"
+        "Error",
+        "No se pudo eliminar al cliente de la lista de espera."
       );
     }
     setClienteAEliminar(null);
@@ -139,68 +152,86 @@ export function MetreScreen({ onCerrarSesion }: Props) {
   const confirmarAsignacion = async (mesa: Mesa) => {
     if (!clienteSeleccionado || !mesa.id) return;
 
-    setAsignando(true);
-    const res = await asignarMesa(clienteSeleccionado.id, mesa.id);
-    setAsignando(false);
+    const cliente = clienteSeleccionado;
+    const numMesa = mesa.numero;
     setModalAsignar(false);
+    setAsignando(true);
+    const res = await asignarMesa(cliente.id, mesa.id);
+    setAsignando(false);
 
     if (res.exito) {
       mostrarMensaje(
-        "¡Mesa Asignada!",
-        `Mesa #${mesa.numero} asignada a ${clienteSeleccionado.client_name}. El cliente ya fue notificado.`,
         "exito",
-        "🍽️"
+        "¡Mesa Asignada!",
+        `Mesa #${numMesa} asignada a ${cliente.client_name}. El cliente ya fue notificado.`
       );
       setClienteSeleccionado(null);
       cargarDatos();
     } else {
-      mostrarMensaje("Error al asignar", res.mensaje, "error", "⚠️");
+      mostrarMensaje("error", "Error al asignar", res.mensaje);
     }
   };
 
   const mesasLibres = mesas.filter((m) => m.disponibilidad === "vacia");
 
-  return (
-    <View className="flex-1 bg-vino px-4 pt-12">
-      {/* Header */}
-      <View className="flex-row items-center justify-between border-b border-mostaza/30 pb-4">
-        <View>
-          <Text style={{ fontFamily: "LaOriental" }} className="text-2xl text-mostaza">
-            Panel del Metre
-          </Text>
-          <Text className="text-xs text-amber-100/70">
-            Control de mesas y lista de espera
-          </Text>
-        </View>
+  const mesasPorPagina: Mesa[][] = [];
+  for (let i = 0; i < mesasLibres.length; i += MESAS_POR_PAGINA) {
+    mesasPorPagina.push(mesasLibres.slice(i, i + MESAS_POR_PAGINA));
+  }
 
-        <TouchableOpacity
-          onPress={onCerrarSesion}
-          className="rounded-xl border border-mostaza/40 bg-black/30 px-3 py-1.5 active:bg-black/50"
-        >
-          <Text className="text-xs text-terracota">Cerrar Sesión</Text>
-        </TouchableOpacity>
+  return (
+    <View className="flex-1">
+      {/* Nombres del equipo */}
+      <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + 16 }}>
+        <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
+        <Text className="text-[10px] text-vino/70">Santino Casado</Text>
+        <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
+        <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
       </View>
 
+      {/* Cabecera */}
+      <View className="px-5 pt-4">
+        <View className="mb-4">
+          <Image
+            source={require("../../assets/images/logo-name.png")}
+            className="h-16 w-auto self-center"
+            resizeMode="contain"
+          />
+          <Image
+            source={require("../../assets/images/separator.png")}
+            className="my-2 h-5 w-full"
+            resizeMode="contain"
+          />
+          <ChineseFrame className="mt-2 bg-vino">
+            <View className="items-center rounded-xl bg-mostaza/15 px-4 py-4">
+              <Text style={{ fontFamily: "LaOriental" }} className="text-2xl text-mostaza uppercase">
+                Gestión de Mesas
+              </Text>
+              <Text className="mt-1 text-xs font-semibold text-amber-100">
+                Control de mesas y lista de espera
+              </Text>
+            </View>
+          </ChineseFrame>
+        </View>
+      </View>
+
+      <View className="flex-1 px-4">
       {/* Resumen de mesas */}
       <View className="my-4 flex-row gap-2">
-        <View className="flex-1 rounded-2xl border border-mostaza/20 bg-black/25 p-3 items-center">
-          <Text className="text-lg font-bold text-emerald-400">{mesasLibres.length}</Text>
-          <Text className="text-[11px] text-amber-100/80">Mesas Libres</Text>
+        <View className="flex-1 rounded-2xl border-2 border-[#10b981] bg-caramelo/20 p-3 items-center">
+          <Text className="text-lg font-bold text-[#10b981]">{mesasLibres.length}</Text>
+          <Text className="text-sm font-bold text-[#10b981]">Mesas Libres</Text>
         </View>
-        <View className="flex-1 rounded-2xl border border-mostaza/20 bg-black/25 p-3 items-center">
-          <Text className="text-lg font-bold text-calabaza">{clientesEspera.length}</Text>
-          <Text className="text-[11px] text-amber-100/80">En Espera</Text>
-        </View>
-        <View className="flex-1 rounded-2xl border border-mostaza/20 bg-black/25 p-3 items-center">
-          <Text className="text-lg font-bold text-amber-300">
+        <View className="flex-1 rounded-2xl border-2 border-[#c32f27] bg-caramelo/20 p-3 items-center">
+          <Text className="text-lg font-bold text-[#c32f27]">
             {mesas.filter((m) => m.disponibilidad === "ocupada").length}
           </Text>
-          <Text className="text-[11px] text-amber-100/80">Ocupadas</Text>
+          <Text className="text-sm font-bold text-[#c32f27]">Ocupadas</Text>
         </View>
       </View>
 
       {/* Título de sección */}
-      <Text style={{ fontFamily: "LaOriental" }} className="mb-2 text-lg text-mostaza">
+      <Text style={{ fontFamily: "LaOriental" }} className="mb-2 text-lg text-vino">
         Clientes en Espera ({clientesEspera.length})
       </Text>
 
@@ -209,10 +240,20 @@ export function MetreScreen({ onCerrarSesion }: Props) {
           <ActivityIndicator size="large" color="#E5B25D" />
         </View>
       ) : clientesEspera.length === 0 ? (
-        <View className="flex-1 items-center justify-center p-6">
-          <Text className="text-4xl">🍵</Text>
-          <Text className="mt-3 text-center text-sm text-amber-100/70">
-            No hay clientes en lista de espera en este momento.
+        <View className="items-center justify-center px-8 pt-16 pb-8">
+          <Image
+            source={require("../../assets/images/yoga-y.png")}
+            className="mb-3 h-12 w-12"
+            resizeMode="contain"
+          />
+          <Text
+            style={{ fontFamily: "LaOriental" }}
+            className="text-base uppercase text-vino text-center"
+          >
+            No hay clientes en espera
+          </Text>
+          <Text className="mt-1 text-center text-xs text-stone-600">
+            La lista de espera se encuentra vacía en este momento.
           </Text>
         </View>
       ) : (
@@ -221,23 +262,24 @@ export function MetreScreen({ onCerrarSesion }: Props) {
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingBottom: 20 }}
           renderItem={({ item }) => (
-            <View className="mb-3 flex-row items-center rounded-2xl border border-mostaza/30 bg-black/30 p-3 shadow">
+            <View className="mb-3 flex-row items-center rounded-2xl border-2 border-calabaza/30 bg-white p-3">
               {item.client_photo ? (
                 <Image
                   source={{ uri: item.client_photo }}
-                  className="h-14 w-14 rounded-full border border-mostaza"
+                  className="h-14 w-14 rounded-full border-2 border-mostaza"
                 />
               ) : (
-                <View className="h-14 w-14 items-center justify-center rounded-full bg-vino border border-mostaza">
-                  <Text className="text-xl">👤</Text>
-                </View>
+                <Image
+                  source={require("../../assets/images/no-photo.jpg")}
+                  className="h-14 w-14 rounded-full border-2 border-mostaza"
+                />
               )}
 
               <View className="ml-3 flex-1">
-                <Text className="text-base font-bold text-amber-100">
+                <Text className="text-base font-bold text-vino">
                   {item.client_name}
                 </Text>
-                <Text className="text-[11px] text-amber-200/60">
+                <Text className="text-[11px] text-vino/60">
                   Turno: {item.joined_at ? new Date(item.joined_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : "Reciente"}
                 </Text>
               </View>
@@ -258,108 +300,109 @@ export function MetreScreen({ onCerrarSesion }: Props) {
                     setClienteAEliminar(item);
                     setModalEliminar(true);
                   }}
-                  className="rounded-xl bg-black/40 border border-terracota/60 px-2.5 py-2 active:bg-terracota/30"
+                  className="flex-row items-center justify-center rounded-xl bg-white/80 border border-terracota/70 px-2.5 py-2 active:bg-terracota/30"
                 >
-                  <Text className="text-xs text-terracota font-bold">✕</Text>
+                  <Image source={require("../../assets/images/cross-t.png")} className="h-2.5 w-2.5" resizeMode="contain" />
                 </TouchableOpacity>
               </View>
             </View>
           )}
         />
       )}
+      </View>
 
-      {/* 1. MODAL DE CONFIRMACIÓN PARA ELIMINAR CLIENTE */}
-      <Modal visible={modalEliminar} transparent animationType="fade">
-        <View className="flex-1 items-center justify-center bg-black/75 px-6">
-          <View className="w-full max-w-sm rounded-3xl border border-mostaza/50 bg-vino p-6 shadow-2xl">
-            <Text className="text-center text-4xl">⚠️</Text>
-            <Text
-              style={{ fontFamily: "LaOriental" }}
-              className="mt-2 text-center text-xl text-mostaza"
-            >
-              ¿Quitar de la lista?
-            </Text>
-            <Text className="mt-2 text-center text-xs text-amber-100/80 leading-relaxed">
-              ¿Estás seguro de que deseas eliminar a{" "}
-              <Text className="font-bold text-mostaza">
-                {clienteAEliminar?.client_name}
-              </Text>{" "}
-              de la lista de espera? Su turno será cancelado.
-            </Text>
-
-            <View className="mt-6 flex-row gap-3">
-              <TouchableOpacity
-                disabled={eliminando}
-                onPress={() => {
-                  setModalEliminar(false);
-                  setClienteAEliminar(null);
-                }}
-                className="flex-1 rounded-xl border border-mostaza/40 bg-black/30 py-3"
-              >
-                <Text className="text-center text-xs font-semibold text-amber-200">
-                  Cancelar
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                disabled={eliminando}
-                onPress={confirmarEliminacion}
-                className="flex-1 items-center justify-center rounded-xl bg-terracota py-3 shadow"
-              >
-                {eliminando ? (
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                ) : (
-                  <Text className="text-center text-xs font-bold uppercase text-white">
-                    Sí, eliminar
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {/* 1. CONFIRMACIÓN PARA ELIMINAR CLIENTE */}
+      <ConfirmModal
+        visible={modalEliminar}
+        tipo="peligro"
+        titulo="¿Quitar de la lista?"
+        mensaje={
+          <>
+            ¿Estás seguro de que deseas eliminar a{" "}
+            <Text className="font-bold text-mostaza">{clienteAEliminar?.client_name}</Text> de la
+            lista de espera? Su turno será cancelado.
+          </>
+        }
+        textoConfirmar="Sí, eliminar"
+        textoCancelar="Cancelar"
+        cargando={eliminando}
+        onConfirm={confirmarEliminacion}
+        onCancel={() => {
+          setModalEliminar(false);
+          setClienteAEliminar(null);
+        }}
+      />
 
       {/* 2. MODAL SELECCIÓN DE MESA */}
       <Modal visible={modalAsignar} transparent animationType="slide">
         <View className="flex-1 justify-end bg-black/75">
           <View className="max-h-[75%] rounded-t-3xl border-t border-mostaza/50 bg-vino p-6">
-            <Text style={{ fontFamily: "LaOriental" }} className="text-xl text-mostaza text-center">
-              Asignar Mesa a {clienteSeleccionado?.client_name}
-            </Text>
+<View className="mb-1 items-center">
+              <Text style={{ fontFamily: "LaOriental" }} className="text-xl text-mostaza text-center">
+                Asignar una Mesa a :
+              </Text>
+              <Text style={{ fontFamily: "LaOriental" }} className="text-lg text-amber-100 text-center">
+                {clienteSeleccionado?.client_name}
+              </Text>
+            </View>
             <Text className="text-center text-xs text-amber-100/70 mt-1 mb-4">
-              Selecciona una mesa disponible del salón
+              Selecciona una mesa disponible
             </Text>
 
             {mesasLibres.length === 0 ? (
               <View className="py-8 items-center">
-                <Text className="text-3xl">🚫</Text>
+                <Image
+                  source={require("../../assets/images/important-y.png")}
+                  className="h-10 w-10"
+                  resizeMode="contain"
+                />
                 <Text className="mt-2 text-center text-xs text-amber-200">
                   No hay mesas disponibles en este momento.
                 </Text>
               </View>
             ) : (
-              <ScrollView className="max-h-72">
-                {mesasLibres.map((m) => (
-                  <TouchableOpacity
-                    key={m.id}
-                    disabled={asignando}
-                    onPress={() => confirmarAsignacion(m)}
-                    className="mb-2.5 flex-row items-center justify-between rounded-xl border border-mostaza/30 bg-black/30 p-3.5 active:bg-black/50"
-                  >
-                    <View className="flex-1 mr-3">
-                      <Text className="text-base font-bold text-mostaza">
-                        Mesa #{m.numero}
-                      </Text>
-                      <Text className="text-xs text-amber-100/70">
-                        Capacidad: {m.comensales} personas • Tipo: {m.tipo}
-                      </Text>
+              <>
+              <ScrollView
+                pagingEnabled
+                showsVerticalScrollIndicator={false}
+                style={{ maxHeight: ALTO_PAGINA_MESAS }}
+              >
+                {mesasPorPagina.map((grupo, index) => (
+                  <View key={index} style={{ height: ALTO_PAGINA_MESAS }} className="px-1 pt-1">
+                    <View className="gap-2.5">
+                      {grupo.map((m) => (
+                        <TouchableOpacity
+                          key={m.id}
+                          disabled={asignando}
+                          onPress={() => confirmarAsignacion(m)}
+                          className="flex-row items-center justify-between rounded-xl border border-mostaza/30 bg-black/30 p-3.5 active:bg-black/50"
+                        >
+                          <View className="flex-1 mr-3">
+                            <View className="flex-row items-center">
+                              <Text className="text-base font-bold text-mostaza">
+                                Mesa #{m.numero}
+                              </Text>
+                              <Text className="mx-1 text-base font-bold text-mostaza">•</Text>
+                              <Image
+                                source={TIPO_MESA_INFO[m.tipo].icono}
+                                className="h-4 w-4"
+                                resizeMode="contain"
+                              />
+                            </View>
+                            <Text className="mt-0.5 text-xs text-amber-100/70">
+                              {TIPO_MESA_INFO[m.tipo].etiqueta} • {m.comensales} personas
+                            </Text>
+                          </View>
+                          <Text className="text-xs font-bold uppercase text-emerald-400">
+                            Seleccionar →
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
                     </View>
-                    <Text className="text-xs font-bold uppercase text-emerald-400">
-                      Seleccionar →
-                    </Text>
-                  </TouchableOpacity>
+                  </View>
                 ))}
               </ScrollView>
+              </>
             )}
 
             <TouchableOpacity
@@ -368,9 +411,9 @@ export function MetreScreen({ onCerrarSesion }: Props) {
                 setModalAsignar(false);
                 setClienteSeleccionado(null);
               }}
-              className="mt-4 rounded-xl border border-mostaza/40 bg-black/40 py-3"
+              className="mt-4 self-center rounded-xl bg-mostaza px-8 py-3"
             >
-              <Text className="text-center text-xs font-semibold text-amber-200">
+              <Text style={{ fontFamily: "LaOriental" }} className="text-center text-xs text-vino">
                 Cancelar
               </Text>
             </TouchableOpacity>
@@ -378,38 +421,18 @@ export function MetreScreen({ onCerrarSesion }: Props) {
         </View>
       </Modal>
 
-      {/* 3. MODAL INFORMATIVO / MENSAJES */}
-      <Modal visible={modalMensaje.visible} transparent animationType="fade">
-        <View className="flex-1 items-center justify-center bg-black/75 px-6">
-          <View className="w-full max-w-sm rounded-3xl border border-mostaza/50 bg-vino p-6 shadow-2xl">
-            <Text className="text-center text-4xl">{modalMensaje.icono}</Text>
-            <Text
-              style={{ fontFamily: "LaOriental" }}
-              className="mt-2 text-center text-xl text-mostaza"
-            >
-              {modalMensaje.titulo}
-            </Text>
-            <Text className="mt-2 text-center text-xs text-amber-100/90 leading-relaxed">
-              {modalMensaje.descripcion}
-            </Text>
+      {/* 3. MODAL INFORMATIVO / FEEDBACK */}
+      <FeedbackModal
+        visible={modalFeedback.visible}
+        tipo={modalFeedback.tipo}
+        titulo={modalFeedback.titulo}
+        mensaje={modalFeedback.mensaje}
+        onClose={() => setModalFeedback((prev) => ({ ...prev, visible: false }))}
+      />
 
-            <TouchableOpacity
-              onPress={() => setModalMensaje((prev) => ({ ...prev, visible: false }))}
-              className={`mt-6 rounded-xl py-3 ${
-                modalMensaje.tipo === "error" ? "bg-terracota" : "bg-mostaza"
-              }`}
-            >
-              <Text
-                className={`text-center text-xs font-bold uppercase ${
-                  modalMensaje.tipo === "error" ? "text-white" : "text-vino"
-                }`}
-              >
-                Entendido
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      {/* SPINNER */}
+      <CompanySpinner visible={asignando} mensaje="Asignando mesa y notificando al cliente..." />
+      <CompanySpinner visible={eliminando} mensaje="Quitando cliente de la lista de espera..." />
     </View>
   );
 }

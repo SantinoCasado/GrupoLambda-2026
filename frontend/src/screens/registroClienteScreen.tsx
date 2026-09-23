@@ -23,9 +23,16 @@ import { ChineseFrame } from "../components/ChineseFrame";
 interface Props {
   onVolverAlLogin?: () => void;
   modo?: "cliente" | "metre";
+  mostrarBotonVolverAlLogin?: boolean;
+  usuarioLogueado?: boolean;
 }
 
-export default function RegistroClienteScreen({ onVolverAlLogin, modo = "cliente" }: Props) {
+export default function RegistroClienteScreen({
+  onVolverAlLogin,
+  modo = "cliente",
+  mostrarBotonVolverAlLogin = true,
+  usuarioLogueado = false,
+}: Props) {
   const [permission, requestPermission] = useCameraPermissions();
   const insets = useSafeAreaInsets();
   const screenWidth = Dimensions.get("window").width;
@@ -271,7 +278,7 @@ export default function RegistroClienteScreen({ onVolverAlLogin, modo = "cliente
     <View style={{ flex: 1, overflow: "hidden" }}>
       <StatusBar style="light" />
       {/* Botón Volver al Login (top right) */}
-      {onVolverAlLogin && (
+      {mostrarBotonVolverAlLogin && onVolverAlLogin && (
         <TouchableOpacity
           onPress={() => {
             ejecutarVibracion("toque");
@@ -285,7 +292,7 @@ export default function RegistroClienteScreen({ onVolverAlLogin, modo = "cliente
       )}
 
 {/* Nombres del equipo */}
-      <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + (modo === "metre" ? 16 : 60) }}>
+      <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + (modo === "metre" || usuarioLogueado ? 16 : 60) }}>
         <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
         <Text className="text-[10px] text-vino/70">Santino Casado</Text>
         <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
@@ -293,7 +300,7 @@ export default function RegistroClienteScreen({ onVolverAlLogin, modo = "cliente
       </View>
 
       {/* Cabecera */}
-      <View className={`px-5 ${modo === "metre" ? "pt-4" : "pt-16"}`}>
+      <View className={`px-5 ${modo === "metre" || usuarioLogueado ? "pt-4" : "pt-16"}`}>
         <View className="mb-4">
           <Image
             source={require("../../assets/images/logo-name.png")}
