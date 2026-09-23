@@ -15,8 +15,8 @@ export type HomeDestino =
   | "metre"
   | "carta"
   | "carrito"
-  | "mozo"
-  | "chat_mozo";
+  | "comandas"
+  | "chat_mesas";
 
 const PERFILES_EMPLEADO = [
   { id: "cocinero", label: "Cocinero", imagen: require("../../assets/images/chef-y.png") },
@@ -325,16 +325,32 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
               <Text className="mb-1 text-xs font-bold text-vino uppercase">Operación de Salón</Text>
 
               <TouchableOpacity
-                onPress={() => navegar("mozo")}
+                onPress={() => navegar("comandas")}
                 className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota shadow-md"
               >
                 <Image source={require("../../assets/images/serving-y.png")} className="h-7 w-7 mr-3" resizeMode="contain" />
                 <View className="flex-1">
-                  <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza font-bold">
-                    Panel de Mozo
+                  <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
+                    Comandas
                   </Text>
                   <Text className="text-[11px] font-semibold text-amber-100">
-                    Confirmar comandas y responder consultas de mesas
+                    Gestionar comandas pendientes
+                  </Text>
+                </View>
+                <Image source={require("../../assets/images/right-arrow-y.png")} className="h-6 w-6" resizeMode="contain" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => navegar("chat_mesas")}
+                className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota shadow-md"
+              >
+                <Image source={require("../../assets/images/table-y.png")} className="h-7 w-7 mr-3" resizeMode="contain" />
+                <View className="flex-1">
+                  <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
+                    Chat Mesas
+                  </Text>
+                  <Text className="text-[11px] font-semibold text-amber-100">
+                    Responder consultas de las mesas
                   </Text>
                 </View>
                 <Image source={require("../../assets/images/right-arrow-y.png")} className="h-6 w-6" resizeMode="contain" />

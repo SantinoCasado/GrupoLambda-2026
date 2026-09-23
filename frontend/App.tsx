@@ -25,7 +25,8 @@ import ScreenBackground from "./src/components/ScreenBackground";
 import { RegistroAnonimoScreen } from "./src/screens/registroAnonimoScreen";
 import { EsperaMesaScreen } from "./src/screens/esperaMesaScreen";
 import { ChatMozoScreen as ChatScreen } from "./src/screens/chatScreen";
-import { MozoScreen } from "./src/screens/mozoScreen";
+import { ComandasScreen } from "./src/screens/comandasScreen";
+import { ChatMesasScreen } from "./src/screens/chatMesasScreen";
 import { MetreScreen } from "./src/screens/metreScreen";
 import { EstadoPedidoScreen } from "./src/screens/estadoPedidoScreen";
 
@@ -46,7 +47,8 @@ type VistaPrivada =
   | "producto"
   | "registro_metre"
   | "metre"
-  | "mozo"
+  | "comandas"
+  | "chat_mesas"
   | "chat_mozo"
   | "carta"
   | "carrito"
@@ -386,7 +388,7 @@ function AppInterna() {
       ? esProducto
       : vistaPrivada === "registro_metre" || vistaPrivada === "metre"
       ? usuarioActual.perfil === "metre" || esAdmin
-      : vistaPrivada === "mozo"
+      : vistaPrivada === "comandas" || vistaPrivada === "chat_mesas"
       ? usuarioActual.perfil === "mozo" || esAdmin
       : vistaPrivada === "carta"
       ? esProducto || esCliente
@@ -507,16 +509,20 @@ function AppInterna() {
           />
         )}
 
-        {/* Vista del Mozo */}
-        {vistaPrivada === "mozo" && (
-          <MozoScreen
+        {/* Comandas del Mozo */}
+        {vistaPrivada === "comandas" && (
+          <ComandasScreen usuarioActual={usuarioActual} />
+        )}
+
+        {/* Chat de Mesas del Mozo */}
+        {vistaPrivada === "chat_mesas" && (
+          <ChatMesasScreen
             usuarioActual={usuarioActual}
             onAbrirChatMesa={(tableId, numMesa) => {
               setIdMesaCliente(tableId);
               setNumeroMesaCliente(numMesa);
               setVistaPrivada("chat_mozo");
             }}
-            onCerrarSesion={cerrarSesion}
           />
         )}
 
@@ -526,7 +532,7 @@ function AppInterna() {
             tableId={idMesaCliente || ""}
             numeroMesa={numeroMesaCliente || 1}
             usuarioActual={usuarioActual}
-            onVolver={() => setVistaPrivada(usuarioActual.perfil === "mozo" ? "mozo" : "home")}
+            onVolver={() => setVistaPrivada(usuarioActual.perfil === "mozo" ? "chat_mesas" : "home")}
           />
         )}
       </View>
