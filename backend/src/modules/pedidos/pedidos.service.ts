@@ -93,22 +93,26 @@ export const guardarPedido = async (
   // Busca si hay un mozo o personal de cocina al que notificar, o puede buscar el token del cliente.
   // Por ejemplo, si quiere notificar al personal de cocina/mozos de la mesa:
   try {
-    const { data: clienteData } = await supabase
+    const { data: mozos } = await supabase
       .from('users')
       .select('push_token')
-      .eq('id', idCliente)
-      .single();
+      .eq('role', 'mozo')
+      .not('push_token', 'is', null);
 
-    if (clienteData?.push_token) {
-      await enviarPushNotification(
-        clienteData.push_token,
-        '🍽️ ¡Pedido Registrado!',
-        `Tu pedido para la Mesa #${numeroMesa} fue enviado a cocina. Tiempo estimado: ${tiempoElaboracionTotal} mins.`,
-        { orderId: ordenCreada.id }
-      );
+    if (mozos && mozos.length > 0) {
+      for (const mozo of mozos) {
+        if (mozo.push_token) {
+          await enviarPushNotification(
+            mozo.push_token,
+            '📝 Nuevo pedido a confirmar',
+            `La Mesa #${numeroMesa} armó su pedido. Revisalo para enviarlo a preparación.`,
+            { orderId: ordenCreada.id, tipo: 'nuevo_pedido' }
+          );
+        }
+      }
     }
   } catch (pushError) {
-    console.error('No se pudo enviar la push de creación de pedido:', pushError);
+    console.error('No se pudo enviar la push a los mozos:', pushError);
   }
 
   return {
@@ -215,4 +219,316 @@ export const confirmarPedidoPorMozo = async (
   }
 
   return pedidoActualizado;
+};
+
+// Punto 16: Listado de pedidos pendientes para Cocina (platos / comida)
+export const obtenerPedidosPendientesCocina = async () => {
+  const { data, error } = await supabase
+    .from('orders')
+    .select(`
+      id,
+      created_at,
+      status,
+      restaurant_tables (table_number),
+      order_items (
+        id,
+        quantity,
+        products (id, name, category)
+      )
+    `)
+    .eq('status', 'in_preparation')
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    throw new Error(`Error al consultar pedidos de cocina: ${error.message}`);
+  }
+
+  return (data || [])
+    .map((orden) => {
+      const itemsCocina = (orden.order_items || []).filter(
+        (item: any) => item.products?.category === 'dish' || item.products?.category === 'food'
+      );
+      return {
+        ...orden,
+        order_items: itemsCocina,
+      };
+    })
+    .filter((orden) => orden.order_items.length > 0);
+};
+
+// Punto 17: Listado de pedidos pendientes para Bar (bebidas)
+export const obtenerPedidosPendientesBar = async () => {
+  const { data, error } = await supabase
+    .from('orders')
+    .select(`
+      id,
+      created_at,
+      status,
+      restaurant_tables (table_number),
+      order_items (
+        id,
+        quantity,
+        products (id, name, category)
+      )
+    `)
+    .eq('status', 'in_preparation')
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    throw new Error(`Error al consultar pedidos de bar: ${error.message}`);
+  }
+
+  return (data || [])
+    .map((orden) => {
+      const itemsBar = (orden.order_items || []).filter(
+        (item: any) => item.products?.category === 'drink'
+      );
+      return {
+        ...orden,
+        order_items: itemsBar,
+      };
+    })
+    .filter((orden) => orden.order_items.length > 0);
+};
+
+// Punto 13: Modificar productos de un pedido rechazado/cancelado
+export const modificarPedidoRechazado = async (
+  idPedido: string,
+  items: ProductoItem[]
+) => {
+  // 1. Verificar estado actual del pedido
+  const { data: pedidoActual, error: errorBusqueda } = await supabase
+    .from('orders')
+    .select('id, status, user_id, table_id')
+    .eq('id', idPedido)
+    .single();
+  
+  if (errorBusqueda || !pedidoActual) {
+    throw new Error('El pedido especificado no existe');
+  }
+  
+  if (pedidoActual.status !== 'cancelled') {
+    throw new Error('Solo se pueden modificar pedidos que hayan sido rechazados/cancelados');
+  }
+
+  // 2. Consultar productos y calcular nuevos totales
+  const idsProductos = items.map((i) => i.id_producto);
+  const { data: productosData, error: prodError } = await supabase
+    .from('products')
+    .select('id, price, prep_time')
+    .in('id', idsProductos);
+
+  if (prodError || !productosData) {
+    throw new Error('Error al consultar los productos en la base de datos');
+  }
+
+  const mapaProductos = new Map(productosData.map((p) => [p.id, p]));
+  let totalAcumulado = 0;
+  let tiempoElaboracionTotal = 0;
+
+  for (const item of items) {
+    const prod = mapaProductos.get(item.id_producto);
+    if (!prod) {
+      throw new Error(`Producto con ID ${item.id_producto} no existe`);
+    }
+    totalAcumulado += Number(prod.price) * item.cantidad;
+    const prepTime = Number(prod.prep_time || 0);
+    if (prepTime > tiempoElaboracionTotal) {
+      tiempoElaboracionTotal = prepTime;
+    }
+  }
+
+  // 3. Eliminar ítems anteriores del pedido
+  const { error: errorBorrado } = await supabase
+    .from('order_items')
+    .delete()
+    .eq('order_id', idPedido);
+
+  if (errorBorrado) {
+    throw new Error(`Error al limpiar ítems previos: ${errorBorrado.message}`);
+  }
+
+  // 4. Insertar los nuevos ítems
+  const itemsAInsertar = items.map((item) => {
+    const prod = mapaProductos.get(item.id_producto)!;
+    return {
+      order_id: idPedido,
+      product_id: item.id_producto,
+      quantity: item.cantidad,
+      unit_price: prod.price,
+    };
+  });
+
+  const { error: errorInsert } = await supabase
+    .from('order_items')
+    .insert(itemsAInsertar);
+
+  if (errorInsert) {
+    throw new Error(`Error al registrar nuevos ítems: ${errorInsert.message}`);
+  }
+
+  // 5. Volver el pedido a estado 'pending' y actualizar montos
+  const { data: pedidoActualizado, error: errorUpdate } = await supabase
+    .from('orders')
+    .update({
+      status: 'pending',
+      total_amount: totalAcumulado,
+      estimated_delivery_time: tiempoElaboracionTotal,
+      rejection_reason: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', idPedido)
+    .select()
+    .single();
+
+  if (errorUpdate || !pedidoActualizado) {
+    throw new Error(`Error al actualizar la orden: ${errorUpdate?.message}`);
+  }
+
+  // 6. Notificar a los MOZOS que el cliente corrigió el pedido
+  try {
+    const { data: mozos } = await supabase
+      .from('users')
+      .select('push_token')
+      .eq('role', 'mozo')
+      .not('push_token', 'is', null);
+
+    if (mozos && mozos.length > 0) {
+      for (const mozo of mozos) {
+        if (mozo.push_token) {
+          await enviarPushNotification(
+            mozo.push_token,
+            '🔄 Pedido Modificado',
+            `El cliente corrigió el pedido. Requiere tu confirmación nuevamente.`,
+            { orderId: pedidoActualizado.id, tipo: 'pedido_modificado' }
+          );
+        }
+      }
+    }
+  } catch (pushError) {
+    console.error('No se pudo enviar la push de modificación al mozo:', pushError);
+  }
+
+  return {
+    pedido: pedidoActualizado,
+    total: totalAcumulado,
+    tiempoEstimado: tiempoElaboracionTotal,
+  };
+};
+
+export const marcarItemComoListoService = async(itemId: string) => {
+  const { data: itemActual, error: errorBusqueda } = await supabase
+    .from('order_items')
+    .update({ status: 'ready' })
+    .eq('id', itemId)
+    .select('order_id')
+    .single();
+
+    if (errorBusqueda || !itemActual) {
+      throw new Error(`Error al actualizar el ítem: ${errorBusqueda?.message}`);
+    }
+    
+    const orderId = itemActual.order_id;  //
+
+    // Verificar si todos los ítems del pedido están listos
+    const { data: todosLosItems, error: errorCheck } = await supabase
+      .from('order_items')
+      .select('status')
+      .eq('order_id', orderId);
+
+    if (errorCheck || !todosLosItems) {
+        throw new Error('Error al verificar el estado de los demás ítems');
+    }
+
+    // Comprueba si hay alguno que NO este listo
+    const faltaAlgo = todosLosItems.some((item: any) => item.status !== 'ready');
+
+    // Si todavía falta cocinar o preparar algo, devuelve que el ítem se actualizó pero el pedido sigue en curso
+    if (faltaAlgo) {
+        return { pedidoCompleto: false, message: 'Ítem actualizado a listo. El pedido aún no está completo.' };
+    }
+
+    // Si todos los ítems están listos, actualiza el estado del pedido a 'ready'
+    const { data: pedidoActualizado, error: errorOrden } = await supabase
+    .from('orders')
+    .update({ status: 'ready', updated_at: new Date().toISOString() })
+    .eq('id', orderId)
+    .select('id, table_id, restaurant_tables(table_number)')
+    .single();
+
+    if (errorOrden){
+      throw new Error(`Error al actualizar el estado del pedido: ${errorOrden?.message}`);
+    }
+
+    // Notificar al mozo que el pedido está listo
+    try {
+      // Obtener el token del mozo asignado al pedido
+      const numeroMesa = (pedidoActualizado.restaurant_tables as any)?.table_number || 'S/N'; 
+      
+      const { data: mozos } = await supabase
+        .from('users')
+        .select('push_token')
+        .eq('role', 'mozo')
+        .not('push_token', 'is', null)
+
+      if (mozos && mozos.length > 0){
+        for(const mozo of mozos){
+          if(mozo.push_token){
+            await enviarPushNotification(
+              mozo.push_token,
+              '🛎️ ¡Pedido Completo!',
+              `El pedido de la Mesa #${numeroMesa} está 100% listo para retirar y entregar.`,
+              { orderId: orderId, tipo: 'pedido_completo', table_id: pedidoActualizado.table_id }
+            );
+          }
+        }
+      }
+    } catch (pushError){
+      console.error('⚠️ Error al enviar la push de pedido completo al mozo:', pushError);
+    }
+
+    return { 
+        pedidoCompleto: true, 
+        message: '¡Pedido completo! Notificación enviada a los mozos.',
+        orden: pedidoActualizado
+    };
+}
+
+export const entregarPedidoMozoService = async (idPedido: string) => {
+    const { data: pedidoEntregado, error } = await supabase
+        .from('orders')
+        .update({ 
+            status: 'delivered', 
+            updated_at: new Date().toISOString() 
+        })
+        .eq('id', idPedido)
+        .eq('status', 'ready') // Solo puede entregar si la cocina ya lo terminó
+        .select()
+        .single();
+
+    if (error || !pedidoEntregado) {
+        throw new Error('Error al entregar pedido. Verificá que el pedido exista y esté en estado "ready".');
+    }
+
+    return pedidoEntregado;
+};
+
+// Acción del Cliente: Confirma que ya tiene la comida en la mesa
+export const confirmarRecepcionClienteService = async (idPedido: string) => {
+    const { data: pedidoRecibido, error } = await supabase
+        .from('orders')
+        .update({ 
+            status: 'received', 
+            updated_at: new Date().toISOString() 
+        })
+        .eq('id', idPedido)
+        // Opcional: .eq('status', 'delivered') para ser estrictos
+        .select()
+        .single();
+
+    if (error || !pedidoRecibido) {
+        throw new Error('Error al confirmar la recepción del pedido.');
+    }
+
+    return pedidoRecibido;
 };
