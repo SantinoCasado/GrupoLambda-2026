@@ -13,7 +13,9 @@ export const enviarPushNotification = async (
     datosExtra?: Record<string, any>
 ) => {
     // Verificamos que el token pertenezca al formato estándar de Expo
-    if (!tokenDispositivo || !tokenDispositivo.startsWith('ExponentPushToken')) {
+    if (!tokenDispositivo || 
+        (!tokenDispositivo.startsWith('ExponentPushToken') &&
+         !tokenDispositivo.startsWith('ExpoPushToken'))) {
         console.warn('⚠️ Token de dispositivo inválido o ausente:', tokenDispositivo);
         return;
     }
