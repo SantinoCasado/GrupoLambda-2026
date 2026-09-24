@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { crearPedido, verEstadoPedido, confirmarPedido, marcarItemListo, marcarPedidoComoEntregado, confirmarRecepcionPedido, modificarPedido } from './pedidos.controller';
+import { crearPedido, verEstadoPedido, confirmarPedido, marcarItemListo, marcarPedidoComoEntregado, confirmarRecepcionPedido, modificarPedido, listarPedidosBar, listarPedidosCocina } from './pedidos.controller';
 import { verificarAutenticacion } from '../../middleware/auth.middleware';
 import { requerirRol } from '../../middleware/auth.middleware';
 
