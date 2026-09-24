@@ -68,7 +68,8 @@ export async function obtenerTokenPush(): Promise<string | null> {
 
 // Guarda el token en la columna push_token de la tabla users vía el backend
 export async function guardarTokenEnBackend(token: string): Promise<boolean> {
-  if (!token.startsWith("ExponentPushToken")) return false;
+  if (token.includes("expo-go")) return false;
+  if (!token.startsWith("ExponentPushToken") && !token.startsWith("ExpoPushToken")) return false;
 
   // En el login local de demo no hay sesión de Supabase → el backend respondería 401
   const tokenSesion = await obtenerTokenValido();
