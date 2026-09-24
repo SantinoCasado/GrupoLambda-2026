@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
   Image,
   Dimensions,
+  TextInput,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
@@ -45,6 +46,9 @@ export function ComandasScreen({ usuarioActual }: Props) {
 
   // Spinner mientras la decisión impacta el backend
   const [procesandoAccion, setProcesandoAccion] = useState<"confirmar" | "rechazar" | null>(null);
+
+  // Motivo obligatorio al rechazar una comanda
+  const [motivoRechazo, setMotivoRechazo] = useState("");
 
     const [modalFeedback, setModalFeedback] = useState<{
         visible: boolean;
@@ -139,6 +143,7 @@ export function ComandasScreen({ usuarioActual }: Props) {
   };
 
   const abrirConfirmacion = (pedido: any, accion: "confirmar" | "rechazar") => {
+    if (accion === "rechazar") setMotivoRechazo("");
     setConfirmacion({ visible: true, pedido, accion });
   };
 
@@ -146,6 +151,11 @@ export function ComandasScreen({ usuarioActual }: Props) {
     if (!confirmacion.pedido) return;
     const { pedido, accion } = confirmacion;
     const esConfirmacion = accion === "confirmar";
+    const motivo = esConfirmacion ? "" : motivoRechazo.trim();
+
+    if (!esConfirmacion && !motivo) {
+      return;
+    }
 
     setConfirmacion((prev) => ({ ...prev, visible: false }));
     setProcesandoId(pedido.id);
@@ -155,7 +165,8 @@ export function ComandasScreen({ usuarioActual }: Props) {
       await confirmarPedidoPorMozoApi(
         pedido.id,
         usuarioActual.id,
-        esConfirmacion ? "in_preparation" : "cancelled"
+        esConfirmacion ? "in_preparation" : "cancelled",
+        esConfirmacion ? undefined : motivo
       );
       abrirAviso(
         esConfirmacion ? "¡Pedido Confirmado!" : "Pedido Rechazado",
@@ -401,12 +412,26 @@ export function ComandasScreen({ usuarioActual }: Props) {
                 : "Se le notificará al cliente."}
           </>
         }
-        textoConfirmar="Confirmar"
+        textoConfirmar={confirmacion.accion === "confirmar" ? "Confirmar" : "Rechazar"}
         textoCancelar="Cancelar"
         tipo={confirmacion.accion === "confirmar" ? "confirmar" : "peligro"}
+        confirmarDeshabilitado={
+          confirmacion.accion === "rechazar" && motivoRechazo.trim().length === 0
+        }
         onConfirm={ejecutarDecision}
         onCancel={() => setConfirmacion((prev) => ({ ...prev, visible: false }))}
-      />
+      >
+        {confirmacion.accion === "rechazar" && (
+          <TextInput
+            value={motivoRechazo}
+            onChangeText={setMotivoRechazo}
+            placeholder="Motivo del rechazo (obligatorio)"
+            placeholderTextColor="#A8A29E"
+            multiline
+            className="mb-5 w-full rounded-xl border border-vino/30 bg-white/95 px-3 py-2.5 text-sm text-vino"
+          />
+        )}
+      </ConfirmModal>
 
       {/* Spinner de proceso de la decisión */}
       <CompanySpinner
