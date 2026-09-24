@@ -372,6 +372,31 @@ function AppInterna() {
               setClienteAnonimo(null);
               setVistaPublica("login");
             }}
+            onMesaConfirmada={async (numMesa) => {
+              const anon = clienteAnonimo;
+              if (!anon) return;
+              const { data: mesaData } = await supabase
+                .from("restaurant_tables")
+                .select("id")
+                .eq("table_number", numMesa)
+                .maybeSingle();
+              setIdMesaCliente(mesaData?.id ?? null);
+              setNumeroMesaCliente(numMesa);
+              setUsuarioActual({
+                id: anon.id,
+                perfil: "cliente_anonimo",
+                tituloVisual: "Cliente Anónimo",
+                email: "",
+                clave: "",
+                nombres: anon.client_name,
+                apellidos: "Anónimo",
+                documento: "",
+                foto: anon.client_photo,
+                icono: "🕶️",
+              });
+              setClienteAnonimo(anon);
+              setVistaPrivada("home");
+            }}
           />
         </>
       );

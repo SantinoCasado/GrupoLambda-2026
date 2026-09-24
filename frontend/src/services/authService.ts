@@ -1,4 +1,4 @@
-import { USUARIOS_PRECARGADOS, UsuarioSeed, PerfilUsuario } from "../data/usuariosPrecargados";
+import { UsuarioSeed, PerfilUsuario } from "../data/usuariosPrecargados";
 import { getSupabaseClient, isSupabaseConfigured } from "../config/supabase";
 
 // Mapeo unívoco de la columna 'role' (inglés) a PerfilUsuario de la UI
@@ -72,37 +72,12 @@ async function loginConSupabase(email: string, clave: string): Promise<UsuarioSe
   };
 }
 
-async function loginLocal(email: string, clave: string): Promise<UsuarioSeed> {
-  await new Promise((resolve) => setTimeout(resolve, 300));
-
-  const usuario = USUARIOS_PRECARGADOS.find(
-    (u) => u.email.toLowerCase() === email.trim().toLowerCase() && u.clave === clave
-  );
-
-  if (!usuario) {
-    throw new Error("Credenciales inválidas. Verifique correo y contraseña.");
-  }
-
-  return usuario;
-}
-
 export async function login(email: string, clave: string): Promise<UsuarioSeed> {
-  if (isSupabaseConfigured) {
-    try {
-      return await loginConSupabase(email, clave);
-    } catch (error: any) {
-      const mensaje = error?.message || "";
-
-      if (
-        mensaje.includes("pendiente de aprobación") ||
-        mensaje.includes("rechazada")
-      ) {
-        throw error;
-      }
-
-      console.log("ℹ️ [Auth] Intento fallido en Supabase, evaluando fallback local:", mensaje);
-    }
+  if (!isSupabaseConfigured) {
+    throw new Error(
+      "Supabase no configurado. Definí EXPO_PUBLIC_SUPABASE_URL y EXPO_PUBLIC_SUPABASE_ANON_KEY en el entorno."
+    );
   }
 
-  return loginLocal(email, clave);
+  return loginConSupabase(email, clave);
 }

@@ -104,7 +104,7 @@ export async function ingresarAListaEsperaLocal(
 ): Promise<{ exito: boolean; waitingId?: string; error?: string }> {
   try {
     // Pegamos al backend para que además despache la Push Notification a los Metres
-    const response = await fetch(`${API_URL}/api/clientes/lista-espera`, {
+    const response = await fetch(`${API_URL}/api/clientes/ingresar`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

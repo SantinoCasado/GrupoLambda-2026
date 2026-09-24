@@ -1,5 +1,6 @@
 import { API_BASE_URL } from "./../../apiConfig";
 import { supabase } from "../config/supabase";
+import { headersConToken } from "./tokenService";
 
 export interface ItemPedidoPayload {
   id_producto: string;
@@ -28,7 +29,7 @@ export interface Pedido {
 export const crearPedidoApi = async (payload: CrearPedidoPayload): Promise<Pedido> => {
   const res = await fetch(`${API_BASE_URL}/pedidos`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: await headersConToken({ "Content-Type": "application/json" }),
     body: JSON.stringify({
       id_cliente: payload.id_cliente,
       numero_mesa: Number(payload.numero_mesa),
@@ -54,7 +55,7 @@ export const confirmarPedidoPorMozoApi = async (
 ) => {
   const res = await fetch(`${API_BASE_URL}/pedidos/${pedidoId}/confirmar`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json" },
+    headers: await headersConToken({ "Content-Type": "application/json" }),
     body: JSON.stringify({
       waiter_id: waiterId,
       estado,
@@ -95,7 +96,7 @@ export interface TicketsPedido {
 
 export const obtenerTicketsCocinaApi = async (): Promise<TicketsPedido[]> => {
   const res = await fetch(`${API_BASE_URL}/pedidos/cocina`, {
-    headers: { "Content-Type": "application/json" },
+    headers: await headersConToken({ "Content-Type": "application/json" }),
   });
 
   if (!res.ok) {
@@ -109,7 +110,7 @@ export const obtenerTicketsCocinaApi = async (): Promise<TicketsPedido[]> => {
 
 export const obtenerTicketsBarApi = async (): Promise<TicketsPedido[]> => {
   const res = await fetch(`${API_BASE_URL}/pedidos/bar`, {
-    headers: { "Content-Type": "application/json" },
+    headers: await headersConToken({ "Content-Type": "application/json" }),
   });
 
   if (!res.ok) {

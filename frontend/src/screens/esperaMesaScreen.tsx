@@ -203,12 +203,7 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
       const qrEsperado = `RESTO-TFI-MESA-${mesaAsignada.numero}`;
 
       if (data.trim() === qrEsperado) {
-        mostrarMensaje(
-          "¡Mesa Vinculada!",
-          `Te has ubicado en tu Mesa #${mesaAsignada.numero} correctamente. Ya podés ver la carta y ordenar.`,
-          "exito",
-          "✨"
-        );
+        // QR correcto → redirige al home directo (registrado o anónimo)
         if (onMesaConfirmada) {
           onMesaConfirmada(mesaAsignada.numero);
         }

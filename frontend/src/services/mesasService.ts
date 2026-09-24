@@ -218,7 +218,7 @@ export async function actualizarDisponibilidadMesa(
 // 1. Obtener la lista de espera actual
 export async function obtenerListaEspera(): Promise<ClienteEnEspera[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/empleados/waiting-list`, {
+    const response = await fetch(`${API_BASE_URL}/empleados`, {
       headers: await headersConToken(),
     });
     if (response.ok) {
