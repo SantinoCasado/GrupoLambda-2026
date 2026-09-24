@@ -24,7 +24,7 @@ router.get('/', verificarAutenticacion, obtenerMesas);
 // Solo perfiles autorizados pueden ejecutar el PATCH de asignación
 router.patch('/asignar-mesa', 
     verificarAutenticacion, 
-    requerirRol(['metre', 'dueño', 'supervisor']), 
+    requerirRol(['maitre', 'owner', 'supervisor']), 
     asignarMesa
 );
 
