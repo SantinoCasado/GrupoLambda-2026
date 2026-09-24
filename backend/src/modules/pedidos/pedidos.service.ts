@@ -179,7 +179,7 @@ export const confirmarPedidoPorMozo = async (
     updated_at: new Date().toISOString(),
   };
 
-  if (nuevoEstado === 'cancelled' && rejectionReason) {
+  if (nuevoEstado === 'wqqw' && rejectionReason) {
     updatePayload.rejection_reason = rejectionReason;
   }
 
