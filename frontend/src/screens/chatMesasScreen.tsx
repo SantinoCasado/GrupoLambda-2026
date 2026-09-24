@@ -89,26 +89,37 @@ export function ChatMesasScreen({
           className="flex-1 px-5"
           data={mesas}
           keyExtractor={(m, index) => String(m.id || index)}
-          renderItem={({ item: mesa }) => (
-            <TouchableOpacity
-              onPress={() => onAbrirChatMesa(mesa.id || "", mesa.numero)}
-              className="mb-2.5 flex-row items-center justify-between rounded-xl border border-mostaza/30 bg-black/30 p-3.5 active:bg-black/50"
-            >
-              <View>
-                <Text className="text-base font-bold text-mostaza">
-                  Mesa #{mesa.numero}
-                </Text>
-                <Text className="text-xs text-amber-100/70">
-                  Estado: {mesa.disponibilidad === "ocupada" ? "🔴 Ocupada" : "🟢 Libre"}
-                </Text>
-              </View>
+          renderItem={({ item: mesa }) => {
+            const ocupada = mesa.disponibilidad === "ocupada";
+            return (
+              <TouchableOpacity
+                onPress={() => onAbrirChatMesa(mesa.id || "", mesa.numero)}
+                className={`mb-2.5 flex-row items-center justify-between rounded-xl border-2 bg-caramelo/20 p-3.5 active:bg-black/50 ${
+                  ocupada ? "border-terracota" : "border-emerald-500"
+                }`}
+              >
+                <View>
+                  <Text
+                    style={{ fontFamily: "LaOriental" }}
+                    className={`text-base ${ocupada ? "text-terracota" : "text-emerald-500"}`}
+                  >
+                    Mesa #{mesa.numero}
+                  </Text>
+                  <Text className="text-xs">
+                    <Text className="font-semibold text-calabaza">Estado: </Text>
+                    <Text className={`font-bold ${ocupada ? "text-terracota" : "text-emerald-500"}`}>
+                      {ocupada ? "OCUPADA" : "LIBRE"}
+                    </Text>
+                  </Text>
+                </View>
 
-              <View className="flex-row items-center gap-1">
-                <Text className="text-xs font-bold text-amber-200">Abrir Chat</Text>
-                <Text className="text-mostaza text-lg">💬</Text>
-              </View>
-            </TouchableOpacity>
-          )}
+                <View className="flex-row items-center gap-1">
+                  <Text className="text-xs font-bold text-calabaza">Abrir Chat</Text>
+                  <Text className="text-lg">💬</Text>
+                </View>
+              </TouchableOpacity>
+            );
+          }}
         />
       )}
     </SafeAreaView>
