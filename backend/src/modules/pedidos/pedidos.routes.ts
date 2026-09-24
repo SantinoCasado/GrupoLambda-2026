@@ -5,6 +5,8 @@ import { requerirRol } from '../../middleware/auth.middleware';
 
 const router = Router();
 
+router.get('/cocina', listarPedidosCocina);
+router.get('/bar', listarPedidosBar);
 router.post('/', crearPedido);
 router.get('/:id', verEstadoPedido);
 

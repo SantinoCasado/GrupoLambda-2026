@@ -2,7 +2,6 @@ import { supabase } from '../../config/supabase';
 import { CrearEmpleadoDTO } from './schema/empleado.schema';
 
 export const registrarEmpleado = async (datos: CrearEmpleadoDTO) => {
-    
     //  el usuario como Administrador (sin loguearlo)
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
         email: datos.email,

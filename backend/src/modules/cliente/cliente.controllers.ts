@@ -164,16 +164,47 @@ export const actualizarPushToken = async (req: AuthRequest, res: Response): Prom
 
 
 export const ingresarListaEspera = async (req: Request, res: Response): Promise<Response | void> => {
-    const { user_id, client_name, client_photo } = req.body;
-
+    const { user_id, client_name, client_photo } = req.body as {
+        user_id?: string;
+        client_name: string;
+        client_photo: string;
+    };
     if (!user_id || !client_name || !client_photo) {
         return res.status(400).json({ error: 'Faltan datos obligatorios (user_id, client_name, client_photo)' });
     }
 
     try {
-        const waitingRecord = await ingresarClienteListaService({ user_id, client_name, client_photo });
+        let finalUserId = user_id;
 
-        // logica de notificaciones al metre
+        // --- SALVAVIDAS PARA CLIENTES ANÓNIMOS ---
+        // Si no viene user_id, crea un registro temporal en la tabla users
+        if (!finalUserId) {
+            const { data: nuevoAnonimo, error: errorAnonimo } = await supabase
+                .from('users')
+                .insert([{
+                    name: client_name,
+                    photo: client_photo,
+                    role: 'cliente_anonimo', // O el rol anónimo que uses en tu base
+                    status: 'approved'       // Los anónimos entran directo
+                }])
+                .select('id')
+                .single();
+
+            if (errorAnonimo || !nuevoAnonimo) {
+                return res.status(500).json({ error: `Error al registrar cliente anónimo: ${errorAnonimo?.message}` });
+            }
+
+            finalUserId = nuevoAnonimo.id;
+        }
+
+        // Llama al servicio pasando el ID (ya sea el del registrado o el del anónimo recién creado)
+        const waitingRecord = await ingresarClienteListaService({ 
+            user_id: finalUserId!, 
+            client_name, 
+            client_photo 
+        });
+
+        // Logica de notificaciones al metre 
         try {
             const { data: metres, error: fetchError } = await supabase
                 .from('users')

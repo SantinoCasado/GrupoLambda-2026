@@ -45,8 +45,11 @@ export const guardarPedido = async (
       throw new Error(`Producto con ID ${item.id_producto} no existe`);
     }
     totalAcumulado += Number(prod.price) * item.cantidad;
-    const tiempoItem = Number(prod.prep_time || 0) * item.cantidad;
-    tiempoElaboracionTotal += tiempoItem;
+    // Tomamos el tiempo del plato que más tarde
+    const prepTime = Number(prod.prep_time || 0);
+    if (prepTime > tiempoElaboracionTotal) {
+      tiempoElaboracionTotal = prepTime;
+    }
   }
 
   // Se usa total_amount y order_type
@@ -112,7 +115,7 @@ export const guardarPedido = async (
       }
     }
   } catch (pushError) {
-    console.error('No se pudo enviar la push a los mozos:', pushError);
+    console.error('No se pudo enviar la push de creación de pedido a los mozos:', pushError);
   }
 
   return {
@@ -195,6 +198,7 @@ export const confirmarPedidoPorMozo = async (
   // PUSH NOTIFICATION: Mozo confirmó o rechazó el pedido
   // ========================================================
   try {
+    // 1. Avisarle al cliente 
     if (pedidoActual.client_id) {
       const { data: clienteData } = await supabase
         .from('users')
@@ -214,8 +218,69 @@ export const confirmarPedidoPorMozo = async (
         });
       }
     }
+
+    // Avisarle a la Cocina y al Bar (SOLO si se confirmó)
+    if (nuevoEstado === 'in_preparation') {
+      // Consulta quE categorIas de productos tiene este pedido
+      const { data: itemsPedido } = await supabase
+        .from('order_items')
+        .select('products(category)')
+        .eq('order_id', idPedido);
+
+      // Determinar si hay comida o bebida en el pedido
+      const tieneComida = itemsPedido?.some((i: any) => 
+        i.products?.category === 'dish' || i.products?.category === 'food'
+      );
+      const tieneBebida = itemsPedido?.some((i: any) => 
+        i.products?.category === 'drink'
+      );
+
+      // Notificar a los cocineros
+      if (tieneComida) {
+        const { data: cocineros } = await supabase
+          .from('users')
+          .select('push_token')
+          .eq('role', 'cocinero')
+          .not('push_token', 'is', null);
+
+        if (cocineros && cocineros.length > 0) {
+          for (const cocinero of cocineros) {
+            if (cocinero.push_token) {
+              await enviarPushNotification(
+                cocinero.push_token,
+                '🍳 Nuevo ticket en Cocina',
+                'Ingresó un nuevo pedido de comida para preparar.',
+                { orderId: idPedido, tipo: 'nuevo_pedido_cocina' }
+              );
+            }
+          }
+        }
+      }
+
+      // Notificar a los cantineros
+      if (tieneBebida) {
+        const { data: cantineros } = await supabase
+          .from('users')
+          .select('push_token')
+          .eq('role', 'cantinero')
+          .not('push_token', 'is', null);
+
+        if (cantineros && cantineros.length > 0) {
+          for (const cantinero of cantineros) {
+            if (cantinero.push_token) {
+              await enviarPushNotification(
+                cantinero.push_token,
+                '🍹 Nuevo ticket en Bar',
+                'Ingresó un nuevo pedido de bebidas para preparar.',
+                { orderId: idPedido, tipo: 'nuevo_pedido_bar' }
+              );
+            }
+          }
+        }
+      }
+    }
   } catch (pushError) {
-    console.error('No se pudo enviar la push de confirmación del mozo:', pushError);
+    console.error('No se pudo procesar el flujo de push notifications:', pushError);
   }
 
   return pedidoActualizado;
