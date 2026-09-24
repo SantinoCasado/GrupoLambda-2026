@@ -7,7 +7,7 @@ const router = Router();
 // El cliente envía su opinión (POST)
 router.post('/', 
     verificarAutenticacion, 
-    requerirRol(['cliente', 'cliente_anonimo']), 
+    requerirRol(['registered_client', 'anonymous_client']), 
     enviarEncuesta
 );
 

@@ -14,7 +14,7 @@ router.get('/empleados', listarEmpleados);
 // Solo el metre (y administradores) deberían poder ver la cola de espera
 router.get('/', 
     verificarAutenticacion, 
-    requerirRol(['metre', 'dueño', 'supervisor']), 
+    requerirRol(['maitre', 'owner', 'supervisor']), 
     obtenerListaEspera
 );
 
