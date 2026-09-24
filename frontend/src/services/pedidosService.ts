@@ -80,3 +80,43 @@ export const obtenerEstadoPedidoApi = async (pedidoId: string): Promise<Pedido> 
   if (error) throw new Error(error.message);
   return data as Pedido;
 };
+
+export interface TicketsPedido {
+  id: string;
+  created_at: string;
+  status: string;
+  restaurant_tables?: { table_number: number } | null;
+  order_items?: {
+    id: string;
+    quantity: number;
+    products?: { id: string; name: string; category: string } | null;
+  }[];
+}
+
+export const obtenerTicketsCocinaApi = async (): Promise<TicketsPedido[]> => {
+  const res = await fetch(`${API_BASE_URL}/pedidos/cocina`, {
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `HTTP ${res.status} al obtener tickets de cocina`);
+  }
+
+  const json = await res.json();
+  return (json.data || []) as TicketsPedido[];
+};
+
+export const obtenerTicketsBarApi = async (): Promise<TicketsPedido[]> => {
+  const res = await fetch(`${API_BASE_URL}/pedidos/bar`, {
+    headers: { "Content-Type": "application/json" },
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `HTTP ${res.status} al obtener tickets de bar`);
+  }
+
+  const json = await res.json();
+  return (json.data || []) as TicketsPedido[];
+};
