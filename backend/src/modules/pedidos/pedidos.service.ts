@@ -96,7 +96,6 @@ export const guardarPedido = async (
   // Busca si hay un mozo o personal de cocina al que notificar, o puede buscar el token del cliente.
   // Por ejemplo, si quiere notificar al personal de cocina/mozos de la mesa:
   try {
-    // Buscamos a los mozos para avisarles que tienen un pedido pendiente de revisión
     const { data: mozos } = await supabase
       .from('users')
       .select('push_token')
@@ -480,4 +479,121 @@ export const modificarPedidoRechazado = async (
     total: totalAcumulado,
     tiempoEstimado: tiempoElaboracionTotal,
   };
+};
+
+export const marcarItemComoListoService = async(itemId: string) => {
+  const { data: itemActual, error: errorBusqueda } = await supabase
+    .from('order_items')
+    .update({ status: 'ready' })
+    .eq('id', itemId)
+    .select('order_id')
+    .single();
+
+    if (errorBusqueda || !itemActual) {
+      throw new Error(`Error al actualizar el ítem: ${errorBusqueda?.message}`);
+    }
+    
+    const orderId = itemActual.order_id;  //
+
+    // Verificar si todos los ítems del pedido están listos
+    const { data: todosLosItems, error: errorCheck } = await supabase
+      .from('order_items')
+      .select('status')
+      .eq('order_id', orderId);
+
+    if (errorCheck || !todosLosItems) {
+        throw new Error('Error al verificar el estado de los demás ítems');
+    }
+
+    // Comprueba si hay alguno que NO este listo
+    const faltaAlgo = todosLosItems.some((item: any) => item.status !== 'ready');
+
+    // Si todavía falta cocinar o preparar algo, devuelve que el ítem se actualizó pero el pedido sigue en curso
+    if (faltaAlgo) {
+        return { pedidoCompleto: false, message: 'Ítem actualizado a listo. El pedido aún no está completo.' };
+    }
+
+    // Si todos los ítems están listos, actualiza el estado del pedido a 'ready'
+    const { data: pedidoActualizado, error: errorOrden } = await supabase
+    .from('orders')
+    .update({ status: 'ready', updated_at: new Date().toISOString() })
+    .eq('id', orderId)
+    .select('id, table_id, restaurant_tables(table_number)')
+    .single();
+
+    if (errorOrden){
+      throw new Error(`Error al actualizar el estado del pedido: ${errorOrden?.message}`);
+    }
+
+    // Notificar al mozo que el pedido está listo
+    try {
+      // Obtener el token del mozo asignado al pedido
+      const numeroMesa = (pedidoActualizado.restaurant_tables as any)?.table_number || 'S/N'; 
+      
+      const { data: mozos } = await supabase
+        .from('users')
+        .select('push_token')
+        .eq('role', 'mozo')
+        .not('push_token', 'is', null)
+
+      if (mozos && mozos.length > 0){
+        for(const mozo of mozos){
+          if(mozo.push_token){
+            await enviarPushNotification(
+              mozo.push_token,
+              '🛎️ ¡Pedido Completo!',
+              `El pedido de la Mesa #${numeroMesa} está 100% listo para retirar y entregar.`,
+              { orderId: orderId, tipo: 'pedido_completo', table_id: pedidoActualizado.table_id }
+            );
+          }
+        }
+      }
+    } catch (pushError){
+      console.error('⚠️ Error al enviar la push de pedido completo al mozo:', pushError);
+    }
+
+    return { 
+        pedidoCompleto: true, 
+        message: '¡Pedido completo! Notificación enviada a los mozos.',
+        orden: pedidoActualizado
+    };
+}
+
+export const entregarPedidoMozoService = async (idPedido: string) => {
+    const { data: pedidoEntregado, error } = await supabase
+        .from('orders')
+        .update({ 
+            status: 'delivered', 
+            updated_at: new Date().toISOString() 
+        })
+        .eq('id', idPedido)
+        .eq('status', 'ready') // Solo puede entregar si la cocina ya lo terminó
+        .select()
+        .single();
+
+    if (error || !pedidoEntregado) {
+        throw new Error('Error al entregar pedido. Verificá que el pedido exista y esté en estado "ready".');
+    }
+
+    return pedidoEntregado;
+};
+
+// Acción del Cliente: Confirma que ya tiene la comida en la mesa
+export const confirmarRecepcionClienteService = async (idPedido: string) => {
+    const { data: pedidoRecibido, error } = await supabase
+        .from('orders')
+        .update({ 
+            status: 'received', 
+            updated_at: new Date().toISOString() 
+        })
+        .eq('id', idPedido)
+        // Opcional: .eq('status', 'delivered') para ser estrictos
+        .select()
+        .single();
+
+    if (error || !pedidoRecibido) {
+        throw new Error('Error al confirmar la recepción del pedido.');
+    }
+
+    return pedidoRecibido;
 };

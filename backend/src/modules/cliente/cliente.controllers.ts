@@ -169,9 +169,8 @@ export const ingresarListaEspera = async (req: Request, res: Response): Promise<
         client_name: string;
         client_photo: string;
     };
-
-    if (!client_name || !client_photo) {
-        return res.status(400).json({ error: 'Faltan datos obligatorios (client_name, client_photo)' });
+    if (!user_id || !client_name || !client_photo) {
+        return res.status(400).json({ error: 'Faltan datos obligatorios (user_id, client_name, client_photo)' });
     }
 
     try {
