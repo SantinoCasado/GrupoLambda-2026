@@ -1,9 +1,11 @@
 // src/context/AuthContext.tsx
 import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
+import { AppState } from "react-native";
 import { Session } from "@supabase/supabase-js";
 import { getSupabaseClient } from "../config/supabase";
 import { obtenerTokenValido } from "../services/tokenService";
-import { sincronizarPushAlIniciarSesion } from "../services/pushNotificationsService";
+import { guardarTokenEnBackend, sincronizarPushAlIniciarSesion } from "../services/pushNotificationsService";
+import { obtenerModuloNotificaciones } from "../services/notificationsGateway";
 
 interface AuthContextValue {
   sesion: Session | null;
@@ -46,13 +48,54 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [supabase]);
 
-  // Registra el dispositivo para notificaciones push una sola vez por sesión
+  useEffect(() => {
+    if (!sesion?.user?.id) {
+      usuarioSincronizado.current = null;
+      return;
+    }
+
+    const userId = sesion.user.id;
+    let sincronizando = false;
+    let activo = true;
+
+    const sincronizar = async () => {
+      if (!activo || sincronizando || usuarioSincronizado.current === userId) return;
+
+      sincronizando = true;
+      usuarioSincronizado.current = userId;
+      const sincronizado = await sincronizarPushAlIniciarSesion();
+      if (!activo) return;
+      if (!sincronizado) {
+        usuarioSincronizado.current = null;
+      }
+      sincronizando = false;
+    };
+
+    void sincronizar();
+    const suscripcion = AppState.addEventListener("change", (estado) => {
+      if (estado === "active") void sincronizar();
+    });
+
+    return () => {
+      activo = false;
+      suscripcion.remove();
+    };
+  }, [sesion]);
+
   useEffect(() => {
     if (!sesion?.user?.id) return;
-    if (usuarioSincronizado.current === sesion.user.id) return;
 
-    usuarioSincronizado.current = sesion.user.id;
-    sincronizarPushAlIniciarSesion();
+    const Notifications = obtenerModuloNotificaciones();
+    if (!Notifications?.addPushTokenListener) return;
+
+    const suscripcion = Notifications.addPushTokenListener((token) => {
+      const valor = typeof token === "string" ? token : token?.data;
+      if (typeof valor === "string") {
+        void guardarTokenEnBackend(valor);
+      }
+    });
+
+    return () => suscripcion.remove();
   }, [sesion]);
 
   return (

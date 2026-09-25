@@ -104,13 +104,13 @@ export async function guardarTokenEnBackend(token: string): Promise<boolean> {
 }
 
 // Flujo completo para cuando el usuario inicia sesión (dueño, supervisor, personal)
-export async function sincronizarPushAlIniciarSesion(): Promise<void> {
+export async function sincronizarPushAlIniciarSesion(): Promise<boolean> {
   try {
     const token = await obtenerTokenPush();
-    if (token) {
-      await guardarTokenEnBackend(token);
-    }
+    if (!token) return false;
+    return await guardarTokenEnBackend(token);
   } catch (error: any) {
     console.warn("⚠️ [Push] Error en la sincronización de notificaciones:", error?.message);
+    return false;
   }
 }

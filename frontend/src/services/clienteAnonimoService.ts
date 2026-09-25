@@ -2,6 +2,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { decode } from "base64-arraybuffer";
 import { supabase } from "../config/supabase";
 import { API_URL } from "../config/api";
+import { guardarTokenEnBackend, obtenerTokenPush } from "./pushNotificationsService";
 
 export interface ClienteAnonimoSesion {
   id: string; // ID temporal / userId
@@ -75,6 +76,28 @@ export async function registrarClienteAnonimo(
     if (userError) {
       await supabase.auth.signOut();
       throw new Error(`Error al registrar usuario: ${userError.message}`);
+    }
+
+    try {
+      const pushToken = await obtenerTokenPush();
+      const esTokenExpo =
+        pushToken?.startsWith("ExponentPushToken") || pushToken?.startsWith("ExpoPushToken");
+
+      if (pushToken && esTokenExpo && !pushToken.includes("expo-go")) {
+        const guardadoEnBackend = await guardarTokenEnBackend(pushToken);
+        if (!guardadoEnBackend) {
+          const { error: tokenError } = await supabase
+            .from("users")
+            .update({ push_token: pushToken })
+            .eq("id", anonUserId);
+
+          if (tokenError) {
+            throw new Error(tokenError.message);
+          }
+        }
+      }
+    } catch (error: any) {
+      console.warn("⚠️ No se pudo registrar el token push del cliente anónimo:", error.message);
     }
 
     return {

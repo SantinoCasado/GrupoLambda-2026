@@ -218,7 +218,7 @@ export async function actualizarDisponibilidadMesa(
 // 1. Obtener la lista de espera actual
 export async function obtenerListaEspera(): Promise<ClienteEnEspera[]> {
   try {
-    const response = await fetch(`${API_BASE_URL}/empleados`, {
+    const response = await fetch(`${API_BASE_URL}/empleados/`, {
       headers: await headersConToken(),
     });
     if (response.ok) {
@@ -246,14 +246,14 @@ export async function obtenerListaEspera(): Promise<ClienteEnEspera[]> {
 export async function asignarMesa(
   waitingId: string,
   tableId: string
-): Promise<{ exito: boolean; mensaje: string }> {
+): Promise<{ exito: boolean; mensaje: string; notificacionEnviada: boolean }> {
   try {
     const url = API_BASE_URL.endsWith("/api")
       ? `${API_BASE_URL}/mesas/asignar-mesa`
       : `${API_BASE_URL}/api/mesas/asignar-mesa`;
 
     const response = await fetch(url, {
-      method: "PATCH", // 👈 Debe ser PATCH según mesas.routes.ts
+      method: "PATCH",
       headers: await headersConToken({ "Content-Type": "application/json" }),
       body: JSON.stringify({
         waiting_id: waitingId,
@@ -261,33 +261,29 @@ export async function asignarMesa(
       }),
     });
 
-    if (response.ok) {
-      const data = await response.json();
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
       return {
-        exito: true,
-        mensaje: data.message || "Mesa asignada con éxito.",
+        exito: false,
+        mensaje: typeof data?.error === "string" ? data.error : "No se pudo asignar la mesa.",
+        notificacionEnviada: false,
       };
     }
+
+    return {
+      exito: true,
+      mensaje: data.message || "Mesa asignada con éxito.",
+      notificacionEnviada: data.notificacionEnviada === true,
+    };
   } catch (error: any) {
-    console.warn("Fallo asignación en backend, aplicando fallback a Supabase:", error.message);
+    console.error("Error al asignar la mesa:", error.message);
+    return {
+      exito: false,
+      mensaje: "No se pudo conectar con el servidor para asignar la mesa.",
+      notificacionEnviada: false,
+    };
   }
-
-  // Fallback directo en Supabase si falla el backend o token
-  const { error: waitErr } = await supabase
-    .from("waiting_list")
-    .update({ assigned_table_id: tableId, status: "assigned" })
-    .eq("id", waitingId);
-
-  if (waitErr) return { exito: false, mensaje: waitErr.message };
-
-  const { error: tableErr } = await supabase
-    .from("restaurant_tables")
-    .update({ availability: "occupied" })
-    .eq("id", tableId);
-
-  if (tableErr) return { exito: false, mensaje: tableErr.message };
-
-  return { exito: true, mensaje: "Mesa asignada correctamente (BD directa)." };
 }
 
 // 3. Eliminar cliente de la lista de espera

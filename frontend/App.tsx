@@ -96,6 +96,11 @@ function AppInterna() {
   const usuarioActualRef = useRef(usuarioActual);
   usuarioActualRef.current = usuarioActual;
 
+  const pendienteListaEsperaRef = useRef<any | null>(null);
+  const pendienteComandaRef = useRef<any | null>(null);
+  const pendientePedidoRef = useRef<any | null>(null);
+  const pendienteChatRef = useRef<any | null>(null);
+
   // Réplica del cliente anónimo para el listener de notificaciones
   const clienteAnonimoRef = useRef(clienteAnonimo);
   clienteAnonimoRef.current = clienteAnonimo;
@@ -115,13 +120,129 @@ function AppInterna() {
     return null;
   };
 
+  const procesarPendienteListaEspera = (usuario: UsuarioSeed): boolean => {
+    const pendiente = pendienteListaEsperaRef.current;
+    pendienteListaEsperaRef.current = null;
+
+    if (
+      pendiente?.tipo === "actualizacion_lista_espera" &&
+      (usuario.perfil === "metre" || usuario.perfil === "dueño" || usuario.perfil === "supervisor")
+    ) {
+      setVistaPrivada("metre");
+      return true;
+    }
+
+    return false;
+  };
+
+  const procesarPendienteComanda = (usuario: UsuarioSeed): boolean => {
+    const pendiente = pendienteComandaRef.current;
+    pendienteComandaRef.current = null;
+
+    if (
+      pendiente?.tipo === "nuevo_pedido" ||
+      pendiente?.tipo === "pedido_modificado"
+    ) {
+      if (usuario.perfil === "mozo" || usuario.perfil === "dueño" || usuario.perfil === "supervisor") {
+        setVistaPrivada("comandas");
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  const procesarPendientePedido = (usuario: UsuarioSeed): boolean => {
+    const pendiente = pendientePedidoRef.current;
+    pendientePedidoRef.current = null;
+
+    if (
+      typeof pendiente?.orderId === "string" &&
+      (usuario.perfil === "cliente_registrado" || usuario.perfil === "cliente_anonimo")
+    ) {
+      setIdPedidoActivo(pendiente.orderId);
+      setVistaPrivada("estado_pedido");
+      return true;
+    }
+
+    return false;
+  };
+
+  const esPerfilPersonal = (perfil?: string) =>
+    perfil === "mozo" || perfil === "metre" || perfil === "dueño" || perfil === "supervisor";
+
+  const abrirChatDeMesa = async (
+    tableId: string,
+    tableNumber: number | null,
+    usuario: UsuarioSeed
+  ): Promise<boolean> => {
+    if (!esPerfilPersonal(usuario.perfil)) {
+      // Un cliente solo puede abrir el chat de la mesa que tiene asignada.
+      const { data: asignacion, error: errorAsignacion } = await supabase
+        .from("waiting_list")
+        .select("assigned_table_id")
+        .eq("user_id", usuario.id)
+        .eq("assigned_table_id", tableId)
+        .eq("status", "assigned")
+        .limit(1)
+        .maybeSingle();
+
+      if (errorAsignacion) {
+        console.warn("⚠️ No se pudo verificar la asignación de mesa:", errorAsignacion.message);
+        return false;
+      }
+
+      if (!asignacion) {
+        setAvisoNotif({
+          visible: true,
+          tipo: "informacion",
+          titulo: "Chat no disponible",
+          mensaje: "Esa notificación no corresponde a la mesa que tenés asignada.",
+        });
+        return false;
+      }
+    }
+
+    let numero = tableNumber;
+
+    if (numero === null) {
+      const { data: mesaData } = await supabase
+        .from("restaurant_tables")
+        .select("table_number")
+        .eq("id", tableId)
+        .maybeSingle();
+
+      if (typeof mesaData?.table_number === "number") {
+        numero = mesaData.table_number;
+      }
+    }
+
+    setIdMesaCliente(tableId);
+    setNumeroMesaCliente(numero ?? 1);
+    setVistaPrivada("chat_mozo");
+    return true;
+  };
+
+  const procesarPendienteChat = async (usuario: UsuarioSeed): Promise<boolean> => {
+    const pendiente = pendienteChatRef.current;
+    pendienteChatRef.current = null;
+
+    if (pendiente?.tipo !== "chat_mesa") return false;
+
+    const tableId = typeof pendiente.table_id === "string" ? pendiente.table_id : null;
+    if (!tableId) return false;
+
+    const tableNumber = typeof pendiente.table_number === "number" ? pendiente.table_number : null;
+    return abrirChatDeMesa(tableId, tableNumber, usuario);
+  };
+
   const navegarConDatos = (datos: any) => {
     if (!datos) return;
 
     const usuario = usuarioActualRef.current;
     const esAdmin = usuario?.perfil === "dueño" || usuario?.perfil === "supervisor";
     const esClienteRegistrado = usuario?.perfil === "cliente_registrado";
-    const esClienteAnonimo = !usuario && !!clienteAnonimoRef.current;
+    const esClienteAnonimo = usuario?.perfil === "cliente_anonimo" || (!usuario && !!clienteAnonimoRef.current);
 
     switch (datos.tipo) {
       case "nuevo_cliente":
@@ -135,6 +256,8 @@ function AppInterna() {
       case "actualizacion_lista_espera":
         if (usuario && (usuario.perfil === "metre" || esAdmin)) {
           setVistaPrivada("metre");
+        } else if (!usuario) {
+          pendienteListaEsperaRef.current = datos;
         }
         return;
 
@@ -142,6 +265,17 @@ function AppInterna() {
       case "pedido_modificado":
         if (usuario && (usuario.perfil === "mozo" || esAdmin)) {
           setVistaPrivada("comandas");
+        } else if (!usuario) {
+          pendienteComandaRef.current = datos;
+        }
+        return;
+
+      case "estado_pedido":
+        if (usuario && (esClienteRegistrado || usuario.perfil === "cliente_anonimo")) {
+          setIdPedidoActivo(datos.orderId);
+          setVistaPrivada("estado_pedido");
+        } else if (!usuario) {
+          pendientePedidoRef.current = datos;
         }
         return;
 
@@ -159,29 +293,72 @@ function AppInterna() {
         }
         return;
 
-      case "mesa_asignada":
+      case "chat_mesa": {
+        const chatTableId = typeof datos.table_id === "string" ? datos.table_id : null;
+        if (!chatTableId) return;
+
+        if (!usuario) {
+          pendienteChatRef.current = datos;
+          return;
+        }
+
+        const chatTableNumber =
+          typeof datos.table_number === "number" ? datos.table_number : null;
+        void abrirChatDeMesa(chatTableId, chatTableNumber, usuario);
+        return;
+      }
+
+      case "mesa_asignada": {
+        if (esClienteRegistrado || esClienteAnonimo) {
+          const tableId = typeof datos.table_id === "string" ? datos.table_id : null;
+          const tableNumber = typeof datos.table_number === "number" ? datos.table_number : null;
+
+          if (tableId) {
+            setIdMesaCliente(tableId);
+            if (tableNumber === null) {
+              supabase
+                .from("restaurant_tables")
+                .select("table_number")
+                .eq("id", tableId)
+                .maybeSingle()
+                .then(({ data: mesaData }) => {
+                  if (typeof mesaData?.table_number === "number") {
+                    setNumeroMesaCliente(mesaData.table_number);
+                  }
+                });
+            }
+          }
+
+          if (tableNumber !== null) {
+            setNumeroMesaCliente(tableNumber);
+          }
+        }
+
         if (esClienteRegistrado) {
           setEnEsperaRegistrado(false);
           setVistaPrivada("home");
         } else if (esClienteAnonimo) {
-          const anon = clienteAnonimoRef.current!;
-          setUsuarioActual({
-            id: anon.id,
-            perfil: "cliente_anonimo",
-            tituloVisual: "Cliente Anónimo",
-            email: "",
-            clave: "",
-            nombres: anon.client_name,
-            apellidos: "Anónimo",
-            documento: "",
-            foto: anon.client_photo,
-            icono: "🕶️",
-          });
-          setClienteAnonimo(anon);
+          const anon = clienteAnonimoRef.current;
+          if (usuario?.perfil !== "cliente_anonimo" && anon) {
+            setUsuarioActual({
+              id: anon.id,
+              perfil: "cliente_anonimo",
+              tituloVisual: "Cliente Anónimo",
+              email: "",
+              clave: "",
+              nombres: anon.client_name,
+              apellidos: "Anónimo",
+              documento: "",
+              foto: anon.client_photo,
+              icono: "🕶️",
+            });
+            setClienteAnonimo(anon);
+          }
           setEnEsperaRegistrado(false);
           setVistaPrivada("home");
         }
         return;
+      }
     }
 
     // Sin "tipo": estado del pedido para el cliente (orderId + status)
@@ -189,6 +366,8 @@ function AppInterna() {
       if (usuario && (esClienteRegistrado || usuario.perfil === "cliente_anonimo")) {
         setIdPedidoActivo(datos.orderId);
         setVistaPrivada("estado_pedido");
+      } else if (!usuario) {
+        pendientePedidoRef.current = datos;
       }
       return;
     }
@@ -245,11 +424,18 @@ function AppInterna() {
     if (!Notifications) return;
 
     // App abierta tocando la notificación (cold start)
-    try {
-      manejarRespuestaNotificacion(Notifications.getLastNotificationResponse());
-    } catch (error: any) {
-      console.warn("⚠️ [Push] No se pudo leer la última respuesta de notificación:", error?.message);
-    }
+    const leerUltimaRespuesta = async () => {
+      try {
+        const respuesta = Notifications.getLastNotificationResponseAsync
+          ? await Notifications.getLastNotificationResponseAsync()
+          : Notifications.getLastNotificationResponse();
+        manejarRespuestaNotificacion(respuesta);
+      } catch (error: any) {
+        console.warn("⚠️ [Push] No se pudo leer la última respuesta de notificación:", error?.message);
+      }
+    };
+
+    void leerUltimaRespuesta();
 
     // App abierta y el usuario toca la notificación del sistema → navega directo
     const suscripcionRespuesta = Notifications.addNotificationResponseReceivedListener(
@@ -408,7 +594,23 @@ function AppInterna() {
         <LoginScreen
           onLoginSuccess={async (usuario) => {
             setUsuarioActual(usuario);
-            registrarPushToken(usuario.id);
+            void registrarPushToken(usuario.id);
+
+            if (procesarPendienteListaEspera(usuario)) {
+              return;
+            }
+
+            if (procesarPendienteComanda(usuario)) {
+              return;
+            }
+
+            if (procesarPendientePedido(usuario)) {
+              return;
+            }
+
+            if (await procesarPendienteChat(usuario)) {
+              return;
+            }
 
             if (
               notifNuevoClientePendiente &&
@@ -427,7 +629,10 @@ function AppInterna() {
                 .eq("user_id", usuario.id)
                 .maybeSingle();
 
-              if (espera?.assigned_table_id && espera.status === "seated") {
+              if (
+                espera?.assigned_table_id &&
+                (espera.status === "assigned" || espera.status === "seated")
+              ) {
                 const { data: mesaData } = await supabase
                   .from("restaurant_tables")
                   .select("id, table_number")
@@ -644,7 +849,7 @@ function AppInterna() {
         )}
         {vistaPrivada === "registro_metre" && (
           <RegistroClienteScreen
-            modo="cliente"
+            modo="metre"
             usuarioLogueado
             mostrarBotonVolverAlLogin={false}
             onVolverAlLogin={volverAlInicio}
@@ -713,7 +918,9 @@ function AppInterna() {
             tableId={idMesaCliente || ""}
             numeroMesa={numeroMesaCliente || 1}
             usuarioActual={usuarioActual}
-            onVolver={() => setVistaPrivada(usuarioActual.perfil === "mozo" ? "chat_mesas" : "home")}
+            onVolver={() =>
+              setVistaPrivada(esPerfilPersonal(usuarioActual.perfil) ? "chat_mesas" : "home")
+            }
           />
         )}
       </View>

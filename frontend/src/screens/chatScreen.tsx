@@ -1,4 +1,3 @@
-import { notificarMozos, notificarCliente } from "../services/pushNotificationClientService";
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
@@ -93,43 +92,14 @@ export function ChatMozoScreen({
         setEnviando(true);
 
         try {
+            // La persistencia y las notificaciones push las resuelve el backend,
+            // que conoce el remitente real y los destinatarios correctos.
             await enviarMensajeChat({
             table_id: tableId,
             sender_id: usuarioActual.id,
             message: mensajeAEnviar,
             chat_type: "table_waiter",
             });
-
-            const ahora = new Date().toLocaleTimeString("es-AR", {
-            hour: "2-digit",
-            minute: "2-digit",
-            });
-
-            if (esMozo) {
-            // Mozo responde -> Notifica al cliente
-            // Busca quién es el cliente sentado en esa mesa
-            const { data: espera } = await supabase
-                .from("waiting_list")
-                .select("user_id")
-                .eq("assigned_table_id", tableId)
-                .maybeSingle();
-
-            if (espera?.user_id) {
-                await notificarCliente(
-                espera.user_id,
-                `🛎️ Respuesta de ${usuarioActual.nombres} (${ahora})`,
-                mensajeAEnviar,
-                { table_id: tableId }
-                );
-            }
-            } else {
-            // Cliente consulta -> Notifica a TODOS los mozos
-            await notificarMozos(
-                `💬 Mesa #${numeroMesa} - Consulta (${ahora})`,
-                mensajeAEnviar,
-                { table_id: tableId }
-            );
-            }
         } catch (err: any) {
             console.warn("⚠️ Error al enviar mensaje:", err.message);
             setTexto(mensajeAEnviar);
