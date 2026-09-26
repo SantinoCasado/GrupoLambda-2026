@@ -720,6 +720,12 @@ function AppInterna() {
     usuarioActual.perfil === "cocinero" || usuarioActual.perfil === "cantinero";
   const esCliente =
     usuarioActual.perfil === "cliente_registrado" || usuarioActual.perfil === "cliente_anonimo";
+  // Personal jerárquico: ve la vista de administración de la carta (dar de baja productos).
+  const esStaffCarta =
+    usuarioActual.perfil === "dueño" ||
+    usuarioActual.perfil === "supervisor" ||
+    usuarioActual.perfil === "metre" ||
+    usuarioActual.perfil === "mozo";
 
   // 3. Vista Home
   if (vistaPrivada === "home") {
@@ -777,7 +783,7 @@ function AppInterna() {
       : vistaPrivada === "comandas" || vistaPrivada === "chat_mesas"
       ? usuarioActual.perfil === "mozo" || esAdmin
       : vistaPrivada === "carta"
-      ? esProducto || esCliente
+      ? esProducto || esCliente || esStaffCarta
       : vistaPrivada === "carrito" || vistaPrivada === "estado_pedido"
       ? esCliente
       : true;

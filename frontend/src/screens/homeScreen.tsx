@@ -136,6 +136,20 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                 </View>
                 <Image source={require("../../assets/images/right-arrow-y.png")} className="h-7 w-7" resizeMode="contain" />
               </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => navegar("carta", "comida")}
+                className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota"
+              >
+                <Image source={require("../../assets/images/food-y.png")} className="h-7 w-7 mr-3" resizeMode="contain" />
+                <View className="flex-1">
+                  <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
+                    Carta Digital
+                  </Text>
+                  <Text className="text-[11px] font-semibold text-amber-100">Consultar los productos de la carta</Text>
+                </View>
+                <Image source={require("../../assets/images/right-arrow-y.png")} className="h-7 w-7" resizeMode="contain" />
+              </TouchableOpacity>
             </View>
           )}
 
@@ -150,7 +164,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                 className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota"
               >
                 <Image
-                  source={perfil === "cocinero" ? require("../../assets/images/food-y.png") : require("../../assets/images/martini-glass-y.png")}
+                  source={perfil === "cocinero" ? require("../../assets/images/employeeRegistration-y.png") : require("../../assets/images/employeeRegistration-y.png")}
                   className="w-8 h-8 mr-3"
                   resizeMode="contain"
                 />
@@ -165,7 +179,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                 <Image source={require("../../assets/images/right-arrow-y.png")} className="h-7 w-7" resizeMode="contain" />
               </TouchableOpacity>
 
-              {/* Botón 2: Ver Carta y Administrar */}
+              {/* Botón 2: Ver Carta */}
               <TouchableOpacity
                 onPress={() => navegar("carta", perfil === "cocinero" ? "comida" : "bebida")}
                 className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota"
@@ -177,10 +191,10 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                 />
                 <View className="flex-1">
                   <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
-                    {perfil === "cocinero" ? "Ver Carta de Platos" : "Ver Carta de Bebidas"}
+                    Ver Carta
                   </Text>
                   <Text className="text-[11px] font-semibold text-amber-100">
-                    Consultar o eliminar productos cargados
+                    Consultar y dar de baja productos
                   </Text>
                 </View>
                 <Image source={require("../../assets/images/right-arrow-y.png")} className="h-7 w-7" resizeMode="contain" />
@@ -315,6 +329,23 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                 </View>
                 <Image source={require("../../assets/images/right-arrow-y.png")} className="h-6 w-6" resizeMode="contain" />
               </TouchableOpacity>
+
+              {/* Botón 3: Carta Digital */}
+              <TouchableOpacity
+                onPress={() => navegar("carta", "comida")}
+                className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota shadow-md"
+              >
+                <Image source={require("../../assets/images/food-y.png")} className="h-7 w-7 mr-3" resizeMode="contain" />
+                <View className="flex-1">
+                  <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
+                    Carta Digital
+                  </Text>
+                  <Text className="text-[11px] font-semibold text-amber-100">
+                    Consultar los productos de la carta
+                  </Text>
+                </View>
+                <Image source={require("../../assets/images/right-arrow-y.png")} className="h-6 w-6" resizeMode="contain" />
+              </TouchableOpacity>
             </View>
           )}
 
@@ -350,6 +381,22 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                   </Text>
                   <Text className="text-[11px] font-semibold text-amber-100">
                     Responder consultas de las mesas
+                  </Text>
+                </View>
+                <Image source={require("../../assets/images/right-arrow-y.png")} className="h-6 w-6" resizeMode="contain" />
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => navegar("carta", "comida")}
+                className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota shadow-md"
+              >
+                <Image source={require("../../assets/images/food-y.png")} className="h-7 w-7 mr-3" resizeMode="contain" />
+                <View className="flex-1">
+                  <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
+                    Carta Digital
+                  </Text>
+                  <Text className="text-[11px] font-semibold text-amber-100">
+                    Consultar los productos de la carta
                   </Text>
                 </View>
                 <Image source={require("../../assets/images/right-arrow-y.png")} className="h-6 w-6" resizeMode="contain" />
