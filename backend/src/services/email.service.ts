@@ -4,19 +4,11 @@ import path from 'path';
 
 dotenv.config();
 
-// Configurás la conexión a Gmail
-const transporter = nodemailer.createTransport({
-    service: 'gmail',
-    auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD // La contraseña de 16 letras de Google
-    }
-});
-
 export const enviarNotificacionAprobacion = async (email: string, nombre: string, status: 'approved' | 'rejected') => {
     const esAprobado = status === 'approved';
     const asunto = esAprobado ? '¡Tu cuenta ha sido aprobada! 🎉' : 'Actualización sobre tu cuenta';
 
+    // ¡Tu diseño HTML intacto!
     const contenidoHtml = `
     <!DOCTYPE html>
         <html>
@@ -93,30 +85,35 @@ export const enviarNotificacionAprobacion = async (email: string, nombre: string
         </body>
         </html>
     `;
-    try {
-        console.log(`✉️ Intentando enviar mail a: "${email}" (longitud: ${email?.length})`);
 
-        const info = await transporter.sendMail({
-            from: `"Restaurante Chino" <${process.env.GMAIL_USER}>`,
-            to: email,
-            subject: asunto,
-            html: contenidoHtml
+    try {
+        const respuesta = await fetch('https://api.brevo.com/v3/smtp/email', {
+            method: 'POST',
+            headers: {
+                'accept': 'application/json',
+                'api-key': process.env.BREVO_API_KEY as string,
+                'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+                sender: { 
+                    name: "Jardín Imperial", 
+                    email: process.env.GMAIL_USER as string
+                },
+                to: [{ email: email, name: nombre }],
+                subject: asunto,
+                htmlContent: contenidoHtml
+            })
         });
 
-        console.log(`✉️ Respuesta SMTP - messageId: ${info.messageId}, response: ${info.response}`);
-        console.log(`✉️ Aceptado por: ${JSON.stringify(info.accepted)}, Rechazado: ${JSON.stringify(info.rejected)}`);
-
-        if (info.rejected && info.rejected.length > 0) {
-            console.error(`❌ El destinatario fue rechazado por el servidor: ${JSON.stringify(info.rejected)}`);
-            return false;
+        if (!respuesta.ok) {
+            const errorBody = await respuesta.json();
+            throw new Error(`Fallo Brevo: ${JSON.stringify(errorBody)}`);
         }
 
-        return true; // <-- Devuelve true si todo salió bien
+        console.log(`✉️ Correo enviado por HTTP a: ${email}`);
+        return true; 
     } catch (error: any) {
-        console.error('❌ Error enviando mail en Render:');
-        console.error('Mensaje:', error.message);
-        console.error('Código:', error.code);
-        console.error('Comando:', error.command);
+        console.error('❌ Error enviando mail:', error.message);
         return false; 
     }
 };
