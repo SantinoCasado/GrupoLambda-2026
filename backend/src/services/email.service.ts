@@ -6,10 +6,12 @@ dotenv.config();
 
 // Configurás la conexión a Gmail
 const transporter = nodemailer.createTransport({
-    service: 'gmail',
+    host: 'smtp.gmail.com', 
+    port: 587,              
+    secure: false,          
     auth: {
         user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD // La contraseña de 16 letras de Google
+        pass: process.env.GMAIL_APP_PASSWORD
     }
 });
 
@@ -95,7 +97,7 @@ export const enviarNotificacionAprobacion = async (email: string, nombre: string
     `;
     try {
         await transporter.sendMail({
-            from: `"Restaurante Chino" <${process.env.GMAIL_USER}>`,
+            from: `"Jardin Imperial" <${process.env.GMAIL_USER}>`,
             to: email,
             subject: asunto,
             html: contenidoHtml

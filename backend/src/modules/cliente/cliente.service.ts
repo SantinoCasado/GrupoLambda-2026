@@ -158,15 +158,20 @@ export const actualizarEstadoClienteService = async (id: string, status: 'approv
             ? 'Ya podés ingresar a la app del restaurante.' 
             : 'Tu solicitud de registro fue rechazada por el local.';
         
-        await enviarPushNotification(
-            clienteOriginal.push_token, 
-            tituloPush, 
-            cuerpoPush, 
-            { statusActualizado: status } 
-        );
+        // Aislamos el error de Expo
+        try {
+            await enviarPushNotification(
+                clienteOriginal.push_token, 
+                tituloPush, 
+                cuerpoPush, 
+                { statusActualizado: status } 
+            );
+        } catch (expoError: any) {
+            console.error('⚠️ El correo salió, pero falló el Push de Expo:', expoError.message);
+        }
     }
 
-    // bandera del email adentro del objeto que devolvemos
+    // Devuelve el resultado al controlador
     return {
         ...datosRespuesta,
         email_enviado: emailEnviado
