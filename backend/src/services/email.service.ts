@@ -94,17 +94,29 @@ export const enviarNotificacionAprobacion = async (email: string, nombre: string
         </html>
     `;
     try {
-        await transporter.sendMail({
+        console.log(`✉️ Intentando enviar mail a: "${email}" (longitud: ${email?.length})`);
+
+        const info = await transporter.sendMail({
             from: `"Restaurante Chino" <${process.env.GMAIL_USER}>`,
             to: email,
             subject: asunto,
             html: contenidoHtml
         });
 
-        console.log(`✉️ Correo estilizado enviado a: ${email}`);
+        console.log(`✉️ Respuesta SMTP - messageId: ${info.messageId}, response: ${info.response}`);
+        console.log(`✉️ Aceptado por: ${JSON.stringify(info.accepted)}, Rechazado: ${JSON.stringify(info.rejected)}`);
+
+        if (info.rejected && info.rejected.length > 0) {
+            console.error(`❌ El destinatario fue rechazado por el servidor: ${JSON.stringify(info.rejected)}`);
+            return false;
+        }
+
         return true; // <-- Devuelve true si todo salió bien
-    } catch (error) {
-        console.error('❌ Error enviando mail con Nodemailer:', error);
-        return false; // <-- Devuelve false si falló
+    } catch (error: any) {
+        console.error('❌ Error enviando mail en Render:');
+        console.error('Mensaje:', error.message);
+        console.error('Código:', error.code);
+        console.error('Comando:', error.command);
+        return false; 
     }
 };
