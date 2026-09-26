@@ -84,29 +84,29 @@ export function ChatMozoScreen({
     }
   };
 
-    const handleEnviar = async () => {
-        if (!texto.trim() || enviando) return;
+  const handleEnviar = async () => {
+    if (!texto.trim() || enviando) return;
 
-        const mensajeAEnviar = texto.trim();
-        setTexto("");
-        setEnviando(true);
+    const mensajeAEnviar = texto.trim();
+    setTexto("");
+    setEnviando(true);
 
-        try {
-            // La persistencia y las notificaciones push las resuelve el backend,
-            // que conoce el remitente real y los destinatarios correctos.
-            await enviarMensajeChat({
-            table_id: tableId,
-            sender_id: usuarioActual.id,
-            message: mensajeAEnviar,
-            chat_type: "table_waiter",
-            });
-        } catch (err: any) {
-            console.warn("⚠️ Error al enviar mensaje:", err.message);
-            setTexto(mensajeAEnviar);
-        } finally {
-            setEnviando(false);
-        }
-    };
+    try {
+      // La persistencia y las notificaciones push las resuelve el backend,
+      // que conoce el remitente real y los destinatarios correctos.
+      await enviarMensajeChat({
+        table_id: tableId,
+        sender_id: usuarioActual.id,
+        message: mensajeAEnviar,
+        chat_type: "table_waiter",
+      });
+    } catch (err: any) {
+      console.warn("⚠️ Error al enviar mensaje:", err.message);
+      setTexto(mensajeAEnviar);
+    } finally {
+      setEnviando(false);
+    }
+  };
 
   const renderMensaje = ({ item }: { item: MensajeChat }) => {
     const esMio = item.sender_id === usuarioActual.id;
@@ -153,7 +153,7 @@ export function ChatMozoScreen({
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-amber-50"
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      behavior="padding"
       keyboardVerticalOffset={Platform.OS === "ios" ? 20 : 0}
     >
       {/* Header estilo WhatsApp con temática Oriental */}
@@ -208,6 +208,7 @@ export function ChatMozoScreen({
             keyExtractor={(item) => item.id}
             renderItem={renderMensaje}
             showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ paddingBottom: 10 }}
             onContentSizeChange={() =>
               flatListRef.current?.scrollToEnd({ animated: true })

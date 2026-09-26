@@ -165,7 +165,7 @@ export function MetreScreen({ onCerrarSesion }: Props) {
         "¡Mesa Asignada!",
         `Mesa #${numMesa} asignada a ${cliente.client_name}. ${
           res.notificacionEnviada
-            ? "El cliente ya fue notificado."
+            ? "Expo aceptó el envío del push; la entrega al cliente no queda confirmada."
             : "No se pudo enviar la notificación: el token del cliente está ausente o fue rechazado."
         }`
       );

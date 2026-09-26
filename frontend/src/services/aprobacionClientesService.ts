@@ -83,14 +83,16 @@ export async function obtenerClientesPendientes(): Promise<ClientePendiente[]> {
 export async function responderSolicitudCliente(
   id: string,
   decision: "aprobado" | "rechazado"
-): Promise<{ exito: boolean; mensaje: string }> {
+): Promise<{ exito: boolean; mensaje: string; correoEnviado: boolean }> {
   // Conversión a valor en inglés de la BD
   const nextStatus = decision === "aprobado" ? "approved" : "rejected";
 
-  try {
-    const token = await obtenerTokenAuth();
+  const token = await obtenerTokenAuth();
 
-    const response = await fetch(`${API_URL}/api/clientes/${id}/status`, {
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_URL}/api/clientes/${id}/status`, {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",
@@ -100,33 +102,29 @@ export async function responderSolicitudCliente(
         status: nextStatus,
       }),
     });
-
-    const json = await response.json();
-
-    if (!response.ok) {
-      throw new Error(json.error || json.detalle || "Error al actualizar estado");
-    }
-
-    return {
-      exito: true,
-      mensaje: json.mensaje || (decision === "aprobado" ? "Cliente aprobado con éxito." : "Cliente rechazado."),
-    };
   } catch (err: any) {
-    console.warn("⚠️ [Aprobación] Falló PATCH en backend, aplicando directo en Supabase:", err.message);
-
-    const { error } = await supabase
-      .from("users")
-      .update({ status: nextStatus })
-      .eq("id", id)
-      .eq("role", "registered_client");
-
-    if (error) {
-      return { exito: false, mensaje: error.message };
-    }
-
-    return {
-      exito: true,
-      mensaje: decision === "aprobado" ? "Cliente aprobado (directo en BD)." : "Cliente rechazado.",
-    };
+    // El backend es el único que dispara el correo y la push notification.
+    // Si no lo alcanzamos, la solicitud NO se procesa: se propaga el error para
+    // que la pantalla avise y el cliente siga pendiente.
+    console.warn("⚠️ [Aprobación] Backend inalcanzable al actualizar el estado:", err?.message);
+    throw new Error("No se pudo conectar con el servidor. Verificá tu conexión e intentá de nuevo.");
   }
+
+  // Una instancia de Render reiniciándose o caída devuelve HTML, no JSON.
+  const json = await response.json().catch(() => null);
+
+  if (!response.ok) {
+    const detalle = typeof json?.detalle === "string" ? json.detalle : null;
+    const error = json?.error || detalle || `No se pudo actualizar el estado del cliente (HTTP ${response.status}).`;
+    console.warn(`⚠️ [Aprobación] El backend rechazó la solicitud (HTTP ${response.status}):`, error);
+    throw new Error(error);
+  }
+
+  return {
+    exito: true,
+    mensaje: decision === "aprobado" ? "Cliente aprobado." : "Cliente rechazado.",
+    // El backend confirma el envío con este flag. Si no lo manda, no se afirma
+    // que el correo se envió, porque el fallo de SMTP no llega hasta acá.
+    correoEnviado: json?.correoEnviado === true,
+  };
 }

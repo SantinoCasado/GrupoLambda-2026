@@ -175,11 +175,19 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
         if (res.exito && res.waitingId) {
           setWaitingListId(res.waitingId);
           setQrEntradaEscaneado(true);
-          mostrarMensaje(
-            "¡Ingreso Confirmado!",
-            "Escaneaste el QR de la puerta. Ya figurás en la lista de espera del metre.",
-            "exito"
-          );
+          if (res.notificado === false) {
+            mostrarMensaje(
+              "Ingreso Registrado",
+              "Ya figurás en la lista de espera, pero no pudimos avisarle al metre por push. Avisale en la puerta.",
+              "error"
+            );
+          } else {
+            mostrarMensaje(
+              "¡Ingreso Confirmado!",
+              "Escaneaste el QR de la puerta. Ya figurás en la lista de espera del metre.",
+              "exito"
+            );
+          }
         } else {
           mostrarMensaje(
             "Error al ingresar",

@@ -6,18 +6,31 @@ interface PushMessage {
     data?: Record<string, any>;
 }
 
+const ES_TOKEN_EXPO = /^ExponentPushToken\[[A-Za-z0-9_-]+\]$/;
+const ES_TOKEN_EXPO_LEGACY = /^ExpoPushToken\[[A-Za-z0-9_-]+\]$/;
+
+export const esTokenExpoValido = (token?: string | null): boolean =>
+    !!token && (ES_TOKEN_EXPO.test(token) || ES_TOKEN_EXPO_LEGACY.test(token));
+
 export const enviarPushNotification = async (
-    tokenDispositivo: string, 
-    titulo: string, 
+    tokenDispositivo: string,
+    titulo: string,
     cuerpo: string,
     datosExtra?: Record<string, any>
-) => {
-    // Verificamos que el token pertenezca al formato estándar de Expo
-    if (!tokenDispositivo || 
-        (!tokenDispositivo.startsWith('ExponentPushToken') &&
-         !tokenDispositivo.startsWith('ExpoPushToken'))) {
-        console.warn('⚠️ Token de dispositivo inválido o ausente:', tokenDispositivo);
-        return;
+): Promise<boolean> => {
+    if (!tokenDispositivo) {
+        console.warn('⚠️ Token de dispositivo ausente');
+        return false;
+    }
+
+    if (tokenDispositivo.includes('expo-go')) {
+        console.warn('⚠️ Se rechaza un token generado en Expo Go');
+        return false;
+    }
+
+    if (!esTokenExpoValido(tokenDispositivo)) {
+        console.warn(`⚠️ Formato de token inválido, no se envía: ${JSON.stringify(tokenDispositivo)}`);
+        return false;
     }
 
     const mensaje: PushMessage = {
@@ -27,7 +40,6 @@ export const enviarPushNotification = async (
         body: cuerpo,
     };
 
-    // Solo adjuntamos data si realmente viene con contenido para evitar choques de tipos
     if (datosExtra) {
         mensaje.data = datosExtra;
     }
@@ -44,9 +56,22 @@ export const enviarPushNotification = async (
         });
 
         const resultado = await respuesta.json();
-        console.log('📲 Notificación Push enviada mediante Expo:', resultado);
-        return resultado;
+
+        if (!respuesta.ok) {
+            console.error('❌ La API de Expo Push rechazó la notificación:', respuesta.status);
+            return false;
+        }
+
+        const ticket = Array.isArray(resultado?.data) ? resultado.data[0] : undefined;
+        if (!ticket || ticket.status === 'error') {
+            console.error('❌ Expo Push no aceptó la notificación:', ticket?.message ?? 'respuesta sin ticket');
+            return false;
+        }
+
+        console.log(`📲 Expo aceptó el envío (ticket ${ticket.id}). La entrega al dispositivo todavía no está confirmada.`);
+        return true;
     } catch (error) {
         console.error('❌ Error al conectar con la API de Expo Push:', error);
+        return false;
     }
 };

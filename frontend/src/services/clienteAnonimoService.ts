@@ -2,7 +2,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { decode } from "base64-arraybuffer";
 import { supabase } from "../config/supabase";
 import { API_URL } from "../config/api";
-import { guardarTokenEnBackend, obtenerTokenPush } from "./pushNotificationsService";
+import { esTokenExpoValido, guardarTokenEnBackend, obtenerTokenPush } from "./pushNotificationsService";
 
 export interface ClienteAnonimoSesion {
   id: string; // ID temporal / userId
@@ -80,10 +80,8 @@ export async function registrarClienteAnonimo(
 
     try {
       const pushToken = await obtenerTokenPush();
-      const esTokenExpo =
-        pushToken?.startsWith("ExponentPushToken") || pushToken?.startsWith("ExpoPushToken");
 
-      if (pushToken && esTokenExpo && !pushToken.includes("expo-go")) {
+      if (pushToken && esTokenExpoValido(pushToken) && !pushToken.includes("expo-go")) {
         const guardadoEnBackend = await guardarTokenEnBackend(pushToken);
         if (!guardadoEnBackend) {
           const { error: tokenError } = await supabase
@@ -124,7 +122,7 @@ export async function ingresarAListaEsperaLocal(
   userId: string,
   clientName: string,
   clientPhoto: string
-): Promise<{ exito: boolean; waitingId?: string; error?: string }> {
+): Promise<{ exito: boolean; waitingId?: string; error?: string; notificado?: boolean }> {
   try {
     // Pegamos al backend para que además despache la Push Notification a los Metres
     const response = await fetch(`${API_URL}/api/clientes/ingresar`, {
@@ -140,7 +138,7 @@ export async function ingresarAListaEsperaLocal(
     if (response.ok) {
       const json = await response.json();
       const waitingRecord = json.data || json.waitingRecord;
-      return { exito: true, waitingId: waitingRecord?.id };
+      return { exito: true, waitingId: waitingRecord?.id, notificado: true };
     }
   } catch (err: any) {
     console.warn("⚠️ Falló backend lista-espera, fallback directo a Supabase:", err.message);
@@ -164,7 +162,7 @@ export async function ingresarAListaEsperaLocal(
     return { exito: false, error: error.message };
   }
 
-  return { exito: true, waitingId: data.id };
+  return { exito: true, waitingId: data.id, notificado: false };
 }
 
 /* 3. Limpieza al salir */

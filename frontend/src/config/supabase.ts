@@ -6,7 +6,10 @@ const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || "";
 
 export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
-let client: SupabaseClient | null = null;
+const clienteUnico: SupabaseClient = createClient(
+  supabaseUrl || "https://placeholder.supabase.co",
+  supabaseAnonKey || "placeholder-key"
+);
 
 export function getSupabaseClient(): SupabaseClient | null {
   if (!isSupabaseConfigured) {
@@ -14,15 +17,8 @@ export function getSupabaseClient(): SupabaseClient | null {
     return null;
   }
 
-  if (!client) {
-    client = createClient(supabaseUrl, supabaseAnonKey);
-  }
-
-  return client;
+  return clienteUnico;
 }
 
 // Instancia lista para importar directamente: import { supabase } from '../config/supabase';
-export const supabase = createClient(
-  supabaseUrl || "https://placeholder.supabase.co",
-  supabaseAnonKey || "placeholder-key"
-);
+export const supabase = clienteUnico;
