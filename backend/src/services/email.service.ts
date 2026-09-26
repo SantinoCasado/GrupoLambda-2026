@@ -78,14 +78,14 @@ export const enviarNotificacionAprobacion = async (email: string, nombre: string
         <body>
             <div class="container">
                 <div class="header">
-                    <img src="cid:logo_app" alt="Logo Restaurante" class="logo" />
+                    <img src="https://lxrgtjaqczpacjkvxnuw.supabase.co/storage/v1/object/public/assets/logo.png" alt="Logo Restaurante" class="logo" width="150" />
                 </div>
                 <h2>¡Hola, ${nombre}!</h2>
                 <p>Te escribimos para informarte que el estado de tu cuenta ha sido actualizado a: <strong>${esAprobado ? 'Aprobado' : 'Rechazado'}</strong>.</p>
                 ${esAprobado
-            ? '<p>Ya podés iniciar sesión en la aplicación para escanear tu mesa y disfrutar de la mejor experiencia y la mejor comida china.</p>'
-            : '<p>Lamentablemente, no hemos podido aprobar tu solicitud en esta ocasión. Te sugerimos intentar registrarte nuevamente verificando tus datos o acercarte a nuestro local.</p>'
-        }
+                    ? '<p>Ya podés iniciar sesión en la aplicación para escanear tu mesa y disfrutar de la mejor experiencia y la mejor comida china.</p>'
+                    : '<p>Lamentablemente, no hemos podido aprobar tu solicitud en esta ocasión. Te sugerimos intentar registrarte nuevamente verificando tus datos o acercarte a nuestro local.</p>'
+                }
                 <div class="footer">
                     Atentamente,<br><strong>El equipo de Restaurante Chino / Grupo Lambda</strong>
                 </div>
@@ -94,23 +94,17 @@ export const enviarNotificacionAprobacion = async (email: string, nombre: string
         </html>
     `;
     try {
-        const info = await transporter.sendMail({
+        await transporter.sendMail({
             from: `"Restaurante Chino" <${process.env.GMAIL_USER}>`,
             to: email,
             subject: asunto,
-            html: contenidoHtml,
-            attachments: [
-                {
-                    filename: 'logo.png',
-                    path: path.join(process.cwd(), '../assets/logo.png'),
-                    cid: 'logo_app'
-                }
-            ]
+            html: contenidoHtml
         });
 
         console.log(`✉️ Correo estilizado enviado a: ${email}`);
-        return info;
+        return true; // <-- Devuelve true si todo salió bien
     } catch (error) {
         console.error('❌ Error enviando mail con Nodemailer:', error);
+        return false; // <-- Devuelve false si falló
     }
 };
