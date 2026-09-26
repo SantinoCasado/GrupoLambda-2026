@@ -154,8 +154,16 @@ export const actualizarEstadoCliente = async (req: Request, res: Response): Prom
         // TypeScript ya sabe que 'id' es un string puro
         const clienteActualizado = await actualizarEstadoClienteService(id, validacion.data.status);
         
+        // Extraem el booleano
+        const emailSalioBien = clienteActualizado.email_enviado;
+        
         return res.status(200).json({ 
-            mensaje: `Cliente actualizado a estado: ${validacion.data.status}. Correo enviado.`,
+            success: true, // Agrego success: true por buenas prácticas
+            // Mensaje dinámico según la verdad
+            mensaje: emailSalioBien 
+                ? `Cliente actualizado a estado: ${validacion.data.status}. Correo enviado.` 
+                : `Cliente actualizado a estado: ${validacion.data.status}, pero falló el envío del correo.`,
+            emailEnviado: emailSalioBien, // Le mandamos el booleano al front por si lo necesitan
             data: clienteActualizado 
         });
     } catch (error: any) {

@@ -4,154 +4,135 @@
   <img src="./assets/logo.png" alt="Logo Restaurante" width="150"/>
 </p>
 
-Repositorio oficial del grupo para el Trabajo Final Integrador (TFI). El proyecto corresponde a un restaurante de comida china con flujo de operación completo, desde la gestión de personal y clientes hasta la asignación de mesas, pedidos, notificaciones, aprovisionamiento y seguimiento de la experiencia del cliente.
+Repositorio oficial del grupo para el Trabajo Final Integrador (TFI). La aplicación móvil y la API acompañan la operación de un restaurante de comida china: gestión de usuarios, mesas y sala de espera, carta, pedidos, comandas, chat, juegos y notificaciones.
 
-> Estado actual del proyecto: la base de backend ya está desarrollada en gran parte y montada con Express + Supabase; el frontend contiene pantallas principales de negocio y flujo de autenticación, pero aún queda integración real con varios endpoints del backend y varios módulos siguen pendientes de cierre operativo.
+## 🎨 Identidad Visual
 
-### 🎨 Identidad Visual del Proyecto
-
-- **Temática:** Restaurante de comida china.
+- **Temática:** restaurante de comida china.
 - **Paleta principal:**
-  - 🔴 `#780116` (rojo oscuro / base)
-  - 🟡 `#F7B538` (amarillo / acentos)
-  - 🟠 `#DB7C26` (naranja suave)
-  - 🟧 `#D8572A` (naranja intenso)
-  - 🟥 `#C32F27` (rojo vibrante)
+  - `#780116` — rojo oscuro.
+  - `#F7B538` — amarillo.
+  - `#DB7C26` — naranja suave.
+  - `#D8572A` — naranja intenso.
+  - `#C32F27` — rojo vibrante.
 
 ---
 
-## 👥 Conformación del Grupo y Responsabilidades
+## 👥 Grupo y Responsabilidades
 
 ### 1. Brazanovich, Valentín
 
 - **Rol:** Frontend Lead & UX/UI.
-- **Objetivos actuales:** flujo de autenticación, pantallas de alta de empleados, registro de clientes y maquetación general de la app.
-- **Fecha de inicio:** 25/08/2026
-- **Fecha estimada de cierre:** 15/09/2026
-- **Branch:** `feature/valentin-auth-ui`
+- **Objetivos:** autenticación, alta de empleados, registro de clientes y maquetación de la aplicación.
+- **Fecha de inicio:** 25/08/2026.
+- **Fecha estimada de cierre:** pendiente de confirmar con la cátedra.
+- **Branch:** `feature/valentin-auth-ui`.
 
 ### 2. Andreozzi, Sebastián
 
 - **Rol:** Frontend App Developer.
-- **Objetivos actuales:** alta de platos/bebidas, menú, chat, y tareas de diseño funcional y flujo de usuario.
-- **Fecha de inicio:** 25/08/2026
-- **Fecha estimada de cierre:** 15/09/2026
-- **Branch:** `feature/sebastian-menu-juegos`
+- **Objetivos:** pantallas de platos y bebidas, carta, interacción de cliente y funcionalidades de interfaz vinculadas con pedidos y juegos.
+- **Fecha de inicio:** 25/08/2026.
+- **Fecha estimada de cierre:** pendiente de confirmar con la cátedra.
+- **Branch:** `feature/sebastian-menu-juegos`.
 
 ### 3. Casado, Santino
 
 - **Rol:** Backend & Integration Engineer.
-- **Objetivos actuales:** autenticación, clientes, aprobación de usuarios, correos transaccionales (Nodemailer) e integración transversal de Notificaciones Push (Expo API) en todos los módulos.
-- **Fecha de inicio:** 25/08/2026
-- **Fecha estimada de cierre:** 15/09/2026
-- **Branch:** `feature/santino-server-setup`
+- **Objetivos:** autenticación, clientes, aprobación de usuarios, correos transaccionales con Nodemailer e integración transversal de notificaciones push mediante Expo API.
+- **Fecha de inicio:** 25/08/2026.
+- **Fecha estimada de cierre:** pendiente de confirmar con la cátedra.
+- **Branch:** Integrada en `main` desde `feature/santino-server-setup`.
 
 ### 4. Sanchez, Rocío
 
 - **Rol:** Database Admin, API Developer & QA.
-- **Objetivos actuales:** modelo de tablas, QR, mesas, políticas RLS y desarrollo completo de los módulos y endpoints de Pedidos y Chat en tiempo real.
-- **Fecha de inicio:** 25/08/2026
-- **Fecha estimada de cierre:** 15/09/2026
-- **Branch:** `feature/rocio-supabase-db`
+- **Objetivos:** modelo de tablas, QR, mesas, políticas RLS y desarrollo de los módulos y endpoints de Pedidos y Chat en tiempo real.
+- **Fecha de inicio:** 25/08/2026.
+- **Fecha estimada de cierre:** pendiente de confirmar con la cátedra.
+- **Branch:** `feature/rocio-supabase-db`.
 
-> Nota: si un integrante no logra cerrar su módulo comprometido, el plazo o la asignación debe actualizarse y registrarse en este README.
-
----
-
-## 🛠️ Stack Tecnológico
-
-El proyecto se estructura en tres capas principales:
-
-- **Frontend móvil:** React Native + Expo + TypeScript.
-- **Estilos UI:** NativeWind.
-- **Backend:** Node.js + Express + TypeScript.
-- **Base de datos y autenticación:** Supabase (PostgreSQL + Auth + Storage).
-
-### Dependencias principales del backend
-
-- `express`
-- `cors`
-- `dotenv`
-- `zod`
-- `@supabase/supabase-js`
-- `multer`
-- `nodemailer`
-- `firebase-admin`
-- `tsx` / `typescript`
-
-### Servicios externos y complementarios
-
-- Supabase Storage para fotos y archivos.
-- Expo Push Notifications.
-- Expo Camera / Barcode Scanner para lecturas QR y fotografía en vivo.
-- SMTP de Gmail mediante App Password para correos transaccionales.
+> La fecha oficial de entrega no está consignada en el repositorio. Se deja pendiente de confirmación en vez de asumir una fecha de fines de septiembre u octubre.
 
 ---
 
-## 🏗️ Arquitectura General
+## 🛠️ Tecnologías
 
-La solución está organizada por responsabilidades:
+- **Aplicación móvil:** React Native, Expo y TypeScript.
+- **Estilos:** NativeWind.
+- **API:** Node.js, Express y TypeScript.
+- **Base de datos, autenticación y almacenamiento:** Supabase, PostgreSQL, Supabase Auth y Supabase Storage.
+- **Validación de datos:** Zod.
+- **Carga de archivos:** Multer.
+- **Correo transaccional:** Nodemailer.
+- **Notificaciones móviles:** Expo Notifications y Expo Push API.
+- **Lectura de QR y cámara:** Expo Camera.
 
-- **Frontend:** manejo visual, navegación, formularios y validaciones de UX.
-- **Backend:** lógica de negocio, validación con Zod, control de Roles y middleware.
-- **Supabase:** persistencia de datos, Auth, Storage, RLS y tablas de negocio.
+---
 
-El backend está modularizado por dominio en:
+## 🏗️ Arquitectura
+
+El frontend se organiza en pantallas, servicios de acceso a API y contextos de sesión y carrito. La navegación principal está coordinada desde `frontend/App.tsx`.
+
+El backend separa rutas, controladores, servicios y esquemas por dominio:
 
 - `auth`
-- `clientes`
+- `cliente`
 - `empleados`
 - `productos`
 - `mesas`
 - `pedidos`
 - `chat`
+- `juegos`
+- `encuesta` (el código existe, pero sus rutas todavía no están montadas en el servidor).
 
-El frontend evidencia también una estructura funcional por pantallas y servicios de consumo API.
+Supabase proporciona persistencia, autenticación y almacenamiento de archivos. Las políticas RLS deben revisarse junto con la autorización aplicada en los middleware del backend.
 
-![Diagrama UML del Sistema](./assets/umlTFI.png)
-
----
-
-## 📋 Casos de Uso del Sistema
-
-Los flujos principales del sistema son:
-
-- **CU-01: Registrar Empleado**
-- **CU-02: Alta de Platos**
-- **CU-03: Alta de Bebidas**
-- **CU-04: Alta y Gestión de Mesas**
-- **CU-05: Registro de Cliente**
-- **CU-06: Aprobación / Rechazo de Cliente**
-- **CU-09: Ingreso de Cliente Anónimo**
-- **CU-10: Asignación de Mesa a Cliente**
-- **CU-11: Consulta QR de Mesa**
-- **CU-12: Realización de Pedido por el Cliente**
-- **CU-13: Confirmación / Derivación del Pedido**
+![Diagrama UML del sistema](./assets/umlTFI.png)
 
 ---
 
-## 🛡️ Seguridad y Validaciones Implementadas
+## 📋 Funcionalidades del Sistema
 
-El backend incorpora varias capas de control:
+- Registro y administración de empleados.
+- Registro, aprobación y rechazo de clientes.
+- Registro de clientes anónimos y gestión de la sala de espera.
+- Alta de mesas y generación de datos QR.
+- Alta, consulta y baja lógica de productos.
+- Consulta de carta, armado de carrito y seguimiento de pedidos.
+- Gestión de comandas de mozo, cocina y bar.
+- Chat entre clientes y personal del restaurante.
+- Notificaciones push para eventos de clientes, pedidos, mesas y chat.
+- Registro de jugadas y consulta de descuentos asociados a pedidos.
+- **Punto 21 — Cierre de mesas:** simulación de pago estilo Mercado Pago, cálculo de propinas, aplicación de descuentos por juegos y liberación de mesa. Es una simulación; no procesa pagos reales y sus endpoints están pendientes de implementación.
+- Encuestas y estadísticas: existe código backend parcial, pero la ruta todavía no está montada en el servidor.
 
-1. **Multer + Storage** para carga de imágenes y archivos a Supabase.
-2. **Validación estricta con Zod** para prevenir datos malformados.
-3. **Autenticación y middleware de roles** vía JWT.
-4. **Reglas por categoría y permisos** para empleados/productos/mesas.
-5. **Baja lógica de productos** con estado `inactive`.
-6. **Nodemailer** para aprobaciones y notificaciones por correo.
-7. **Push notifications** para estados rápidos y avisos de negocio.
+---
+
+## 🔔 Notificaciones Push
+
+El backend envía notificaciones mediante Expo Push API. El frontend obtiene el token del dispositivo y lo registra en el backend. La aplicación recibe notificaciones, muestra un banner interno cuando está abierta y procesa la interacción para navegar al flujo correspondiente.
+
+El equipo comprobó la visualización de notificaciones en iOS y Android:
+
+| Plataforma | Evidencia                                                                     |
+| ---------- | ----------------------------------------------------------------------------- |
+| iOS        | ![Notificación push en iOS](./assets/notifications/pushNoti_Ios.jpeg)         |
+| Android    | ![Notificación push en Android](./assets/notifications/pushNoti_android.jpeg) |
+
+> Para probar push remoto en Android, usar un development build o una compilación independiente. La configuración actual desactiva las notificaciones push remotas en Expo Go para Android.
 
 ---
 
 ## ⚙️ Instalación y Configuración Local
 
-### Requisitos previos
+### Requisitos
 
 - Node.js y npm.
-- Cuenta y proyecto Supabase creados.
-- Expo Go o emulador Android/iOS.
-- Conexión local con la misma red si se usa un dispositivo físico.
+- Proyecto Supabase configurado.
+- Expo Go o un development build / emulador compatible.
+- Para un dispositivo físico, computadora y dispositivo conectados a la misma red local.
+- Para probar push remoto, un dispositivo o build compatible y permisos de notificaciones habilitados.
 
 ### Backend
 
@@ -161,7 +142,7 @@ npm install
 npm run dev
 ```
 
-Comandos extra:
+Comandos adicionales:
 
 ```bash
 npm run build
@@ -170,13 +151,15 @@ npm start
 
 ### Frontend
 
+En otra terminal:
+
 ```bash
 cd frontend
 npm install
 npm start
 ```
 
-También puede ejecutarse con:
+Comandos de Expo:
 
 ```bash
 npm run android
@@ -184,11 +167,7 @@ npm run ios
 npm run web
 ```
 
-La API se conecta por IP local detectada por Expo en:
-
-```text
-http://<IP_LOCAL>:3000/api
-```
+El frontend obtiene la IP local a partir del host de Expo para conectarse a la API. El backend utiliza el puerto `3000` por defecto.
 
 ### Variables de entorno
 
@@ -204,16 +183,6 @@ GMAIL_USER=correo@gmail.com
 GMAIL_APP_PASSWORD=contraseña_de_aplicacion
 ```
 
-| Variable                    | Uso                               |
-| --------------------------- | --------------------------------- |
-| `PORT`                      | Puerto del backend                |
-| `NODE_ENV`                  | Entorno de ejecución              |
-| `SUPABASE_URL`              | URL del proyecto Supabase         |
-| `SUPABASE_ANON_KEY`         | Clave pública de Supabase         |
-| `SUPABASE_SERVICE_ROLE_KEY` | Clave privada del backend         |
-| `GMAIL_USER`                | Usuario SMTP                      |
-| `GMAIL_APP_PASSWORD`        | Contraseña de aplicación de Gmail |
-
 Crear `frontend/.env`:
 
 ```env
@@ -221,74 +190,66 @@ EXPO_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co
 EXPO_PUBLIC_SUPABASE_ANON_KEY=tu_clave_anon
 ```
 
-> Los archivos `.env` no deben subirse al repositorio. La `SUPABASE_SERVICE_ROLE_KEY` debe mantenerse solo en el backend.
+En desarrollo, el frontend también admite opcionalmente `EXPO_PUBLIC_TEST_PUSH_TOKEN` para pruebas de notificaciones.
+
+> No subir archivos `.env`, contraseñas ni claves reales al repositorio. `SUPABASE_SERVICE_ROLE_KEY` debe permanecer exclusivamente en el backend. No usar tokens de prueba como credenciales permanentes.
 
 ---
 
-## 🔌 Endpoints Disponibles
+## 🔌 Endpoints del Backend
 
 La API se ejecuta por defecto en `http://localhost:3000`.
 
-### Sistema
+### Sistema y autenticación
 
-| Método | Ruta           | Auth | Descripción                      |
-| ------ | -------------- | ---- | -------------------------------- |
-| `GET`  | `/`            | No   | Verifica que la API esté activa. |
-| `GET`  | `/api/ping-db` | No   | Verifica conexión con Supabase.  |
+| Método | Ruta              | Autenticación | Descripción                                 |
+| ------ | ----------------- | ------------- | ------------------------------------------- |
+| `GET`  | `/`               | No            | Comprueba que la API esté activa.           |
+| `GET`  | `/api/ping-db`    | No            | Comprueba la conexión con Supabase.         |
+| `POST` | `/api/auth/login` | No            | Login del backend con `email` y `password`. |
 
-### Autenticación
+El frontend inicia sesión directamente con Supabase y conserva un fallback local de demostración; no depende exclusivamente de `/api/auth/login`.
 
-| Método | Ruta              | Auth | Body / FormData           | Respuesta esperada                       |
-| ------ | ----------------- | ---- | ------------------------- | ---------------------------------------- |
-| `POST` | `/api/auth/login` | No   | JSON: `email`, `password` | `200` con `mensaje`, `token` y `usuario` |
+### Empleados y sala de espera
 
-### Empleados
-
-| Método | Ruta                       | Auth                                | Body / FormData                                                                                                     | Respuesta esperada             |
-| ------ | -------------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
-| `POST` | `/api/empleados/empleados` | Sin JWT en la implementación actual | `multipart/form-data`: `email`, `password`, `first_name`, `last_name`, `dni`, `cuil`, `role`, `rol_creador`, `foto` | `201` con empleado creado      |
-| `GET`  | `/api/empleados/empleados` | No                                  | Sin body                                                                                                            | `200` con arreglo de empleados |
+| Método | Ruta                       | Autenticación                                      | Datos principales                                                                                                    |
+| ------ | -------------------------- | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/api/empleados/empleados` | Actualmente sin middleware JWT                     | `multipart/form-data`: `email`, `password`, `first_name`, `last_name`, `dni`, `cuil`, `role`, `rol_creador`, `foto`. |
+| `GET`  | `/api/empleados/empleados` | Actualmente sin middleware JWT                     | Lista empleados.                                                                                                     |
+| `GET`  | `/api/empleados/`          | Bearer JWT; roles `maitre`, `owner` o `supervisor` | Lista de espera.                                                                                                     |
 
 ### Clientes
 
-| Método  | Ruta                       | Auth                                     | Body / FormData                                                                      | Respuesta esperada                           |
-| ------- | -------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------ | -------------------------------------------- |
-| `POST`  | `/api/clientes/register`   | No                                       | `multipart/form-data`: `email`, `password`, `first_name`, `last_name`, `dni`, `foto` | `201` con cliente pendiente de aprobación    |
-| `POST`  | `/api/clientes/anonymous`  | No                                       | JSON: `client_name`, `client_photo`                                                  | `201` con cliente anónimo en lista de espera |
-| `GET`   | `/api/clientes`            | No                                       | Query opcional: `?estado=pending`                                                    | `200` con clientes filtrados                 |
-| `PATCH` | `/api/clientes/:id/status` | Bearer JWT; roles `owner` o `supervisor` | JSON: `{ "status": "approved" }`                                                     | `200` con actualización de estado            |
+| Método  | Ruta                       | Autenticación                            | Datos principales                                                                     |
+| ------- | -------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------------- |
+| `POST`  | `/api/clientes/register`   | Sin middleware JWT                       | `multipart/form-data`: `email`, `password`, `first_name`, `last_name`, `dni`, `foto`. |
+| `POST`  | `/api/clientes/anonymous`  | Sin middleware JWT                       | JSON con `client_name` y `client_photo`.                                              |
+| `GET`   | `/api/clientes`            | Actualmente sin middleware JWT           | Lista clientes; admite filtro de estado.                                              |
+| `PATCH` | `/api/clientes/:id/status` | Bearer JWT; roles `owner` o `supervisor` | JSON con `status`: `approved` o `rejected`.                                           |
+| `PATCH` | `/api/clientes/push-token` | Bearer JWT                               | JSON con `push_token`.                                                                |
+| `POST`  | `/api/clientes/ingresar`   | Actualmente sin middleware JWT           | Registra el ingreso a la lista de espera.                                             |
 
 ### Productos
 
-| Método  | Ruta                      | Auth                             | Body / FormData                                                                                              | Respuesta esperada             |
-| ------- | ------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------------------ |
-| `POST`  | `/api/productos`          | Bearer JWT y rol según categoría | `multipart/form-data`: `name`, `description`, `prep_time`, `price`, `category`, hasta cinco archivos `fotos` | `201` con producto creado      |
-| `PATCH` | `/api/productos/:id/baja` | Bearer JWT                       | Sin body                                                                                                     | `200` con baja lógica          |
-| `GET`   | `/api/productos`          | Bearer JWT                       | Opcional `?category=`                                                                                        | `200` con listado de productos |
+| Método  | Ruta                      | Autenticación                                        | Datos principales                                                                                              |
+| ------- | ------------------------- | ---------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `POST`  | `/api/productos`          | Bearer JWT; permisos por categoría en el controlador | `multipart/form-data`: `name`, `description`, `prep_time`, `price`, `category` y hasta cinco archivos `fotos`. |
+| `GET`   | `/api/productos`          | Bearer JWT                                           | Lista productos; admite `?category=`.                                                                          |
+| `PATCH` | `/api/productos/:id/baja` | Bearer JWT                                           | Baja lógica del producto.                                                                                      |
 
-Categorías permitidas: `dish`, `drink`, `dessert`.
+Categorías utilizadas: `dish`, `drink` y `dessert`. La ruta `DELETE /api/productos/:id` existe para desarrollo y testing; no usar en producción.
 
 ### Mesas
 
-| Método  | Ruta                    | Auth                                               | Body / FormData                                                         | Respuesta esperada                |
-| ------- | ----------------------- | -------------------------------------------------- | ----------------------------------------------------------------------- | --------------------------------- |
-| `POST`  | `/api/mesas`            | Bearer JWT; roles `owner` o `supervisor`           | `multipart/form-data`: `table_number`, `capacity`, `table_type`, `foto` | `201` con mesa creada y `qr_data` |
-| `PATCH` | `/api/mesas/:id/estado` | Bearer JWT; roles `owner`, `supervisor` o `maitre` | JSON: `{ "availability": "occupied" }`                                  | `200` con estado actualizado      |
-| `GET`   | `/api/mesas`            | Bearer JWT                                         | Sin body                                                                | `200` con listado de mesas        |
+| Método  | Ruta                    | Autenticación                                      | Datos principales                                                        |
+| ------- | ----------------------- | -------------------------------------------------- | ------------------------------------------------------------------------ |
+| `POST`  | `/api/mesas`            | Bearer JWT; roles `owner` o `supervisor`           | `multipart/form-data`: `table_number`, `capacity`, `table_type`, `foto`. |
+| `GET`   | `/api/mesas`            | Bearer JWT                                         | Lista mesas.                                                             |
+| `PATCH` | `/api/mesas/:id/estado` | Bearer JWT; roles `owner`, `supervisor` o `maitre` | JSON con `availability`.                                                 |
 
-Tipos de mesa admitidos:
+Tipos admitidos: `standard`, `vip`, `reduced_mobility`. Estados: `free`, `occupied`, `cleaning`.
 
-- `standard`
-- `vip`
-- `reduced_mobility`
-
-Estados de disponibilidad:
-
-- `free`
-- `occupied`
-- `cleaning`
-
-El backend genera `qr_data` con el formato:
+Al crear una mesa, el backend genera `qr_data` con este patrón:
 
 ```text
 RESTO-TFI-MESA-<numero>
@@ -296,130 +257,153 @@ RESTO-TFI-MESA-<numero>
 
 ### Pedidos
 
-| Método | Ruta                         | Auth                    | Body / FormData                             | Respuesta esperada            |
-| ------ | ---------------------------- | ----------------------- | ------------------------------------------- | ----------------------------- |
-| `POST` | `/api/pedidos`               | No/según implementación | JSON con `idCliente`, `numeroMesa`, `items` | `201`/`200` con pedido creado |
-| `GET`  | `/api/pedidos/:id`           | No/según implementación | Sin body                                    | `200` con estado del pedido   |
-| `PUT`  | `/api/pedidos/:id/confirmar` | No/según implementación | JSON con confirmación / motivo              | `200` con pedido actualizado  |
+| Método  | Ruta                                | Autenticación                                                       | Datos principales                                                                                      |
+| ------- | ----------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `POST`  | `/api/pedidos`                      | Actualmente sin middleware JWT                                      | JSON con `id_cliente`, `numero_mesa`, `productos` (`id_producto`, `cantidad`) y `order_type` opcional. |
+| `GET`   | `/api/pedidos/:id`                  | Actualmente sin middleware JWT                                      | Consulta estado, mesa, productos, importe y tiempo estimado.                                           |
+| `PUT`   | `/api/pedidos/:id`                  | Actualmente sin middleware JWT                                      | JSON con `productos`; modifica un pedido rechazado.                                                    |
+| `PUT`   | `/api/pedidos/:id/confirmar`        | Bearer JWT; roles `waiter`, `owner` o `supervisor`                  | JSON con `waiter_id`, `estado` (`in_preparation` o `cancelled`) y `rejection_reason` si se cancela.    |
+| `GET`   | `/api/pedidos/cocina`               | Actualmente sin middleware JWT                                      | Lista pedidos pendientes de cocina.                                                                    |
+| `GET`   | `/api/pedidos/bar`                  | Actualmente sin middleware JWT                                      | Lista pedidos pendientes de bar.                                                                       |
+| `PATCH` | `/api/pedidos/items/:item_id/listo` | Bearer JWT; roles `cook`, `bartender`, `owner` o `supervisor`       | Marca un ítem como listo.                                                                              |
+| `PATCH` | `/api/pedidos/:id/entregar`         | Bearer JWT; roles `waiter`, `owner` o `supervisor`                  | Marca el pedido como entregado.                                                                        |
+| `PATCH` | `/api/pedidos/:id/recibir`          | Bearer JWT; roles actuales `registered_client` o `anonymous_client` | Confirma la recepción del pedido.                                                                      |
+| `GET`   | `/api/pedidos/:id/cuenta`           | **Planificado:** Bearer JWT                                         | **Pendiente.** Detalle del ticket, propinas y descuentos.                                              |
+| `PATCH` | `/api/pedidos/:id/pagar`            | **Planificado:** Bearer JWT                                         | **Pendiente.** Simula el pago y libera la mesa.                                                        |
 
-> El módulo de pedidos ya existe en el backend y está montado, pero aún no está cerrada su integración completa con frontend ni con el flujo de operación final del restaurante.
+`order_type` admite `dine_in` o `delivery`. Las rutas de cuenta y pago son contratos previstos para el Punto 21; no están disponibles hasta que se implementen. El flujo será una simulación estilo Mercado Pago, no una transacción real. Las rutas existentes sin middleware de autenticación deben revisarse antes de producción.
+
+> ## ⚠️ Atención Frontend: los roles de la API se envían en inglés
+>
+> Los middlewares comparan el rol del usuario con los valores guardados en Supabase. No enviar etiquetas traducidas como `mozo` o `cocinero` al backend.
+>
+> Los roles encontrados en las rutas actuales incluyen `waiter`, `cook`, `bartender`, `maitre`, `owner`, `supervisor`, `registered_client` y `anonymous_client`. **En particular, `/api/pedidos/:id/recibir` exige actualmente `registered_client` y `anonymous_client`, no `client` y `anonymous`.** No usar esos alias hasta que el backend y los datos de Supabase se cambien coordinadamente.
 
 ### Chat
 
-| Método | Ruta        | Auth                    | Body / FormData             | Respuesta esperada              |
-| ------ | ----------- | ----------------------- | --------------------------- | ------------------------------- |
-| `POST` | `/api/chat` | No/según implementación | JSON con mensaje/canal/mesa | `200`/`201` con mensaje enviado |
-| `GET`  | `/api/chat` | No/según implementación | Query opcional `?table_id=` | `200` con historial del chat    |
+| Método | Ruta        | Autenticación | Datos principales                                                                                                       |
+| ------ | ----------- | ------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `POST` | `/api/chat` | Bearer JWT    | JSON con `message`, `table_id` opcional, `order_id` opcional y `chat_type` opcional. El remitente se toma de la sesión. |
+| `GET`  | `/api/chat` | Bearer JWT    | Lista mensajes; admite `?table_id=<UUID>`.                                                                              |
+
+`chat_type` admite `table_waiter` y `delivery_client`. Al enviar un mensaje, el backend puede notificar al destinatario mediante Expo Push API.
+
+### Juegos
+
+| Método | Ruta                           | Autenticación                  | Descripción                                          |
+| ------ | ------------------------------ | ------------------------------ | ---------------------------------------------------- |
+| `POST` | `/api/juegos/jugada`           | Actualmente sin middleware JWT | Registra una jugada y procesa la regla de descuento. |
+| `GET`  | `/api/juegos/pedido/:order_id` | Actualmente sin middleware JWT | Consulta jugadas o descuentos asociados al pedido.   |
+
+### Encuestas
+
+Existe código de controladores, servicio y rutas para encuestas, pero el módulo no está montado en `backend/src/index.ts`. No hay endpoints de encuestas disponibles en la API hasta completar ese montaje.
 
 ---
 
-## ⚠️ Diferencias Conocidas entre Frontend y Backend
+## ⚠️ Integración y Limitaciones Conocidas
 
-Los siguientes puntos deben seguir revisándose para cerrar la integración real:
-
-1. **Login actual del frontend**: el frontend autentica contra Supabase directamente y usa un fallback local. El endpoint `/api/auth/login` existe pero no es el camino principal en la app.
-2. **Mesas**: el frontend ya ajustó el request para usar `multipart/form-data` y campos como `table_number`, `capacity` y `table_type`. Este punto fue corregido y ya está alineado con el backend.
-3. **Pantallas de operación**: varias pantallas funcionan con datos simulados o locales mientras el backend real no está conectado de manera consistente.
-4. **Módulos no totalmente integrados**: pedidos, chat, lista de espera y flujo completo de cliente siguen sin cierre de UX/backend.
-5. **Roles**: en la base se usan valores en inglés (`owner`, `supervisor`, `cook`, `bartender`, etc.) y el frontend los presenta en español visualmente.
+- El login del frontend usa Supabase directamente; también existe un fallback local de demostración.
+- Algunas pantallas o servicios pueden conservar comportamientos simulados cuando falla el backend. Confirmar en cada prueba si el dato quedó persistido en Supabase.
+- La app contiene pantallas de carta, carrito, sala de espera, comandas, tickets de cocina/bar y chat; quedan pruebas end-to-end con roles y datos reales.
+- Las notificaciones push se envían desde el backend, se reciben en la aplicación y permiten mostrar un banner y navegar al flujo correspondiente. El equipo informa que la notificación del sistema se visualiza correctamente en iOS y Android.
+- Hay una diferencia de nomenclatura de roles para clientes entre la instrucción funcional (`client`/`anonymous`) y las rutas actuales (`registered_client`/`anonymous_client`); el frontend debe seguir los valores aceptados por el código hasta que se actualice el contrato.
+- El cierre de cuenta del Punto 21 y las rutas `/cuenta` y `/pagar` aún no están implementados.
 
 ---
 
 ## 📊 Estado de Funcionalidades
 
-| Funcionalidad                         | Estado                    | Observación                                                                             |
-| ------------------------------------- | ------------------------- | --------------------------------------------------------------------------------------- |
-| Login con Supabase                    | Implementado              | Frontend autentica directamente contra Auth de Supabase.                                |
-| Login mediante API                    | Implementado en backend   | Endpoint operativo en `/api/auth/login`.                                                |
-| Empleados                             | Implementado              | Alta, validación y flujo operativo principal funcional.                                 |
-| Clientes registrados                  | Implementado              | Flujo de registro + aprobación/rechazo con correos.                                     |
-| Clientes anónimos                     | Implementado en backend   | Se agregan a la lista de espera.                                                        |
-| Productos                             | Implementado              | Alta, listado y baja lógica funcional.                                                  |
-| Mesas y QR                            | Implementado              | Backend y frontend ya están alineados en el formato del alta y del QR.                  |
-| Pedidos                               | Parcialmente implementado | Lógica y endpoints del backend existen, falta cierre completo de flujo comercial y UX.  |
-| Chat                                  | Parcialmente implementado | Backend montado, falta integración y comportamiento final en la app.                    |
-| Push notifications                    | Implementado en backend   | Integrado vía Expo Push API en los flujos de Clientes y Pedidos. Falta recepción en UI. |
-| Encuestas y estadísticas              | Pendiente                 | No hay persistencia ni vistas funcionales confirmadas.                                  |
-| Lista de espera / asignación de mesas | Pendiente                 | Backend soporta la lógica base pero requiere cierre de negocio e integración.           |
+| Funcionalidad                      | Estado                    | Observación                                                                                        |
+| ---------------------------------- | ------------------------- | -------------------------------------------------------------------------------------------------- |
+| Login con Supabase                 | Implementado              | El frontend autentica directamente con Supabase.                                                   |
+| Login por API                      | Implementado en backend   | Disponible en `/api/auth/login`; no es el flujo principal del frontend.                            |
+| Empleados                          | Parcialmente integrado    | Hay alta, listado y consulta de espera; algunas rutas no exigen autenticación.                     |
+| Registro y aprobación de clientes  | Implementado en backend   | Incluye aprobación/rechazo, correo y push si hay un token registrado.                              |
+| Clientes anónimos y sala de espera | Implementado parcialmente | Hay endpoints y pantallas; validar el flujo completo de asignación, estados y salida.              |
+| Productos y carta                  | Implementado parcialmente | Hay alta, listado, baja lógica y pantallas de carta; validar flujo completo por rol.               |
+| Mesas y QR                         | Implementado              | El frontend envía el formato multipart esperado y utiliza los datos QR del backend.                |
+| Pedidos y comandas                 | Implementado parcialmente | Hay endpoints y pantallas de carrito, estado, comandas y tickets. Cierre de cuenta/pago pendiente. |
+| Chat                               | Implementado parcialmente | Hay endpoints autenticados, pantallas y push; debe probarse el flujo integral.                     |
+| Push notifications                 | Implementado e integrado  | Expo Push API en clientes, pedidos y chat; el equipo confirma visualización en iOS y Android.      |
+| Juegos y descuentos                | Implementado parcialmente | Hay endpoints en backend; cerrar y verificar la integración con la cuenta del pedido.              |
+| Encuestas y estadísticas           | Pendiente de integración  | Hay código backend, pero las rutas no están montadas; la vista actual usa datos demostrativos.     |
 
 ---
 
-## 📝 Limitaciones y Funcionalidades Pendientes
+## 📝 Tareas Pendientes
 
-### Backend (Santino)
+### Backend e integración — Santino
 
-- Definir y reforzar permisos finales sobre endpoints sensibles.
-- Asegurar validación final para rutas no protegidas/protegidas y listas de clientes.
-- Asistir en la recepción de las Notificaciones Push del lado del frontend.
+- [x] Integrar `feature/santino-server-setup` en `main` y alinear la comprobación de roles del middleware con los valores de Supabase.
+- Desarrollar `GET /api/pedidos/:id/cuenta` para calcular y consultar el ticket, incluyendo propinas y descuentos.
+- Desarrollar `PATCH /api/pedidos/:id/pagar` para simular el pago y liberar la mesa; no integrar cobros reales de Mercado Pago.
+- Montar y verificar el módulo de encuestas en el enrutador principal como `/api/encuestas`.
+- Revisar por separado las rutas que todavía no tienen middleware JWT, incluidas rutas de empleados, clientes, pedidos y juegos.
 
-### Base de Datos y Módulos (Rocío)
+### Base de datos y módulos API — Rocío
 
-- Aplicar restricción `UNIQUE` en `table_number` para evitar duplicados.
-- Definir y aplicar policies RLS por tabla.
-- Versionar todas las migraciones SQL.
-- Exponer y proteger los endpoints HTTP de las lógicas de Pedidos y Chat.
+- Aplicar o verificar la restricción `UNIQUE` de `table_number`.
+- Definir, aplicar y documentar las policies RLS.
+- Versionar las migraciones SQL.
+- Revisar y proteger los endpoints de Pedidos y Chat según rol y propiedad de los recursos.
+- Coordinar los datos entre lista de espera, mesas, pedidos y chat.
 
-### Frontend (Valentín / Sebastián)
+### Frontend — Valentín / Sebastián
 
-- Integrar la app con los endpoints reales en todas las pantallas relevantes.
-- Implementar menú para clientes y cálculo de pedido.
-- Finalizar flujo de lista de espera y asignación de mesa.
-- Completar chat en tiempo real y consumo de mensajes.
-- Implementar notificaciones push y flujo end-to-end para el cliente.
-- Cerrar encuestas y módulos de estadísticas.
-- Revisar la integración final con QR de mesa y flujo de acceso del cliente.
+- Completar pruebas end-to-end de registro, aprobación, ingreso a sala de espera, asignación de mesa, carta, pedido y chat.
+- Verificar que errores de red no aparezcan como operaciones exitosas persistidas.
+- Completar la navegación e integración de juegos y descuentos asociados a pedidos.
+- Integrar la interfaz con los endpoints de cuenta y pago una vez implementados.
+- Reemplazar los datos demostrativos de encuestas con información de un endpoint real si el módulo se incluye en la entrega.
 
-### Calidad y configuración general
+### Calidad, seguridad y entrega
 
-- Crear pruebas unitarias e integrales.
-- Agregar archivo `.env.example` con placeholders.
-- Restringir CORS para producción.
-- Revisar documentación de uso y contratos ante cada ajuste del backend.
-
-### Frontend (Valentín / Sebastián)
-
-- Integrar la app con los endpoints reales en todas las pantallas relevantes.
-- Implementar menú para clientes y cálculo de pedido.
-- Finalizar flujo de lista de espera y asignación de mesa.
-- Completar chat en tiempo real y consumo de mensajes.
-- Implementar notificaciones push y flujo end-to-end para el cliente.
-- Cerrar encuestas y módulos de estadísticas.
-- Revisar la integración final con QR de mesa y flujo de acceso del cliente.
-
-### Calidad y configuración general
-
-- Crear pruebas unitarias e integrales.
-- Agregar archivo `.env.example` con placeholders.
-- Restringir CORS para producción.
-- Revisar documentación de uso y contratos ante cada ajuste del backend.
+- Verificar rechazos de tokens inválidos, cuentas no aprobadas y roles sin autorización.
+- Revisar CORS: actualmente se permite `origin: '*'`; restringirlo para producción.
+- Crear o completar pruebas unitarias y de integración para rutas, permisos, estados y notificaciones.
+- Agregar `backend/.env.example` y `frontend/.env.example` sin secretos.
+- Confirmar con la cátedra la fecha oficial de entrega y actualizar el cronograma del equipo.
+- Actualizar esta documentación si cambian contratos, nombres de campos o estados.
 
 ---
 
-## 📸 Índice de Imágenes y Mockups Asociados
+## 🧪 Evidencias y Pruebas
 
-### 🧪 Pruebas del Backend
+### Pruebas del backend
 
-1. **Validación de esquemas Zod**  
-   [Ver captura](./assets/tests/PruebaValidacionZod.png)
-2. **Control de permisos y reglas de negocio**  
-   [Ver captura](./assets/tests/PruebaReglasNegocio.png)
-3. **Flujo exitoso de creación**  
-   [Ver captura](./assets/tests/FlujoExitosoCreacion.png)
+- [Validación de esquemas Zod](./assets/tests/PruebaValidacionZod.png)
+- [Reglas de negocio y permisos](./assets/tests/PruebaReglasNegocio.png)
+- [Flujo exitoso de creación](./assets/tests/FlujoExitosoCreacion.png)
+- [Reporte de testing de la aplicación](./qa-test/reporte-testing.md)
 
-### 📱 Mockups y Diseño UI
+> El reporte existente está fechado el 10/09/2026 y corresponde a una tablet Android con Expo Go; es evidencia histórica, no una validación completa de los cambios posteriores.
 
-4. **Pantalla de Login**  
-   [Ver mockup](./assets/makeup/logIn.png)
-5. **Pantalla de Registro**  
-   [Ver mockup](./assets/makeup/registro.png)
-6. **Vista de Inicio**  
-   [Ver mockup](./assets/makeup/viewInicio.png)
-7. **Pantalla de Bienvenida de Pedido**  
-   [Ver mockup](./assets/makeup/bienvenidaPedido.png)
-8. **Códigos QR del proyecto**  
-   [Ingreso al local](./assets/qrs/Qr_Ingreso.png) | [Mesa asignada](./assets/qrs/Mesa_1.PNG) | [Propinas](./assets/qrs/qr_propina_20.PNG)
-9. `[Pendiente]` Listados de productos y menú.
-10. `[Pendiente]` Gráficos estadísticos de encuestas.
+### Notificaciones push
+
+| Plataforma | Evidencia                                                                     |
+| ---------- | ----------------------------------------------------------------------------- |
+| iOS        | ![Notificación push en iOS](./assets/notifications/pushNoti_Ios.jpeg)         |
+| Android    | ![Notificación push en Android](./assets/notifications/pushNoti_android.jpeg) |
+
+### Mockups
+
+- [Login](./assets/makeup/logIn.png)
+- [Registro](./assets/makeup/registro.png)
+- [Inicio](./assets/makeup/viewInicio.png)
+- [Bienvenida del pedido](./assets/makeup/bienvenidaPedido.png)
+
+### QR de ingreso y mesas
+
+| Uso                         | Imagen                                                                        |
+| --------------------------- | ----------------------------------------------------------------------------- |
+| Ingreso a la sala de espera | ![QR de ingreso a la sala de espera](./assets/qrs/qr_ingresoListaEspera.jpeg) |
+| Mesa 1                      | ![QR de mesa 1](./assets/qrs/qr_mesa_1.jpeg)                                  |
+| Mesa 2                      | ![QR de mesa 2](./assets/qrs/qr_mesa_2.jpeg)                                  |
+| Mesa 3                      | ![QR de mesa 3](./assets/qrs/qr_mesa_3.jpeg)                                  |
+| Mesa 4                      | ![QR de mesa 4](./assets/qrs/qr_mesa_4.jpeg)                                  |
+
+El repositorio también contiene códigos QR para propinas (`qr_propina_0.PNG`, `qr_propina_5.PNG`, `qr_propina_10.PNG`, `qr_propina_15.PNG`, `qr_propina_20.PNG`).
 
 ---
 
