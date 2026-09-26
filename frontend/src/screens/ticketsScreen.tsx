@@ -7,10 +7,10 @@ import {
   ActivityIndicator,
   Image,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { supabase } from "../config/supabase";
 import { ChineseFrame } from "../components/ChineseFrame";
+import { TeamNames } from "../components/TeamNames";
 import {
   obtenerTicketsCocinaApi,
   obtenerTicketsBarApi,
@@ -22,7 +22,6 @@ interface Props {
 }
 
 export function TicketsScreen({ rol }: Props) {
-  const insets = useSafeAreaInsets();
   const [tickets, setTickets] = useState<TicketsPedido[]>([]);
   const [cargando, setCargando] = useState(true);
 
@@ -64,16 +63,11 @@ export function TicketsScreen({ rol }: Props) {
     : "Tickets de platos en preparación";
 
   return (
-    <SafeAreaView className="flex-1">
+    <View className="flex-1">
       <StatusBar style="light" />
 
       {/* Nombres del equipo */}
-      <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + 16 }}>
-        <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
-        <Text className="text-[10px] text-vino/70">Santino Casado</Text>
-        <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
-        <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
-      </View>
+      <TeamNames className="absolute right-4 z-10" style={{ top: 16 }} />
 
       {/* Cabecera */}
       <View className="px-5 pt-4">
@@ -184,6 +178,6 @@ export function TicketsScreen({ rol }: Props) {
           </ScrollView>
         )}
       </View>
-    </SafeAreaView>
+    </View>
   );
 }

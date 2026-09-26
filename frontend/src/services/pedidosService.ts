@@ -14,12 +14,20 @@ export interface CrearPedidoPayload {
   order_type?: "dine_in" | "takeaway" | "delivery";
 }
 
+export type PedidoStatus =
+  | "pending"
+  | "in_preparation"
+  | "ready"
+  | "delivered"
+  | "received"
+  | "cancelled";
+
 export interface Pedido {
   id: string;
   table_id: string;
   client_id: string;
   waiter_id?: string | null;
-  status: "pending_waiter" | "in_preparation" | "confirmed" | "delivered" | "finished" | string;
+  status: PedidoStatus;
   total_amount: string | number;
   estimated_delivery_time: number;
   created_at: string;
@@ -46,6 +54,44 @@ export const crearPedidoApi = async (payload: CrearPedidoPayload): Promise<Pedid
   const json = await res.json();
   return json.data;
 };
+
+/**
+ * Corrige un pedido que el mozo rechazó. El backend reemplaza los ítems,
+ * recalcula los totales y devuelve la orden a estado 'pending' para que
+ * el mozo vuelva a confirmarla. Solo el cliente dueño puede llamarla.
+ */
+export const modificarPedidoRechazadoApi = async (
+  pedidoId: string,
+  payload: ModificarPedidoRechazadoPayload
+): Promise<ModificarPedidoRechazadoResponse> => {
+  const res = await fetch(`${API_BASE_URL}/pedidos/${pedidoId}`, {
+    method: "PUT",
+    headers: await headersConToken({ "Content-Type": "application/json" }),
+    body: JSON.stringify({
+      productos: payload.productos,
+    }),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(
+      errorData.error || `HTTP ${res.status} al modificar el pedido`
+    );
+  }
+
+  const json = await res.json();
+  return json.data;
+};
+
+export interface ModificarPedidoRechazadoPayload {
+  productos: ItemPedidoPayload[];
+}
+
+export interface ModificarPedidoRechazadoResponse {
+  pedido: Pedido;
+  total: number;
+  tiempoEstimado: number;
+}
 
 export const confirmarPedidoPorMozoApi = async (
   pedidoId: string,

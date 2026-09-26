@@ -1,6 +1,4 @@
 import React, { useState, useEffect, useRef, ReactNode } from "react";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { SafeAreaView } from "react-native-safe-area-context";
 import {
   Text,
   View,
@@ -22,6 +20,7 @@ import { FeedbackModal } from "../components/FeedbackModal";
 import { CompanySpinner } from "../components/CompanySpinner";
 import { ChineseFrame } from "../components/ChineseFrame";
 import { ConfirmModal } from "../components/ConfirmModal";
+import { TeamNames } from "../components/TeamNames";
 
 export default function AprobacionClientesScreen() {
   const [clientes, setClientes] = useState<ClientePendiente[]>([]);
@@ -30,7 +29,6 @@ export default function AprobacionClientesScreen() {
   const [procesandoAccion, setProcesandoAccion] = useState<"aprobado" | "rechazado" | null>(null);
   const [clienteAEliminar, setClienteAEliminar] = useState<string | null>(null);
   const [fotoCargando, setFotoCargando] = useState(true);
-  const insets = useSafeAreaInsets();
 
   // Carrusel horizontal de solicitudes (2 por página)
   const scrollRef = useRef<ScrollView>(null);
@@ -159,16 +157,11 @@ export default function AprobacionClientesScreen() {
 
   return (
     <>
-      <SafeAreaView className="flex-1">
+      <View className="flex-1">
         <StatusBar style="light" />
 
         {/* Nombres del equipo */}
-        <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + 16 }}>
-          <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
-          <Text className="text-[10px] text-vino/70">Santino Casado</Text>
-          <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
-          <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
-        </View>
+        <TeamNames className="absolute right-4 z-10" style={{ top: 16 }} />
 
         {/* Cabecera idéntica a Alta Empleados */}
         <View className="px-5 pt-4">
@@ -400,7 +393,7 @@ export default function AprobacionClientesScreen() {
             setModalFeedback((prev) => ({ ...prev, visible: false }));
           }}
         />
-      </SafeAreaView>
+      </View>
     </>
   );
 }

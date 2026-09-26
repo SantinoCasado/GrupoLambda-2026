@@ -10,7 +10,6 @@ import {
   Modal,
   Dimensions,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from "expo-camera";
 import { parseDniData } from "../utils/dniParser";
@@ -20,6 +19,7 @@ import { FeedbackModal } from "../components/FeedbackModal";
 import { CompanySpinner } from "../components/CompanySpinner";
 import { ChineseFrame } from "../components/ChineseFrame";
 import { ConfirmModal } from "../components/ConfirmModal";
+import { TeamNames } from "../components/TeamNames";
 
 
 interface Props {
@@ -28,7 +28,6 @@ interface Props {
 
 export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props) {
   const [permission, requestPermission] = useCameraPermissions();
-  const insets = useSafeAreaInsets();
 
   // Estados del Formulario
   const [nombres, setNombres] = useState("");
@@ -281,17 +280,12 @@ export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props
 
   return (
     <>
-      <SafeAreaView className="flex-1">
+      <View className="flex-1">
 
       <StatusBar style="light" />
 
       {/* Nombres del equipo */}
-      <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + 16 }}>
-        <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
-        <Text className="text-[10px] text-vino/70">Santino Casado</Text>
-        <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
-        <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
-      </View>
+      <TeamNames className="absolute right-4 z-10" style={{ top: 16 }} />
 
       {/* Cabecera */}
       <View className="px-5 pt-4">
@@ -660,7 +654,7 @@ export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props
           if (modalFeedback.onAceptar) modalFeedback.onAceptar();
         }}
       />
-    </SafeAreaView>
+    </View>
     </>
   );
 }

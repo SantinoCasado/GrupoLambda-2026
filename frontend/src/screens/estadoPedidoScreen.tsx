@@ -6,13 +6,15 @@ import {
   ScrollView,
   ActivityIndicator,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 import { supabase } from "../config/supabase";
+import { useCart, ItemCarrito } from "../context/carritoContext";
+import { ChineseFrame } from "../components/ChineseFrame";
 
 interface Props {
   pedidoId: string;
   onVolver: () => void;
   onIrAJuegos?: () => void;
+  onEditarComanda?: (motivo: string | null) => void;
 }
 
 const ETAPAS = [
@@ -22,7 +24,8 @@ const ETAPAS = [
   { clave: "delivered", titulo: "Servido", icono: "🍽️", descripcion: "¡A disfrutar tu comida!" },
 ];
 
-export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos }: Props) {
+export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos, onEditarComanda }: Props) {
+  const { reemplazarCarrito } = useCart();
   const [pedido, setPedido] = useState<any | null>(null);
   const [cargando, setCargando] = useState(true);
 
@@ -42,7 +45,7 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos }: Props) {
             id,
             quantity,
             unit_price,
-            products (name, category)
+            products (id, name, description, price, prep_time, photos, category)
           )
         `)
         .eq("id", pedidoId)
@@ -83,9 +86,9 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos }: Props) {
 
   if (cargando) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-amber-50">
+      <View className="flex-1 items-center justify-center bg-amber-50">
         <ActivityIndicator size="large" color="#800020" />
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -94,8 +97,34 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos }: Props) {
   const indiceActual = ETAPAS.findIndex((e) => e.clave === estadoActual);
   const estaCancelado = estadoActual === "cancelled";
 
+  /**
+   * El carrito se vació al enviar la comanda original, así que los ítems del
+   * pedido rechazado se reconstruyen desde order_items para poder editarlos.
+   * El precio se toma del producto actual (el backend recalcula el total con
+   * ese mismo valor) y se cae a unit_price como respaldo.
+   */
+  const manejarEditarComanda = () => {
+    const items: ItemCarrito[] = (pedido?.order_items || [])
+      .filter((it: any) => it?.products?.id)
+      .map((it: any) => ({
+        id: it.products.id,
+        nombre: it.products.name || "Producto",
+        descripcion: it.products.description || "",
+        precio: Number(it.products.price ?? it.unit_price) || 0,
+        categoria: it.products.category || "dish",
+        tiempoElaboracion: Number(it.products.prep_time) || 0,
+        fotos: Array.isArray(it.products.photos) ? it.products.photos : [],
+        cantidad: Number(it.quantity) || 1,
+      }));
+
+    if (items.length === 0) return;
+
+    reemplazarCarrito(items);
+    onEditarComanda?.(pedido?.rejection_reason ?? null);
+  };
+
   return (
-    <SafeAreaView className="flex-1 bg-amber-50 px-4 pt-2">
+    <View className="flex-1 bg-amber-50 px-4 pt-2">
       {/* Header */}
       <View className="mb-4 flex-row items-center justify-between border-b border-mostaza/30 pb-3">
         <TouchableOpacity onPress={onVolver} className="px-2 py-1">
@@ -140,6 +169,22 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos }: Props) {
             <Text className="mt-1 text-sm text-red-700">
               {pedido?.rejection_reason || "El mozo no especificó un motivo."}
             </Text>
+
+            {onEditarComanda && (pedido?.order_items?.length ?? 0) > 0 && (
+              <ChineseFrame className="mt-4 w-full" color="#c32f27">
+                <TouchableOpacity
+                  onPress={manejarEditarComanda}
+                  className="w-full items-center rounded-xl bg-vino px-4 py-3 active:bg-terracota"
+                >
+                  <Text className="text-sm font-black uppercase tracking-wider text-mostaza">
+                    Modificar comanda
+                  </Text>
+                  <Text className="mt-0.5 text-center text-[11px] text-amber-100">
+                    Volvé a armarla y reenviala al mozo
+                  </Text>
+                </TouchableOpacity>
+              </ChineseFrame>
+            )}
           </View>
         )}
 
@@ -228,6 +273,6 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos }: Props) {
           </TouchableOpacity>
         )}
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }

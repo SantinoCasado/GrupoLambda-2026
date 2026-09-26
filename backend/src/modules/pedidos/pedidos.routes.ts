@@ -10,7 +10,12 @@ router.get('/bar', listarPedidosBar);
 router.post('/', crearPedido);
 router.get('/:id', verEstadoPedido);
 
-router.put('/:id', modificarPedido);
+// Solo el cliente dueño de la orden puede corregir un pedido rechazado
+router.put('/:id', 
+    verificarAutenticacion, 
+    requerirRol(['registered_client', 'anonymous_client']), 
+    modificarPedido
+);
 
 // Solo el mozo o alguien de un rol mas alto puede confirmar el pedido
 router.put('/:id/confirmar', 
