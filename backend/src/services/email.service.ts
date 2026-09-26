@@ -103,7 +103,14 @@ export const enviarNotificacionAprobacion = async (email: string, nombre: string
             html: contenidoHtml
         });
 
-        console.log(`✉️ Correo estilizado enviado a: ${email}`);
+        console.log(`✉️ Respuesta SMTP - messageId: ${info.messageId}, response: ${info.response}`);
+        console.log(`✉️ Aceptado por: ${JSON.stringify(info.accepted)}, Rechazado: ${JSON.stringify(info.rejected)}`);
+
+        if (info.rejected && info.rejected.length > 0) {
+            console.error(`❌ El destinatario fue rechazado por el servidor: ${JSON.stringify(info.rejected)}`);
+            return false;
+        }
+
         return true; // <-- Devuelve true si todo salió bien
     } catch (error: any) {
         console.error('❌ Error enviando mail en Render:');
