@@ -299,7 +299,7 @@ export default function RegistroClienteScreen({
       />
 
       {/* Cabecera */}
-      <View className={`px-5 ${modo === "metre" || usuarioLogueado ? "pt-4" : "pt-16"}`}>
+      <View className={`px-5 ${modo === "metre" || usuarioLogueado ? "pt-4" : "pt-28"}`}>
         <View className="mb-4">
           <Image
             source={require("../../assets/images/logo-name.png")}
