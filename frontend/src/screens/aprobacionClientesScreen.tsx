@@ -115,7 +115,7 @@ export default function AprobacionClientesScreen() {
     setProcesandoAccion(accion);
 
     try {
-      await responderSolicitudCliente(id, accion);
+      const { correoEnviado } = await responderSolicitudCliente(id, accion);
 
       ejecutarVibracion(accion === "aprobado" ? "exito" : "error");
 
@@ -134,7 +134,7 @@ export default function AprobacionClientesScreen() {
             <Text className="font-bold uppercase">
               {accion === "aprobado" ? "aprobado/a" : "rechazado/a"}
             </Text>{" "}
-            correctamente. Correo enviado.
+            correctamente{correoEnviado ? " Se le envió un correo de notificación." : "."}
           </>
         ),
         ...(accion === "rechazado"
@@ -143,7 +143,8 @@ export default function AprobacionClientesScreen() {
       });
     } catch (error: any) {
       ejecutarVibracion("error");
-      setClienteAEliminar(id);
+      // La solicitud NO se quitó de la lista: sigue pendiente y se puede reintentar.
+      setClienteAEliminar(null);
       setModalFeedback({
         visible: true,
         tipo: "error",

@@ -65,31 +65,105 @@ export const obtenerMesasService = async () => {
 };
 
 export const asignarMesaService = async (datos: DatosAsignacion) => {
-    // 1. Actualizamos el registro en waiting_list a 'assigned'
-    const { data: waitingRecord, error: updateWaitingError } = await supabase
+    const { data: waitingRecord, error: waitingError } = await supabase
         .from('waiting_list')
-        .update({ 
-            status: 'assigned', 
-            assigned_table_id: datos.table_id 
+        .select('id, user_id, status, assigned_table_id')
+        .eq('id', datos.waiting_id)
+        .maybeSingle();
+
+    if (waitingError) {
+        throw new Error(`Error al consultar la lista de espera: ${waitingError.message}`);
+    }
+
+    if (!waitingRecord) {
+        throw new Error('El cliente no se encuentra en la lista de espera');
+    }
+
+    if (waitingRecord.status !== 'waiting' || waitingRecord.assigned_table_id) {
+        throw new Error('El cliente ya fue asignado o la asignación ya no está disponible');
+    }
+
+    const { data: table, error: tableError } = await supabase
+        .from('restaurant_tables')
+        .select('id, table_number, availability')
+        .eq('id', datos.table_id)
+        .maybeSingle();
+
+    if (tableError) {
+        throw new Error(`Error al consultar la mesa: ${tableError.message}`);
+    }
+
+    if (!table) {
+        throw new Error('La mesa seleccionada no existe');
+    }
+
+    if (table.availability !== 'free') {
+        throw new Error(`La mesa #${table.table_number} ya no está disponible`);
+    }
+
+    const { data: recipient, error: recipientError } = await supabase
+        .from('users')
+        .select('id, role, push_token')
+        .eq('id', waitingRecord.user_id)
+        .in('role', ['registered_client', 'anonymous_client'])
+        .maybeSingle();
+
+    if (recipientError) {
+        throw new Error(`Error al consultar el cliente asignado: ${recipientError.message}`);
+    }
+
+    if (!recipient) {
+        throw new Error('El usuario de la lista de espera no es un cliente válido');
+    }
+
+    const { data: updatedWaiting, error: updateWaitingError } = await supabase
+        .from('waiting_list')
+        .update({
+            status: 'assigned',
+            assigned_table_id: datos.table_id,
         })
         .eq('id', datos.waiting_id)
-        .select('*, users(push_token)') // Traemos el token del cliente relacionado
-        .single();
+        .eq('status', 'waiting')
+        .select('id, user_id, status, assigned_table_id')
+        .maybeSingle();
 
     if (updateWaitingError) {
         throw new Error(`Error al asignar mesa en lista de espera: ${updateWaitingError.message}`);
     }
 
-    // 2. Opcional pero recomendado: Actualizamos la tabla de mesas para marcarla como ocupada
-    // (Ajustá 'estado' u 'ocupada' según los nombres de columnas que tengas en restaurant_tables)
-    const { error: updateTableError } = await supabase
-        .from('restaurant_tables')
-        .update({ status: 'ocupada' }) 
-        .eq('id', datos.table_id);
-
-    if (updateTableError) {
-        console.warn('⚠️ No se pudo actualizar el estado de la mesa:', updateTableError.message);
+    if (!updatedWaiting) {
+        throw new Error('La asignación cambió antes de completarse');
     }
 
-    return waitingRecord;
+    const { data: updatedTable, error: updateTableError } = await supabase
+        .from('restaurant_tables')
+        .update({ availability: 'occupied' })
+        .eq('id', datos.table_id)
+        .eq('availability', 'free')
+        .select('id, table_number, availability')
+        .maybeSingle();
+
+    if (updateTableError || !updatedTable) {
+        const { error: rollbackError } = await supabase
+            .from('waiting_list')
+            .update({
+                status: 'waiting',
+                assigned_table_id: null,
+            })
+            .eq('id', datos.waiting_id)
+            .eq('assigned_table_id', datos.table_id)
+            .eq('status', 'assigned');
+
+        if (rollbackError) {
+            console.error('Error al revertir la asignación:', rollbackError.message);
+        }
+
+        throw new Error(updateTableError?.message || `La mesa #${table.table_number} ya no está disponible`);
+    }
+
+    return {
+        waiting: updatedWaiting,
+        table: updatedTable,
+        recipient,
+    };
 };

@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   Image,
   Modal,
+  ImageSourcePropType,
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -12,6 +13,7 @@ import { supabase } from "../config/supabase";
 import { eliminarClienteAnonimo, ingresarAListaEsperaLocal } from "../services/clienteAnonimoService";
 import { ChineseFrame } from "../components/ChineseFrame";
 import { ConfirmModal } from "../components/ConfirmModal";
+import { FeedbackModal } from "../components/FeedbackModal";
 import { CompanySpinner } from "../components/CompanySpinner";
 
 interface Props {
@@ -30,8 +32,8 @@ interface ModalMensajeInfo {
   visible: boolean;
   titulo: string;
   descripcion: string;
-  tipo: "exito" | "error" | "info";
-  icono: string;
+  tipo: "exito" | "error" | "informacion";
+  iconoImagen?: ImageSourcePropType;
 }
 
 export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) {
@@ -52,8 +54,7 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
     visible: false,
     titulo: "",
     descripcion: "",
-    tipo: "info",
-    icono: "ℹ️",
+    tipo: "informacion",
   });
 
   const [permission, requestPermission] = useCameraPermissions();
@@ -62,16 +63,24 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
   const mostrarMensaje = (
     titulo: string,
     descripcion: string,
-    tipo: "exito" | "error" | "info" = "info",
-    icono: string = "ℹ️"
+    tipo: "exito" | "error" | "informacion" = "informacion",
+    iconoImagen?: ImageSourcePropType
   ) => {
     setModalMensaje({
       visible: true,
       titulo,
       descripcion,
       tipo,
-      icono,
+      iconoImagen,
     });
+  };
+
+  const reanunciarse = () => {
+    setModalCancelado(false);
+    setQrEntradaEscaneado(false);
+    setWaitingListId(null);
+    setMesaAsignada(null);
+    setModoEscaneo("entrada");
   };
 
   // Suscripción Realtime: se activa al escanear la entrada y obtener el id en waiting_list
@@ -102,9 +111,9 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
 
             mostrarMensaje(
               "¡Mesa Asignada!",
-              `El metre te asignó la Mesa #${num}. Por favor, escaneá el QR ubicado en tu mesa para sentarte.`,
+              `El metre te asignó la Mesa #${num}. Por favor, escaneá el QR ubicado en tu mesa para ver el menú.`,
               "exito",
-              "🍽️"
+              require("../../assets/images/food-y.png")
             );
           }
         }
@@ -135,8 +144,7 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
         mostrarMensaje(
           "Permiso Denegado",
           "Se necesita acceso a la cámara para escanear los códigos QR del local.",
-          "error",
-          "📷"
+          "error"
         );
         return;
       }
@@ -167,26 +175,31 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
         if (res.exito && res.waitingId) {
           setWaitingListId(res.waitingId);
           setQrEntradaEscaneado(true);
-          mostrarMensaje(
-            "¡Ingreso Confirmado!",
-            "Escaneaste el QR de la puerta. Ya figurás en la lista de espera del metre.",
-            "exito",
-            "🍜"
-          );
+          if (res.notificado === false) {
+            mostrarMensaje(
+              "Ingreso Registrado",
+              "Ya figurás en la lista de espera, pero no pudimos avisarle al metre por push. Avisale en la puerta.",
+              "error"
+            );
+          } else {
+            mostrarMensaje(
+              "¡Ingreso Confirmado!",
+              "Escaneaste el QR de la puerta. Ya figurás en la lista de espera del metre.",
+              "exito"
+            );
+          }
         } else {
           mostrarMensaje(
             "Error al ingresar",
             res.error || "No se pudo registrar en la lista de espera.",
-            "error",
-            "⚠️"
+            "error"
           );
         }
       } else {
         mostrarMensaje(
           "QR Incorrecto",
           "El código escaneado no corresponde al ingreso del local.",
-          "error",
-          "⚠️"
+          "error"
         );
       }
     } else if (modoEscaneo === "mesa") {
@@ -194,8 +207,7 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
         mostrarMensaje(
           "Sin Mesa Asignada",
           "Aún no tenés una mesa asignada por el metre.",
-          "error",
-          "🚫"
+          "error"
         );
         return;
       }
@@ -211,8 +223,7 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
         mostrarMensaje(
           "Mesa Incorrecta",
           `Esta no es tu mesa. Tu mesa asignada es la #${mesaAsignada.numero}.`,
-          "error",
-          "❌"
+          "error"
         );
       }
     }
@@ -298,7 +309,11 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
             className="h-24 w-24 rounded-full border-2 border-mostaza"
           />
         ) : (
-          <Text className="text-4xl">👤</Text>
+          <Image
+            source={require("../../assets/images/no-photo.jpg")}
+            className="h-24 w-24 rounded-full border-2 border-mostaza"
+            resizeMode="cover"
+          />
         )}
         <Text style={{ fontFamily: "LaOriental" }} className="mt-3 text-2xl text-mostaza">
           Hola, {cliente?.client_name || "Invitado"}
@@ -308,14 +323,23 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
         </Text>
 
         {/* Estado actual */}
-        <View className="mt-3 w-full rounded-xl bg-black/30 p-3">
-          <Text className="text-center text-xs text-amber-200">
-            {mesaAsignada
-              ? `Mesa asignada: #${mesaAsignada.numero}. Por favor, escaneá su código QR para sentarte.`
-              : qrEntradaEscaneado
-              ? "⏳ Esperando asignación de mesa por el metre..."
-              : "Escaneá el QR de la entrada para notificar tu llegada."}
-          </Text>
+        <View className="mt-3 w-full rounded-xl bg-[#FAE9DF] p-3">
+          <View className="flex-row items-center justify-center">
+            {qrEntradaEscaneado && !mesaAsignada && (
+              <Image
+                source={require("../../assets/images/sand-clock-cal.png")}
+                className="mr-2 h-4 w-4"
+                resizeMode="contain"
+              />
+            )}
+            <Text className="text-center text-xs text-calabaza">
+              {mesaAsignada
+                ? `Mesa asignada: #${mesaAsignada.numero}. Por favor, escaneá su código QR para ver el menú.`
+                : qrEntradaEscaneado
+                ? "Esperando asignación de mesa..."
+                : "Escaneá el QR de la entrada para anunciar tu llegada."}
+            </Text>
+          </View>
         </View>
 
         <View className="my-5 w-full border-t border-mostaza/20" />
@@ -336,7 +360,7 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
               Escanear QR
             </Text>
           </TouchableOpacity>
-        ) : (
+        ) : /*Capaz que lo saco*/ (
           <View className="w-full items-center rounded-2xl bg-emerald-950/60 p-3 border border-emerald-500/40">
             <Text className="text-emerald-400 font-bold text-center text-xs">
               ✓ Ingreso confirmado en puerta
@@ -350,9 +374,13 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
             onPress={() => abrirEscaner("mesa")}
             className="mt-3 w-full flex-row items-center justify-center rounded-2xl bg-emerald-600 py-3.5 shadow-md active:bg-emerald-700"
           >
-            <Text className="mr-2 text-xl">🪑</Text>
+            <Image
+              source={require("../../assets/images/table-w.png")}
+              className="mr-2 h-6 w-6"
+              resizeMode="contain"
+            />
             <Text style={{ fontFamily: "LaOriental" }} className="text-sm uppercase text-white">
-              Escanear Mesa #{mesaAsignada.numero}
+              Escanear QR en la Mesa #{mesaAsignada.numero}
             </Text>
           </TouchableOpacity>
         )}
@@ -377,37 +405,14 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
       </ChineseFrame>
 
       {/* MODAL INFORMATIVO PERSONALIZADO (Reemplazo de Alert) */}
-      <Modal visible={modalMensaje.visible} transparent animationType="fade">
-        <View className="flex-1 items-center justify-center bg-black/75 px-6">
-          <View className="w-full max-w-sm rounded-3xl border border-mostaza/50 bg-vino p-6 shadow-2xl">
-            <Text className="text-center text-4xl">{modalMensaje.icono}</Text>
-            <Text
-              style={{ fontFamily: "LaOriental" }}
-              className="mt-2 text-center text-xl text-mostaza"
-            >
-              {modalMensaje.titulo}
-            </Text>
-            <Text className="mt-2 text-center text-xs text-amber-100/90 leading-relaxed">
-              {modalMensaje.descripcion}
-            </Text>
-
-            <TouchableOpacity
-              onPress={() => setModalMensaje((prev) => ({ ...prev, visible: false }))}
-              className={`mt-6 rounded-xl py-3 ${
-                modalMensaje.tipo === "error" ? "bg-terracota" : "bg-mostaza"
-              }`}
-            >
-              <Text
-                className={`text-center text-xs font-bold uppercase ${
-                  modalMensaje.tipo === "error" ? "text-white" : "text-vino"
-                }`}
-              >
-                Entendido
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      <FeedbackModal
+        visible={modalMensaje.visible}
+        tipo={modalMensaje.tipo}
+        titulo={modalMensaje.titulo}
+        mensaje={modalMensaje.descripcion}
+        iconoImagen={modalMensaje.iconoImagen}
+        onClose={() => setModalMensaje((prev) => ({ ...prev, visible: false }))}
+      />
 
       <ConfirmModal
         visible={modalSalir && !saliendo}
@@ -445,7 +450,11 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
       <Modal visible={modalCancelado} transparent animationType="fade">
         <View className="flex-1 items-center justify-center bg-black/80 px-6">
           <View className="w-full max-w-sm rounded-3xl border border-terracota/60 bg-vino p-6 shadow-2xl">
-            <Text className="text-center text-4xl">🚫</Text>
+            <Image
+              source={require("../../assets/images/reject-y.png")}
+              className="mx-auto mb-1 h-14 w-14"
+              resizeMode="contain"
+            />
             <Text
               style={{ fontFamily: "LaOriental" }}
               className="mt-2 text-center text-xl text-mostaza"
@@ -453,17 +462,32 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
               Turno Cancelado
             </Text>
             <Text className="mt-2 text-center text-xs text-amber-100/90 leading-relaxed">
-              El metre ha quitado tu lugar de la lista de espera. Si considerás que fue un error o deseás ingresar nuevamente, podés registrarte otra vez.
+              Te han quitado de la lista de espera. Si considerás que fue un error o deseás ingresar nuevamente, puedes anunciarte otra vez.
             </Text>
+
+            <TouchableOpacity
+              onPress={reanunciarse}
+              className="mt-6 rounded-xl bg-mostaza py-3 shadow"
+            >
+              <Image
+              source={require("../../assets/images/employeeRegistration-v.png")}
+              className="mr-2 h-5 w-5"
+              resizeMode="contain"
+              style={{ transform: [{ translateY: -3 }] }}
+            />
+              <Text style={{ fontFamily: "LaOriental" }} className="text-center text-sm uppercase text-vino">
+                Reanunciarse
+              </Text>
+            </TouchableOpacity>
 
             <TouchableOpacity
               onPress={() => {
                 setModalCancelado(false);
                 onSalir(); // Regresa al login/inicio
               }}
-              className="mt-6 rounded-xl bg-terracota py-3 shadow"
+              className="mt-3 rounded-xl border border-terracota bg-vino py-3 shadow"
             >
-              <Text className="text-center text-xs font-bold uppercase text-white">
+              <Text style={{ fontFamily: "LaOriental" }} className="text-center text-xs uppercase text-mostaza">
                 Volver al Inicio
               </Text>
             </TouchableOpacity>

@@ -66,9 +66,20 @@ export async function obtenerTokenPush(): Promise<string | null> {
   }
 }
 
+const ES_TOKEN_EXPO = /^ExponentPushToken\[[A-Za-z0-9_-]+\]$/;
+const ES_TOKEN_EXPO_LEGACY = /^ExpoPushToken\[[A-Za-z0-9_-]+\]$/;
+
+export function esTokenExpoValido(token?: string | null): boolean {
+  return !!token && (ES_TOKEN_EXPO.test(token) || ES_TOKEN_EXPO_LEGACY.test(token));
+}
+
 // Guarda el token en la columna push_token de la tabla users vía el backend
 export async function guardarTokenEnBackend(token: string): Promise<boolean> {
-  if (!token.startsWith("ExponentPushToken")) return false;
+  if (token.includes("expo-go")) return false;
+  if (!esTokenExpoValido(token)) {
+    console.warn(`⚠️ [Push] Token con formato inválido, no se guarda: ${token}`);
+    return false;
+  }
 
   // En el login local de demo no hay sesión de Supabase → el backend respondería 401
   const tokenSesion = await obtenerTokenValido();
@@ -103,13 +114,13 @@ export async function guardarTokenEnBackend(token: string): Promise<boolean> {
 }
 
 // Flujo completo para cuando el usuario inicia sesión (dueño, supervisor, personal)
-export async function sincronizarPushAlIniciarSesion(): Promise<void> {
+export async function sincronizarPushAlIniciarSesion(): Promise<boolean> {
   try {
     const token = await obtenerTokenPush();
-    if (token) {
-      await guardarTokenEnBackend(token);
-    }
+    if (!token) return false;
+    return await guardarTokenEnBackend(token);
   } catch (error: any) {
     console.warn("⚠️ [Push] Error en la sincronización de notificaciones:", error?.message);
+    return false;
   }
 }

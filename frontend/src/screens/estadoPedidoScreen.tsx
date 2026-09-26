@@ -31,9 +31,10 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos }: Props) {
       const { data, error } = await supabase
         .from("orders")
         .select(`
-          id,
-          status,
-          total_amount,
+           id,
+           status,
+           rejection_reason,
+           total_amount,
           estimated_delivery_time,
           created_at,
           restaurant_tables (table_number),
@@ -91,6 +92,7 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos }: Props) {
   const estadoActual = pedido?.status || "pending";
   const numMesa = pedido?.restaurant_tables?.table_number ?? "S/N";
   const indiceActual = ETAPAS.findIndex((e) => e.clave === estadoActual);
+  const estaCancelado = estadoActual === "cancelled";
 
   return (
     <SafeAreaView className="flex-1 bg-amber-50 px-4 pt-2">
@@ -113,23 +115,33 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos }: Props) {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Banner de Tiempo Estimado */}
-        <View className="mb-5 rounded-2xl border-2 border-mostaza bg-vino p-4 shadow-md">
-          <View className="flex-row items-center justify-between">
-            <View>
-              <Text className="text-xs text-amber-200/80 uppercase font-semibold">
-                Tiempo estimado de cocina
-              </Text>
-              <Text className="text-2xl font-black text-mostaza">
-                ⏱ ~{pedido?.estimated_delivery_time || 15} minutos
-              </Text>
+        {!estaCancelado && (
+          <View className="mb-5 rounded-2xl border-2 border-mostaza bg-vino p-4 shadow-md">
+            <View className="flex-row items-center justify-between">
+              <View>
+                <Text className="text-xs text-amber-200/80 uppercase font-semibold">
+                  Tiempo estimado de cocina
+                </Text>
+                <Text className="text-2xl font-black text-mostaza">
+                  ⏱ ~{pedido?.estimated_delivery_time || 15} minutos
+                </Text>
+              </View>
+              <Text className="text-4xl">🍲</Text>
             </View>
-            <Text className="text-4xl">🍲</Text>
+            <Text className="mt-2 text-xs text-amber-100/70">
+              El tiempo corre desde que el mozo confirmó la comanda.
+            </Text>
           </View>
-          <Text className="mt-2 text-xs text-amber-100/70">
-            El tiempo corre desde que el mozo confirmó la comanda.
-          </Text>
-        </View>
+        )}
+
+        {estaCancelado && (
+          <View className="mb-5 rounded-2xl border-2 border-red-300 bg-red-50 p-4">
+            <Text className="text-lg font-black text-red-800">Pedido rechazado</Text>
+            <Text className="mt-1 text-sm text-red-700">
+              {pedido?.rejection_reason || "El mozo no especificó un motivo."}
+            </Text>
+          </View>
+        )}
 
         {/* Línea de Etapas / Progreso */}
         <View className="mb-5 rounded-2xl border border-mostaza/30 bg-white p-4 shadow-sm">
@@ -139,8 +151,8 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos }: Props) {
 
           <View className="gap-y-4">
             {ETAPAS.map((etapa, idx) => {
-              const completado = idx <= (indiceActual >= 0 ? indiceActual : 0);
-              const activo = idx === indiceActual;
+              const completado = !estaCancelado && idx <= (indiceActual >= 0 ? indiceActual : 0);
+              const activo = !estaCancelado && idx === indiceActual;
 
               return (
                 <View key={etapa.clave} className="flex-row items-center">
@@ -198,7 +210,7 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos }: Props) {
         </View>
 
         {/* Acceso a Juegos mientras espera */}
-        {onIrAJuegos && (
+        {onIrAJuegos && !estaCancelado && (
           <TouchableOpacity
             onPress={onIrAJuegos}
             className="mb-6 flex-row items-center rounded-2xl border-2 border-mostaza bg-calabaza p-4 shadow-md active:bg-vino"
