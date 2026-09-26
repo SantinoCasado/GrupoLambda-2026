@@ -1,13 +1,16 @@
 import "./global.css";
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { registrarPushToken } from "./src/services/pushNotificationClientService";
 import { View, Text, Image, TouchableOpacity, Vibration } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import type { Notification, NotificationResponse } from "expo-notifications";
 import { UsuarioSeed } from "./src/data/usuariosPrecargados";
 import HomeScreen, { HomeDestino } from "./src/screens/homeScreen";
 import { AuthProvider } from "./src/context/AuthContext";
 import { CartProvider } from "./src/context/carritoContext";
-import { getSupabaseClient } from "./src/config/supabase";
-import { ClienteAnonimoSesion } from "./src/services/clienteAnonimoService";
+import { getSupabaseClient, supabase } from "./src/config/supabase";
+import { ClienteAnonimoSesion, eliminarClienteAnonimo } from "./src/services/clienteAnonimoService";
+import { obtenerModuloNotificaciones } from "./src/services/notificationsGateway";
 
 // Pantallas
 import AltaEmpleadoScreen from "./src/screens/altaEmpleadoScreen";
@@ -19,8 +22,15 @@ import { LoginScreen } from "./src/screens/loginScreen";
 import { CartaScreen } from "./src/screens/cartaScreen";
 import { CarritoScreen } from "./src/screens/carritoScreen";
 import ScreenBackground from "./src/components/ScreenBackground";
+import { FeedbackModal } from "./src/components/FeedbackModal";
 import { RegistroAnonimoScreen } from "./src/screens/registroAnonimoScreen";
 import { EsperaMesaScreen } from "./src/screens/esperaMesaScreen";
+import { ChatMozoScreen as ChatScreen } from "./src/screens/chatScreen";
+import { ComandasScreen } from "./src/screens/comandasScreen";
+import { ChatMesasScreen } from "./src/screens/chatMesasScreen";
+import { MetreScreen } from "./src/screens/metreScreen";
+import { EstadoPedidoScreen } from "./src/screens/estadoPedidoScreen";
+import { TicketsScreen } from "./src/screens/ticketsScreen";
 
 const NO_PHOTO = require("./assets/images/no-photo.jpg");
 
@@ -38,8 +48,14 @@ type VistaPrivada =
   | "clientes"
   | "producto"
   | "registro_metre"
+  | "metre"
+  | "comandas"
+  | "chat_mesas"
+  | "chat_mozo"
   | "carta"
-  | "carrito";
+  | "carrito"
+  | "estado_pedido"
+  | "tickets";
 
 export default function App() {
   return (
@@ -54,23 +70,255 @@ export default function App() {
 function AppInterna() {
   const [usuarioActual, setUsuarioActual] = useState<UsuarioSeed | null>(null);
   const [vistaPrivada, setVistaPrivada] = useState<VistaPrivada>("home");
-  const [vistaPublica, setVistaPublica] = useState<"login" | "registro_cliente" | "registro_anonimo" | "espera_mesa">("login");  
+  const [vistaPublica, setVistaPublica] = useState<"login" | "registro_cliente" | "registro_anonimo" | "espera_mesa">("login");
   const [clienteAnonimo, setClienteAnonimo] = useState<ClienteAnonimoSesion | null>(null);
   const [perfilAltaEmpleado, setPerfilAltaEmpleado] = useState<string | null>(null);
   const [tipoCartaSeleccionada, setTipoCartaSeleccionada] = useState<"comida" | "bebida" | "todo">("comida");
+  const [numeroMesaCliente, setNumeroMesaCliente] = useState<number | null>(null);
+  const [enEsperaRegistrado, setEnEsperaRegistrado] = useState(false);
+  const [idMesaCliente, setIdMesaCliente] = useState<string | null>(null);
+  const [idPedidoActivo, setIdPedidoActivo] = useState<string | null>(null);
+  const [notifNuevoClientePendiente, setNotifNuevoClientePendiente] = useState(false);
+  const [rolTickets, setRolTickets] = useState<"cocinero" | "cantinero">("cocinero");
+  const [bannerNotif, setBannerNotif] = useState<{
+    titulo: string;
+    cuerpo: string;
+    datos: any;
+  } | null>(null);
+  const [avisoNotif, setAvisoNotif] = useState<{
+    visible: boolean;
+    tipo: "exito" | "error" | "informacion";
+    titulo: string;
+    mensaje: string;
+  }>({ visible: false, tipo: "informacion", titulo: "", mensaje: "" });
 
-  const cerrarSesion = () => {
-    Vibration.vibrate([0, 50, 50, 50]);
-    getSupabaseClient()?.auth.signOut().catch((error: any) => {
-      console.warn("Error al cerrar sesión en Supabase:", error.message);
+  // Réplicas actualizadas del usuario para usarlas dentro del listener de notificaciones
+  const usuarioActualRef = useRef(usuarioActual);
+  usuarioActualRef.current = usuarioActual;
+
+  // Réplica del cliente anónimo para el listener de notificaciones
+  const clienteAnonimoRef = useRef(clienteAnonimo);
+  clienteAnonimoRef.current = clienteAnonimo;
+
+  // Timer del banner in-app de notificaciones (5 segundos)
+  const bannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const parsearDatosNotificacion = (crudo: any): any => {
+    if (crudo && typeof crudo === "object") return crudo;
+    if (typeof crudo === "string") {
+      try {
+        return JSON.parse(crudo);
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  };
+
+  const navegarConDatos = (datos: any) => {
+    if (!datos) return;
+
+    const usuario = usuarioActualRef.current;
+    const esAdmin = usuario?.perfil === "dueño" || usuario?.perfil === "supervisor";
+    const esClienteRegistrado = usuario?.perfil === "cliente_registrado";
+    const esClienteAnonimo = !usuario && !!clienteAnonimoRef.current;
+
+    switch (datos.tipo) {
+      case "nuevo_cliente":
+        if (usuario && esAdmin) {
+          setVistaPrivada("clientes");
+        } else {
+          setNotifNuevoClientePendiente(true);
+        }
+        return;
+
+      case "actualizacion_lista_espera":
+        if (usuario && (usuario.perfil === "metre" || esAdmin)) {
+          setVistaPrivada("metre");
+        }
+        return;
+
+      case "nuevo_pedido":
+      case "pedido_modificado":
+        if (usuario && (usuario.perfil === "mozo" || esAdmin)) {
+          setVistaPrivada("comandas");
+        }
+        return;
+
+      case "nuevo_pedido_cocina":
+        if (usuario?.perfil === "cocinero") {
+          setRolTickets("cocinero");
+          setVistaPrivada("tickets");
+        }
+        return;
+
+      case "nuevo_pedido_bar":
+        if (usuario?.perfil === "cantinero") {
+          setRolTickets("cantinero");
+          setVistaPrivada("tickets");
+        }
+        return;
+
+      case "mesa_asignada":
+        if (esClienteRegistrado) {
+          setEnEsperaRegistrado(false);
+          setVistaPrivada("home");
+        } else if (esClienteAnonimo) {
+          const anon = clienteAnonimoRef.current!;
+          setUsuarioActual({
+            id: anon.id,
+            perfil: "cliente_anonimo",
+            tituloVisual: "Cliente Anónimo",
+            email: "",
+            clave: "",
+            nombres: anon.client_name,
+            apellidos: "Anónimo",
+            documento: "",
+            foto: anon.client_photo,
+            icono: "🕶️",
+          });
+          setClienteAnonimo(anon);
+          setEnEsperaRegistrado(false);
+          setVistaPrivada("home");
+        }
+        return;
+    }
+
+    // Sin "tipo": estado del pedido para el cliente (orderId + status)
+    if (datos.orderId && datos.status) {
+      if (usuario && (esClienteRegistrado || usuario.perfil === "cliente_anonimo")) {
+        setIdPedidoActivo(datos.orderId);
+        setVistaPrivada("estado_pedido");
+      }
+      return;
+    }
+
+    // Sin "tipo": cuenta aprobada/rechazada para el cliente (statusActualizado)
+    if (typeof datos.statusActualizado === "string") {
+      const aprobada = datos.statusActualizado === "approved";
+      setAvisoNotif({
+        visible: true,
+        tipo: aprobada ? "exito" : "informacion",
+        titulo: aprobada ? "¡Cuenta Aprobada! 🎉" : "Actualización de cuenta",
+        mensaje: aprobada
+          ? "Ya podés ingresar a la app del restaurante."
+          : "Tu solicitud de registro fue rechazada por el local.",
+      });
+      return;
+    }
+  };
+
+  const manejarRespuestaNotificacion = (respuesta?: NotificationResponse | null) => {
+    const datos = parsearDatosNotificacion(respuesta?.notification?.request?.content?.data);
+    if (datos) navegarConDatos(datos);
+  };
+
+  const manejarNotificacionRecibida = (notificacion: Notification) => {
+    const datos = parsearDatosNotificacion(notificacion?.request?.content?.data);
+    if (!datos) return;
+
+    setBannerNotif({
+      titulo: notificacion.request.content.title || "",
+      cuerpo: notificacion.request.content.body || "",
+      datos,
     });
-    setUsuarioActual(null);
-    setVistaPrivada("home");
-    setVistaPublica("login");
+
+    if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
+    bannerTimerRef.current = setTimeout(() => setBannerNotif(null), 5000);
+  };
+
+  const tocarBanner = () => {
+    const banner = bannerNotif;
+    if (!banner) return;
+    setBannerNotif(null);
+    if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
+    navegarConDatos(banner.datos);
+  };
+
+  const cerrarBanner = () => {
+    if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
+    setBannerNotif(null);
+  };
+
+  useEffect(() => {
+    const Notifications = obtenerModuloNotificaciones();
+    if (!Notifications) return;
+
+    // App abierta tocando la notificación (cold start)
+    try {
+      manejarRespuestaNotificacion(Notifications.getLastNotificationResponse());
+    } catch (error: any) {
+      console.warn("⚠️ [Push] No se pudo leer la última respuesta de notificación:", error?.message);
+    }
+
+    // App abierta y el usuario toca la notificación del sistema → navega directo
+    const suscripcionRespuesta = Notifications.addNotificationResponseReceivedListener(
+      manejarRespuestaNotificacion
+    );
+
+    // Notificación recibida con la app en primer plano → banner in-app de 5 segundos
+    const suscripcionRecibida = Notifications.addNotificationReceivedListener(
+      manejarNotificacionRecibida
+    );
+
+    return () => {
+      suscripcionRespuesta.remove();
+      suscripcionRecibida.remove();
+      if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
+    };
+  }, []);
+
+  const cerrarSesion = async () => {
+    Vibration.vibrate([0, 50, 50, 50]);
+
+    try {
+      const clienteId = usuarioActual?.id || clienteAnonimo?.user_id || clienteAnonimo?.id;
+
+      if (clienteId) {
+        // 1. Busca si tenía entrada en waiting_list (por si tiene mesa asignada)
+        const { data: espera } = await supabase
+          .from("waiting_list")
+          .select("id, assigned_table_id")
+          .eq("user_id", clienteId)
+          .maybeSingle();
+
+        // 2. Si tenía mesa asignada, la libera a 'free'
+        if (espera?.assigned_table_id) {
+          await supabase
+            .from("restaurant_tables")
+            .update({ availability: "free" })
+            .eq("id", espera.assigned_table_id);
+        }
+
+        // 3. Borra la entrada de la lista de espera
+        if (espera?.id) {
+          await supabase.from("waiting_list").delete().eq("id", espera.id);
+        }
+
+        // 4. Si era anónimo, limpia el usuario temporal y su foto
+        if (usuarioActual?.perfil === "cliente_anonimo" || clienteAnonimo) {
+          const foto = clienteAnonimo?.client_photo || usuarioActual?.foto;
+          await eliminarClienteAnonimo(clienteId, foto);
+        }
+      }
+    } catch (err: any) {
+      console.warn("⚠️ Error durante la limpieza al cerrar sesión:", err.message);
+    } finally {
+      getSupabaseClient()?.auth.signOut().catch((error: any) => {
+        console.warn("Error al cerrar sesión en Supabase:", error.message);
+      });
+      setUsuarioActual(null);
+      setClienteAnonimo(null);
+      setNumeroMesaCliente(null);
+      setIdMesaCliente(null);
+      setIdPedidoActivo(null); // Limpieza al salir
+      setVistaPrivada("home");
+      setVistaPublica("login");
+    }
   };
 
   const irA = (destino: HomeDestino, parametro?: string) => {
-    setVistaPrivada(destino);
+    setVistaPrivada(destino as VistaPrivada);
     if (destino === "empleados" && parametro) {
       setPerfilAltaEmpleado(parametro);
     }
@@ -84,7 +332,8 @@ function AppInterna() {
     setVistaPrivada("home");
   };
 
-  // 1. Vistas Públicas
+  const renderVista = () => {
+    // 1. Vistas Públicas
   if (!usuarioActual) {
     if (vistaPublica === "registro_cliente") {
       return (
@@ -123,6 +372,31 @@ function AppInterna() {
               setClienteAnonimo(null);
               setVistaPublica("login");
             }}
+            onMesaConfirmada={async (numMesa) => {
+              const anon = clienteAnonimo;
+              if (!anon) return;
+              const { data: mesaData } = await supabase
+                .from("restaurant_tables")
+                .select("id")
+                .eq("table_number", numMesa)
+                .maybeSingle();
+              setIdMesaCliente(mesaData?.id ?? null);
+              setNumeroMesaCliente(numMesa);
+              setUsuarioActual({
+                id: anon.id,
+                perfil: "cliente_anonimo",
+                tituloVisual: "Cliente Anónimo",
+                email: "",
+                clave: "",
+                nombres: anon.client_name,
+                apellidos: "Anónimo",
+                documento: "",
+                foto: anon.client_photo,
+                icono: "🕶️",
+              });
+              setClienteAnonimo(anon);
+              setVistaPrivada("home");
+            }}
           />
         </>
       );
@@ -132,15 +406,98 @@ function AppInterna() {
       <>
         <ScreenBackground />
         <LoginScreen
-          onLoginSuccess={(usuario) => {
+          onLoginSuccess={async (usuario) => {
             setUsuarioActual(usuario);
-            setVistaPrivada("home");
+            registrarPushToken(usuario.id);
+
+            if (
+              notifNuevoClientePendiente &&
+              (usuario.perfil === "dueño" || usuario.perfil === "supervisor")
+            ) {
+              setNotifNuevoClientePendiente(false);
+              setVistaPrivada("clientes");
+              return;
+            }
+
+            if (usuario.perfil === "cliente_registrado") {
+              // 1. Consulta si ya tiene mesa activa en waiting_list
+              const { data: espera } = await supabase
+                .from("waiting_list")
+                .select("assigned_table_id, status")
+                .eq("user_id", usuario.id)
+                .maybeSingle();
+
+              if (espera?.assigned_table_id && espera.status === "seated") {
+                const { data: mesaData } = await supabase
+                  .from("restaurant_tables")
+                  .select("id, table_number")
+                  .eq("id", espera.assigned_table_id)
+                  .maybeSingle();
+
+                setIdMesaCliente(mesaData?.id ?? espera.assigned_table_id);
+                setNumeroMesaCliente(mesaData?.table_number ?? 1);
+                setEnEsperaRegistrado(false);
+              } else {
+                setNumeroMesaCliente(null);
+                setEnEsperaRegistrado(true);
+              }
+
+              // 2. Consulta si tiene comanda activa en preparación
+              const { data: pedidoEnCurso } = await supabase
+                .from("orders")
+                .select("id")
+                .eq("client_id", usuario.id)
+                .in("status", ["pending", "in_preparation", "ready"])
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              if (pedidoEnCurso) {
+                setIdPedidoActivo(pedidoEnCurso.id);
+              } else {
+                setIdPedidoActivo(null);
+              }
+
+              setVistaPrivada("home");
+            } else {
+              setVistaPrivada("home");
+            }
           }}
           onNavigateRegistroCliente={() => {
             setVistaPublica("registro_cliente");
           }}
           onNavigateRegistroAnonimo={() => {
             setVistaPublica("registro_anonimo");
+          }}
+        />
+      </>
+    );
+  }
+
+  // 1.1 Si el cliente registrado está en espera o en la puerta
+  if (usuarioActual && usuarioActual.perfil === "cliente_registrado" && enEsperaRegistrado) {
+    return (
+      <>
+        <ScreenBackground />
+        <EsperaMesaScreen
+          cliente={{
+            id: usuarioActual.id,
+            user_id: usuarioActual.id,
+            client_name: `${usuarioActual.nombres} ${usuarioActual.apellidos}`,
+            client_photo: usuarioActual.foto || "",
+            status: "door",
+          }}
+          onSalir={cerrarSesion}
+          onMesaConfirmada={async (numMesa) => {
+            setNumeroMesaCliente(numMesa);
+            const { data: mesaData } = await supabase
+              .from("restaurant_tables")
+              .select("id")
+              .eq("table_number", numMesa)
+              .maybeSingle();
+            if (mesaData?.id) setIdMesaCliente(mesaData.id);
+            setEnEsperaRegistrado(false);
+            setVistaPrivada("home");
           }}
         />
       </>
@@ -184,7 +541,14 @@ function AppInterna() {
 
         <View className="flex-1">
           <ScreenBackground />
-          <HomeScreen usuario={usuarioActual} onNavigate={irA} />
+          <HomeScreen
+            usuario={usuarioActual}
+            onNavigate={irA}
+            numeroMesa={numeroMesaCliente}
+            onSolicitarMesa={() => setEnEsperaRegistrado(true)}
+            pedidoActivoId={idPedidoActivo}
+            onVerEstadoPedido={() => setVistaPrivada("estado_pedido")}
+          />
         </View>
       </SafeAreaView>
     );
@@ -196,11 +560,15 @@ function AppInterna() {
       ? esAdmin
       : vistaPrivada === "producto"
       ? esProducto
-      : vistaPrivada === "registro_metre"
-      ? usuarioActual.perfil === "metre"
+      : vistaPrivada === "tickets"
+      ? usuarioActual.perfil === "cocinero" || usuarioActual.perfil === "cantinero"
+      : vistaPrivada === "registro_metre" || vistaPrivada === "metre"
+      ? usuarioActual.perfil === "metre" || esAdmin
+      : vistaPrivada === "comandas" || vistaPrivada === "chat_mesas"
+      ? usuarioActual.perfil === "mozo" || esAdmin
       : vistaPrivada === "carta"
       ? esProducto || esCliente
-      : vistaPrivada === "carrito"
+      : vistaPrivada === "carrito" || vistaPrivada === "estado_pedido"
       ? esCliente
       : true;
 
@@ -209,7 +577,14 @@ function AppInterna() {
       <SafeAreaView className="flex-1 bg-vino">
         <View className="flex-1">
           <ScreenBackground />
-          <HomeScreen usuario={usuarioActual} onNavigate={irA} />
+          <HomeScreen
+            usuario={usuarioActual}
+            onNavigate={irA}
+            numeroMesa={numeroMesaCliente}
+            onSolicitarMesa={() => setEnEsperaRegistrado(true)}
+            pedidoActivoId={idPedidoActivo}
+            onVerEstadoPedido={() => setVistaPrivada("estado_pedido")}
+          />
         </View>
       </SafeAreaView>
     );
@@ -262,24 +637,161 @@ function AppInterna() {
             categoria={usuarioActual.perfil === "cocinero" ? "comida" : "bebida"}
           />
         )}
-        {vistaPrivada === "registro_metre" && <RegistroClienteScreen modo="metre" />}
+        {vistaPrivada === "metre" && (
+          <MetreScreen
+            onCerrarSesion={cerrarSesion}
+          />
+        )}
+        {vistaPrivada === "registro_metre" && (
+          <RegistroClienteScreen
+            modo="cliente"
+            usuarioLogueado
+            mostrarBotonVolverAlLogin={false}
+            onVolverAlLogin={volverAlInicio}
+          />
+        )}
         {vistaPrivada === "carta" && (
           <CartaScreen
             tipo={tipoCartaSeleccionada}
             rolUsuario={usuarioActual.perfil}
+            numeroMesa={numeroMesaCliente ?? undefined}
             onVolver={volverAlInicio}
             onIrAlCarrito={() => setVistaPrivada("carrito")}
+            onAbrirChatMozo={() => setVistaPrivada("chat_mozo")}
           />
         )}
+
+        {/* Carrito / Comanda */}
         {vistaPrivada === "carrito" && (
           <CarritoScreen
+            numeroMesa={numeroMesaCliente || 1}
+            clienteId={usuarioActual.id}
             onVolver={volverAlInicio}
-            onConfirmarPedido={() => {
-              // Lógica de confirmación
+            onPedidoConfirmado={(pedido) => {
+              setIdPedidoActivo(pedido.id);
+              setVistaPrivada("estado_pedido");
             }}
+          />
+        )}
+
+        {/* Seguimiento de Estado del Pedido */}
+        {vistaPrivada === "estado_pedido" && (
+          <EstadoPedidoScreen
+            pedidoId={idPedidoActivo || ""}
+            onVolver={volverAlInicio}
+            onIrAJuegos={() => {
+              // Navegación a juegos de la mesa
+            }}
+          />
+        )}
+
+        {/* Comandas del Mozo */}
+        {vistaPrivada === "comandas" && (
+          <ComandasScreen usuarioActual={usuarioActual} />
+        )}
+
+        {/* Tickets de Cocina / Bar */}
+        {vistaPrivada === "tickets" && (
+          <TicketsScreen rol={rolTickets} />
+        )}
+
+        {/* Chat de Mesas del Mozo */}
+        {vistaPrivada === "chat_mesas" && (
+          <ChatMesasScreen
+            usuarioActual={usuarioActual}
+            onAbrirChatMesa={(tableId, numMesa) => {
+              setIdMesaCliente(tableId);
+              setNumeroMesaCliente(numMesa);
+              setVistaPrivada("chat_mozo");
+            }}
+          />
+        )}
+
+        {/* Chat con el Mozo */}
+        {vistaPrivada === "chat_mozo" && (
+          <ChatScreen
+            tableId={idMesaCliente || ""}
+            numeroMesa={numeroMesaCliente || 1}
+            usuarioActual={usuarioActual}
+            onVolver={() => setVistaPrivada(usuarioActual.perfil === "mozo" ? "chat_mesas" : "home")}
           />
         )}
       </View>
     </SafeAreaView>
+  );
+  };
+
+  // Banner in-app + avisos globales superpuestos a cualquier vista
+  return (
+    <>
+      {renderVista()}
+      {bannerNotif && (
+        <BannerNotificacion
+          titulo={bannerNotif.titulo}
+          cuerpo={bannerNotif.cuerpo}
+          onPress={tocarBanner}
+          onCerrar={cerrarBanner}
+        />
+      )}
+      <FeedbackModal
+        visible={avisoNotif.visible}
+        tipo={avisoNotif.tipo}
+        titulo={avisoNotif.titulo}
+        mensaje={avisoNotif.mensaje}
+        onClose={() => setAvisoNotif((prev) => ({ ...prev, visible: false }))}
+      />
+    </>
+  );
+}
+
+function BannerNotificacion({
+  titulo,
+  cuerpo,
+  onPress,
+  onCerrar,
+}: {
+  titulo: string;
+  cuerpo: string;
+  onPress: () => void;
+  onCerrar: () => void;
+}) {
+  const insets = useSafeAreaInsets();
+
+  return (
+    <View
+      className="absolute left-3 right-3 z-50 overflow-hidden rounded-2xl border-2 border-mostaza bg-vino shadow-2xl"
+      style={{ top: insets.top + 8 }}
+    >
+      <TouchableOpacity
+        onPress={onPress}
+        className="flex-1 flex-row items-start px-4 py-3 active:bg-terracota/50"
+      >
+        <View className="mr-3 mt-0.5 h-9 w-9 items-center justify-center rounded-full bg-mostaza/20">
+          <Text className="text-lg">🔔</Text>
+        </View>
+        <View className="flex-1 pr-6">
+          <Text
+            style={{ fontFamily: "LaOriental" }}
+            className="text-sm uppercase tracking-wide text-mostaza"
+            numberOfLines={1}
+          >
+            {titulo}
+          </Text>
+          <Text className="mt-0.5 text-xs text-amber-100/90" numberOfLines={2}>
+            {cuerpo}
+          </Text>
+          <Text className="mt-1 text-[10px] font-bold uppercase text-amber-200/70">
+            Tocá para ver →
+          </Text>
+        </View>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={onCerrar}
+        className="absolute right-2 top-2 h-7 w-7 items-center justify-center rounded-full bg-black/20"
+      >
+        <Text className="text-xs font-bold text-amber-200">✕</Text>
+      </TouchableOpacity>
+    </View>
   );
 }

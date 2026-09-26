@@ -3,6 +3,20 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
 
 import App from './App';
+import { obtenerModuloNotificaciones } from './src/services/notificationsGateway';
+
+const Notifications = obtenerModuloNotificaciones();
+if (Notifications) {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowBanner: true,
+      shouldShowList: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldVibrate: true,
+    }),
+  });
+}
 
 function Root() {
   const [fontsLoaded] = useFonts({

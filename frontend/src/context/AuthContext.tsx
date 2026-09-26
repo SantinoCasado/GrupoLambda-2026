@@ -1,8 +1,9 @@
 // src/context/AuthContext.tsx
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
 import { Session } from "@supabase/supabase-js";
 import { getSupabaseClient } from "../config/supabase";
 import { obtenerTokenValido } from "../services/tokenService";
+import { sincronizarPushAlIniciarSesion } from "../services/pushNotificationsService";
 
 interface AuthContextValue {
   sesion: Session | null;
@@ -16,6 +17,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const supabase = getSupabaseClient();
   const [sesion, setSesion] = useState<Session | null>(null);
   const [cargandoSesion, setCargandoSesion] = useState(true);
+  const usuarioSincronizado = useRef<string | null>(null);
 
   useEffect(() => {
     if (!supabase) {
@@ -43,6 +45,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       suscripcion.subscription.unsubscribe();
     };
   }, [supabase]);
+
+  // Registra el dispositivo para notificaciones push una sola vez por sesión
+  useEffect(() => {
+    if (!sesion?.user?.id) return;
+    if (usuarioSincronizado.current === sesion.user.id) return;
+
+    usuarioSincronizado.current = sesion.user.id;
+    sincronizarPushAlIniciarSesion();
+  }, [sesion]);
 
   return (
     <AuthContext.Provider

@@ -12,6 +12,36 @@ export interface ClienteFormErrors {
   fotoUri?: string;
 }
 
+// Validación del Paso 1 (identificación personal, previo a credenciales y foto)
+export function validarPaso1Cliente(data: {
+  nombres: string;
+  apellidos: string;
+  dni: string;
+}): Partial<ClienteFormErrors> {
+  const errors: Partial<ClienteFormErrors> = {};
+
+  if (!data.nombres.trim()) {
+    errors.nombres = "El nombre es obligatorio.";
+  } else if (data.nombres.trim().length < 2) {
+    errors.nombres = "El nombre debe tener al menos 2 caracteres.";
+  }
+
+  if (!data.apellidos.trim()) {
+    errors.apellidos = "El apellido es obligatorio.";
+  } else if (data.apellidos.trim().length < 2) {
+    errors.apellidos = "El apellido debe tener al menos 2 caracteres.";
+  }
+
+  const dniLimpio = data.dni.trim();
+  if (!dniLimpio) {
+    errors.dni = "El número de DNI es obligatorio.";
+  } else if (!/^\d{8}$/.test(dniLimpio)) {
+    errors.dni = "El DNI debe contener 8 dígitos numéricos.";
+  }
+
+  return errors;
+}
+
 // Validaciones estrictas de todos los campos
 export function validateClienteForm(data: {
   nombres: string;
@@ -76,22 +106,29 @@ export async function registrarCliente(payload: {
   email: string;
   password: string;
   fotoUri: string;
+  pushToken?: string | null;
 }) {
   // Armamos la foto como archivo multipart en el campo "foto" (multer)
-  const formData = new FormData();
-  formData.append("email", payload.email.trim().toLowerCase());
-  formData.append("password", payload.password);
-  formData.append("first_name", payload.nombres.trim());
-  formData.append("last_name", payload.apellidos.trim());
-  formData.append("dni", payload.dni.trim());
-  const fotoFile = new File(payload.fotoUri);
-  formData.append("foto", fotoFile, fileNameFromUri(payload.fotoUri));
+  const armarFormData = (conPushToken: boolean) => {
+    const formData = new FormData();
+    formData.append("email", payload.email.trim().toLowerCase());
+    formData.append("password", payload.password);
+    formData.append("first_name", payload.nombres.trim());
+    formData.append("last_name", payload.apellidos.trim());
+    formData.append("dni", payload.dni.trim());
+    if (conPushToken && payload.pushToken) {
+      formData.append("push_token", payload.pushToken);
+    }
+    const fotoFile = new File(payload.fotoUri);
+    formData.append("foto", fotoFile, fileNameFromUri(payload.fotoUri));
+    return formData;
+  };
 
-  try {
+  const enviar = async (conPushToken: boolean) => {
     const response = await fetch(`${API_BASE_URL}/clientes/register`, {
       method: "POST",
       headers: await headersConToken(),
-      body: formData,
+      body: armarFormData(conPushToken),
     });
 
     const data = await response.json();
@@ -99,15 +136,29 @@ export async function registrarCliente(payload: {
       throw new Error(data.message || data.error || "No se pudo registrar el cliente.");
     }
     return data;
-  } catch (error: any) {
-    console.error("❌ Error en el registro de cliente:", error.message);
+  };
 
-    return {
-      status: "ERROR",
-      mensaje:
-        "Ocurrió un problema al procesar su solicitud de registro. Por favor, intente nuevamente o acérquese al personal del local.",
-      detalle: error.message,
-    };
+  try {
+    return await enviar(Boolean(payload.pushToken));
+  } catch (error: any) {
+    // Si la columna push_token aún no existe en Supabase, reintentamos sin el token
+    // para que el registro igualmente prospere y avisamos cómo corregirlo.
+    const sugiereColumnaFaltante = /push_token|column/i.test(error.message || "");
+    if (payload.pushToken && sugiereColumnaFaltante) {
+      console.warn(
+        "⚠️ [Push] El backend rechazó push_token (¿columna faltante?). Reintentando el registro sin token.",
+        "Corre en Supabase: ALTER TABLE public.users ADD COLUMN IF NOT EXISTS push_token text;"
+      );
+      try {
+        return await enviar(false);
+      } catch (errorReintento: any) {
+        console.error("❌ Error en el registro de cliente:", errorReintento.message);
+        throw errorReintento;
+      }
+    }
+
+    console.error("❌ Error en el registro de cliente:", error.message);
+    throw error;
   }
 }
 
