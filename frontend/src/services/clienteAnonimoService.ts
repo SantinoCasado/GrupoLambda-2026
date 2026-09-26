@@ -2,6 +2,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { decode } from "base64-arraybuffer";
 import { supabase } from "../config/supabase";
 import { API_URL } from "../config/api";
+import { esTokenExpoValido, guardarTokenEnBackend, obtenerTokenPush } from "./pushNotificationsService";
 
 export interface ClienteAnonimoSesion {
   id: string; // ID temporal / userId
@@ -77,6 +78,26 @@ export async function registrarClienteAnonimo(
       throw new Error(`Error al registrar usuario: ${userError.message}`);
     }
 
+    try {
+      const pushToken = await obtenerTokenPush();
+
+      if (pushToken && esTokenExpoValido(pushToken) && !pushToken.includes("expo-go")) {
+        const guardadoEnBackend = await guardarTokenEnBackend(pushToken);
+        if (!guardadoEnBackend) {
+          const { error: tokenError } = await supabase
+            .from("users")
+            .update({ push_token: pushToken })
+            .eq("id", anonUserId);
+
+          if (tokenError) {
+            throw new Error(tokenError.message);
+          }
+        }
+      }
+    } catch (error: any) {
+      console.warn("⚠️ No se pudo registrar el token push del cliente anónimo:", error.message);
+    }
+
     return {
       exito: true,
       cliente: {
@@ -101,7 +122,7 @@ export async function ingresarAListaEsperaLocal(
   userId: string,
   clientName: string,
   clientPhoto: string
-): Promise<{ exito: boolean; waitingId?: string; error?: string }> {
+): Promise<{ exito: boolean; waitingId?: string; error?: string; notificado?: boolean }> {
   try {
     // Pegamos al backend para que además despache la Push Notification a los Metres
     const response = await fetch(`${API_URL}/api/clientes/ingresar`, {
@@ -117,7 +138,7 @@ export async function ingresarAListaEsperaLocal(
     if (response.ok) {
       const json = await response.json();
       const waitingRecord = json.data || json.waitingRecord;
-      return { exito: true, waitingId: waitingRecord?.id };
+      return { exito: true, waitingId: waitingRecord?.id, notificado: true };
     }
   } catch (err: any) {
     console.warn("⚠️ Falló backend lista-espera, fallback directo a Supabase:", err.message);
@@ -141,7 +162,7 @@ export async function ingresarAListaEsperaLocal(
     return { exito: false, error: error.message };
   }
 
-  return { exito: true, waitingId: data.id };
+  return { exito: true, waitingId: data.id, notificado: false };
 }
 
 /* 3. Limpieza al salir */

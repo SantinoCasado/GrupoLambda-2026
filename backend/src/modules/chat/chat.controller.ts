@@ -1,8 +1,9 @@
-import { Request, Response } from 'express';
+import { Response } from 'express';
+import { AuthRequest } from '../../middleware/auth.middleware';
 import { enviarMensajeService, listarMensajesService } from './chat.service';
 import { enviarMensajeSchema } from './schema/chat.schema';
 
-export const enviarMensaje = async (req: Request, res: Response) => {
+export const enviarMensaje = async (req: AuthRequest, res: Response) => {
   const validacion = enviarMensajeSchema.safeParse(req.body);
 
   if (!validacion.success) {
@@ -12,13 +13,24 @@ export const enviarMensaje = async (req: Request, res: Response) => {
     });
   }
 
+  if (!req.user) {
+    return res.status(401).json({ error: 'Usuario no autenticado' });
+  }
+
   try {
-    const nuevoMensaje = await enviarMensajeService(validacion.data);
+    // El remitente siempre se toma de la sesión, nunca del body.
+    const { sender_id: _senderIdDelBody, ...datosDelBody } = validacion.data;
+
+    const resultado = await enviarMensajeService(
+      { ...datosDelBody, sender_id: req.user.id },
+      req.user.role
+    );
 
     return res.status(201).json({
       status: 'OK',
       mensaje: 'Mensaje enviado correctamente!',
-      data: nuevoMensaje,
+      data: resultado.mensaje,
+      notificacionEnviada: resultado.notificacionEnviada,
     });
   } catch (error: any) {
     return res.status(500).json({
@@ -28,7 +40,7 @@ export const enviarMensaje = async (req: Request, res: Response) => {
   }
 };
 
-export const listarMensajes = async (req: Request, res: Response) => {
+export const listarMensajes = async (req: AuthRequest, res: Response) => {
   const { table_id } = req.query;
 
   try {

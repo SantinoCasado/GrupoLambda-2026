@@ -1,5 +1,4 @@
 // src/screens/carritoScreen.tsx
-import { notificarMozos } from "../services/pushNotificationClientService";
 import React, { useState, useRef, useEffect } from "react";
 import { View, Text, FlatList, TouchableOpacity, Image, Alert, ActivityIndicator, Modal } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -98,12 +97,6 @@ export function CarritoScreen({
       if (!pedidoId) {
         throw new Error("No se pudo identificar el pedido creado.");
       }
-
-      await notificarMozos(
-        `🍽️ Nuevo Pedido - Mesa #${numeroMesa}`,
-        `Comanda por $${total.toLocaleString("es-AR")} lista para ser revisada y confirmada.`,
-        { order_id: pedidoId, table_id: orden.table_id }
-      );
 
       setPedidoCreado(orden);
       setModalEsperaMozo(true);

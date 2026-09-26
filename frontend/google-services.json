@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "483212830668",
+    "project_id": "jardinimperial",
+    "storage_bucket": "jardinimperial.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:483212830668:android:9cfc8ceafc98d340991f69",
+        "android_client_info": {
+          "package_name": "com.grupolambda.JardnImperial"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCiodO3uxpHD4ecB2jI8_D7GhcqmVfpQJI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

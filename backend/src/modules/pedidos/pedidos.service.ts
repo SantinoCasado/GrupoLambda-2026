@@ -99,7 +99,7 @@ export const guardarPedido = async (
     const { data: mozos } = await supabase
       .from('users')
       .select('push_token')
-      .eq('role', 'mozo')
+      .eq('role', 'waiter')
       .not('push_token', 'is', null);
 
     if (mozos && mozos.length > 0) {
@@ -107,9 +107,9 @@ export const guardarPedido = async (
         if (mozo.push_token) {
           await enviarPushNotification(
             mozo.push_token,
-            '📝 Nuevo pedido a confirmar',
-            `La Mesa #${numeroMesa} armó su pedido. Revisalo para enviarlo a preparación.`,
-            { orderId: ordenCreada.id, tipo: 'nuevo_pedido' }
+            '¡Nueva comanda!',
+            'Comanda pendiente de aprobación',
+            { orderId: ordenCreada.id, table_id: tableId, tipo: 'nuevo_pedido' }
           );
         }
       }
@@ -179,9 +179,10 @@ export const confirmarPedidoPorMozo = async (
     updated_at: new Date().toISOString(),
   };
 
-  
-  if (nuevoEstado === 'cancelled' && rejectionReason) {
-    updatePayload.rejection_reason = rejectionReason;
+  const motivoRechazo = rejectionReason?.trim() || null;
+
+  if (nuevoEstado === 'cancelled' && motivoRechazo) {
+    updatePayload.rejection_reason = motivoRechazo;
   }
 
   const { data: pedidoActualizado, error: errorUpdate } = await supabase
@@ -199,24 +200,33 @@ export const confirmarPedidoPorMozo = async (
   // PUSH NOTIFICATION: Mozo confirmó o rechazó el pedido
   // ========================================================
   try {
-    // 1. Avisarle al cliente 
     if (pedidoActual.client_id) {
-      const { data: clienteData } = await supabase
+      const { data: clienteData, error: errorCliente } = await supabase
         .from('users')
         .select('push_token')
         .eq('id', pedidoActual.client_id)
-        .single();
+        .maybeSingle();
 
-      if (clienteData?.push_token) {
+      if (errorCliente) {
+        console.error('No se pudo consultar el token push del cliente:', errorCliente.message);
+      } else if (!clienteData?.push_token) {
+        console.warn('El cliente no tiene un token push registrado:', pedidoActual.client_id);
+      } else {
         const titulo = nuevoEstado === 'in_preparation' ? '👨‍🍳 ¡Pedido en Preparación!' : '❌ Pedido Cancelado';
         const cuerpo = nuevoEstado === 'in_preparation'
           ? 'El mozo confirmó tu pedido y ya se encuentra en cocina.'
-          : `Lo sentimos, tu pedido fue rechazado. Motivo: ${rejectionReason || 'No especificado'}`;
+          : `Lo sentimos, tu pedido fue rechazado. Motivo: ${motivoRechazo || 'No especificado'}`;
 
-        await enviarPushNotification(clienteData.push_token, titulo, cuerpo, {
+        const pushEnviada = await enviarPushNotification(clienteData.push_token, titulo, cuerpo, {
           orderId: idPedido,
-          status: nuevoEstado
+          status: nuevoEstado,
+          tipo: 'estado_pedido',
+          rejectionReason: motivoRechazo,
         });
+
+        if (!pushEnviada) {
+          console.error('Expo Push no pudo entregar la notificación al cliente:', pedidoActual.client_id);
+        }
       }
     }
 
@@ -456,7 +466,7 @@ export const modificarPedidoRechazado = async (
     const { data: mozos } = await supabase
       .from('users')
       .select('push_token')
-      .eq('role', 'mozo')
+      .eq('role', 'waiter')
       .not('push_token', 'is', null);
 
     if (mozos && mozos.length > 0) {
@@ -534,7 +544,7 @@ export const marcarItemComoListoService = async(itemId: string) => {
       const { data: mozos } = await supabase
         .from('users')
         .select('push_token')
-        .eq('role', 'mozo')
+        .eq('role', 'waiter')
         .not('push_token', 'is', null)
 
       if (mozos && mozos.length > 0){
