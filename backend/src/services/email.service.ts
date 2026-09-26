@@ -96,7 +96,7 @@ export const enviarNotificacionAprobacion = async (email: string, nombre: string
         </html>
     `;
     try {
-        await transporter.sendMail({
+        const info = await transporter.sendMail({
             from: `"Jardin Imperial" <${process.env.GMAIL_USER}>`,
             to: email,
             subject: asunto,
