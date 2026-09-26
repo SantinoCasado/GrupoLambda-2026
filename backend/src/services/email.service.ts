@@ -112,8 +112,11 @@ export const enviarNotificacionAprobacion = async (email: string, nombre: string
         }
 
         return true; // <-- Devuelve true si todo salió bien
-    } catch (error) {
-        console.error('❌ Error enviando mail con Nodemailer:', error);
-        return false; // <-- Devuelve false si falló
+    } catch (error: any) {
+        console.error('❌ Error enviando mail en Render:');
+        console.error('Mensaje:', error.message);
+        console.error('Código:', error.code);
+        console.error('Comando:', error.command);
+        return false; 
     }
 };
