@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChineseFrame } from "../components/ChineseFrame";
+import { TeamNames } from "../components/TeamNames";
 import { StatusBar } from "expo-status-bar";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   View,
@@ -50,7 +49,6 @@ export default function AltaMesaScreen() {
   const [mesaQr, setMesaQr] = useState<Mesa | null>(null);
   const [mesas, setMesas] = useState<Mesa[]>([]);
   const [mesaActualizando, setMesaActualizando] = useState<number | null>(null);
-  const insets = useSafeAreaInsets();
 
   // Cámara en vivo (misma estrategia que Alta Empleados, evita reinicios de la app)
   const [permission, requestPermission] = useCameraPermissions();
@@ -307,16 +305,11 @@ export default function AltaMesaScreen() {
 
   return (
     <>
-      <SafeAreaView className="flex-1">
+      <View className="flex-1">
         <StatusBar style="light" />
 
         {/* Nombres del equipo */}
-        <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + 16 }}>
-          <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
-          <Text className="text-[10px] text-vino/70">Santino Casado</Text>
-          <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
-          <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
-        </View>
+        <TeamNames className="absolute right-4 z-10" style={{ top: 16 }} />
 
         {/* Cabecera idéntica a Alta Empleados */}
         <View className="px-5 pt-4">
@@ -810,7 +803,7 @@ export default function AltaMesaScreen() {
         />
 
         <CompanySpinner visible={isLoading} />
-      </SafeAreaView>
+      </View>
     </>
   );
 }

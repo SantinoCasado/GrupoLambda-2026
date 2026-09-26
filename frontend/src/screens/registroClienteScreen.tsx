@@ -18,6 +18,7 @@ import { validateClienteForm, validarPaso1Cliente, registrarCliente, ClienteForm
 import { obtenerTokenPush } from "../services/pushNotificationsService";
 import { FeedbackModal } from "../components/FeedbackModal";
 import { CompanySpinner } from "../components/CompanySpinner";
+import { TeamNames } from "../components/TeamNames";
 import { ChineseFrame } from "../components/ChineseFrame";
 
 interface Props {
@@ -291,16 +292,14 @@ export default function RegistroClienteScreen({
         </TouchableOpacity>
       )}
 
-{/* Nombres del equipo */}
-      <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + (modo === "metre" || usuarioLogueado ? 16 : 60) }}>
-        <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
-        <Text className="text-[10px] text-vino/70">Santino Casado</Text>
-        <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
-        <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
-      </View>
+      {/* Nombres del equipo */}
+      <TeamNames
+        className="absolute right-4 z-10"
+        style={{ top: modo === "metre" || usuarioLogueado ? 16 : insets.top + 60 }}
+      />
 
       {/* Cabecera */}
-      <View className={`px-5 ${modo === "metre" || usuarioLogueado ? "pt-4" : "pt-16"}`}>
+      <View className={`px-5 ${modo === "metre" || usuarioLogueado ? "pt-4" : "pt-28"}`}>
         <View className="mb-4">
           <Image
             source={require("../../assets/images/logo-name.png")}

@@ -21,6 +21,7 @@ interface CartContextProps {
   restarDelCarrito: (itemId: string) => void; // 👈 Nuevo
   eliminarDelCarrito: (itemId: string) => void;
   vaciarCarrito: () => void;
+  reemplazarCarrito: (items: ItemCarrito[]) => void;
   total: number;
   tiempoEstimadoTotal: number;
 }
@@ -61,6 +62,35 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const vaciarCarrito = () => setCarrito([]);
 
+  /**
+   * Reemplaza por completo el contenido del carrito. Se usa al recuperar un
+   * pedido rechazado para restaurar los ítems con su cantidad original.
+   * Si el pedido tuviera dos filas del mismo producto, se suman en una sola.
+   */
+  const reemplazarCarrito = (items: ItemCarrito[]) => {
+    const agrupado = new Map<string, ItemCarrito>();
+
+    for (const item of items) {
+      const cantidad = Math.max(1, Math.floor(Number(item.cantidad) || 1));
+      const precio = Number(item.precio);
+      const base: ItemCarrito = {
+        ...item,
+        cantidad,
+        precio: Number.isFinite(precio) ? precio : 0,
+        tiempoElaboracion: Number(item.tiempoElaboracion) || 0,
+        fotos: Array.isArray(item.fotos) ? item.fotos : [],
+      };
+
+      const existente = agrupado.get(item.id);
+      agrupado.set(item.id, {
+        ...base,
+        cantidad: (existente?.cantidad ?? 0) + cantidad,
+      });
+    }
+
+    setCarrito(Array.from(agrupado.values()));
+  };
+
   const total = carrito.reduce((acc, item) => acc + item.precio * item.cantidad, 0);
 
   const tiempoEstimadoTotal = carrito.reduce(
@@ -76,6 +106,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         restarDelCarrito,
         eliminarDelCarrito,
         vaciarCarrito,
+        reemplazarCarrito,
         total,
         tiempoEstimadoTotal,
       }}

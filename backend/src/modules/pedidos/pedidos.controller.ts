@@ -78,7 +78,7 @@ export const confirmarPedido = async (req: Request, res: Response) => {
 };
 
 // Punto 13: Cliente modifica pedido rechazado
-export const modificarPedido = async (req: Request, res: Response) => {
+export const modificarPedido = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
     const { productos } = req.body;
@@ -89,7 +89,11 @@ export const modificarPedido = async (req: Request, res: Response) => {
       });
     }
 
-    const resultado = await modificarPedidoRechazado(id as string, productos);
+    const resultado = await modificarPedidoRechazado(
+      id as string,
+      productos,
+      req.user!.id
+    );
 
     return res.status(200).json({
       status: 'OK',
@@ -97,8 +101,16 @@ export const modificarPedido = async (req: Request, res: Response) => {
       data: resultado,
     });
   } catch (error: any) {
-    return res.status(400).json({
-      error: 'Error al modificar el pedido',
+    const esPermiso = error.message?.includes('permiso');
+    const noExiste = error.message?.includes('no existe');
+    const estadoInvalido = error.message?.includes('rechazados/cancelados');
+
+    const status = esPermiso ? 403 : noExiste || estadoInvalido ? 409 : 500;
+
+    return res.status(status).json({
+      error: esPermiso
+        ? 'No tenés permiso para modificar este pedido'
+        : 'Error al modificar el pedido',
       detalle: error.message,
     });
   }

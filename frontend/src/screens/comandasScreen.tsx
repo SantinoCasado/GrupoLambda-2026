@@ -2,6 +2,7 @@ import { FeedbackModal } from "../components/FeedbackModal";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { CompanySpinner } from "../components/CompanySpinner";
 import { ChineseFrame } from "../components/ChineseFrame";
+import { TeamNames } from "../components/TeamNames";
 import React, { useState, useEffect, useRef } from "react";
 import {
   View,
@@ -13,7 +14,6 @@ import {
   Dimensions,
   TextInput,
 } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { supabase } from "../config/supabase";
 import { confirmarPedidoPorMozoApi } from "../services/pedidosService";
@@ -23,7 +23,6 @@ interface Props {
 }
 
 export function ComandasScreen({ usuarioActual }: Props) {
-  const insets = useSafeAreaInsets();
   const [pedidosPendientes, setPedidosPendientes] = useState<any[]>([]);
   const [cargando, setCargando] = useState(true);
   const [procesandoId, setProcesandoId] = useState<string | null>(null);
@@ -189,16 +188,11 @@ export function ComandasScreen({ usuarioActual }: Props) {
   };
 
   return (
-    <SafeAreaView className="flex-1">
+    <View className="flex-1">
       <StatusBar style="light" />
 
       {/* Nombres del equipo */}
-      <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + 16 }}>
-        <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
-        <Text className="text-[10px] text-vino/70">Santino Casado</Text>
-        <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
-        <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
-      </View>
+      <TeamNames className="absolute right-4 z-10" style={{ top: 16 }} />
 
       {/* Cabecera */}
       <View className="px-5 pt-4">
@@ -447,6 +441,6 @@ export function ComandasScreen({ usuarioActual }: Props) {
         mensaje={modalFeedback.mensaje}
         onClose={() => setModalFeedback((prev) => ({ ...prev, visible: false }))}
       />
-    </SafeAreaView>
+    </View>
   );
 }
