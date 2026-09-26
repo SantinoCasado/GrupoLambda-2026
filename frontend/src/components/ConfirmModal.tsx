@@ -1,15 +1,17 @@
-import React from "react";
+import React, { ReactNode } from "react";
 import { Modal, View, Text, Image, TouchableOpacity } from "react-native";
 import { ChineseFrame } from "./ChineseFrame";
 
 interface ConfirmModalProps {
   visible: boolean;
   titulo: string;
-  mensaje?: string;
+  mensaje?: string | ReactNode;
   textoConfirmar?: string;
   textoCancelar?: string;
   cargando?: boolean;
+  confirmarDeshabilitado?: boolean;
   tipo?: "confirmar" | "peligro";
+  children?: ReactNode;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -21,7 +23,9 @@ export function ConfirmModal({
   textoConfirmar = "Confirmar",
   textoCancelar = "Cancelar",
   cargando = false,
+  confirmarDeshabilitado = false,
   tipo = "confirmar",
+  children,
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
@@ -29,7 +33,7 @@ export function ConfirmModal({
   const icono = esPeligro
     ? require("../../assets/images/important-y.png")
     : require("../../assets/images/confirm-y.png");
-  const colorBoton = esPeligro ? "bg-terracota" : "bg-mostaza";
+  const colorBoton = "bg-mostaza";
   const colorBotonActivo = esPeligro ? "active:bg-rose-700" : "active:bg-amber-600";
 
   return (
@@ -45,6 +49,8 @@ export function ConfirmModal({
               {mensaje}
             </Text>
 
+            {children}
+
             <View className="w-full flex-row gap-3">
               <TouchableOpacity
                 onPress={onCancel}
@@ -57,8 +63,10 @@ export function ConfirmModal({
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={onConfirm}
-                disabled={cargando}
-                className={`flex-1 rounded-2xl py-3.5 ${colorBoton} ${colorBotonActivo}`}
+                disabled={cargando || confirmarDeshabilitado}
+                className={`flex-1 rounded-2xl py-3.5 ${colorBoton} ${colorBotonActivo} ${
+                  confirmarDeshabilitado ? "opacity-50" : ""
+                }`}
               >
                 <Text style={{ fontFamily: "LaOriental" }} className="text-center uppercase tracking-wider text-vino">
                   {textoConfirmar}

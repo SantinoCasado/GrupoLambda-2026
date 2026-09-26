@@ -6,6 +6,34 @@ import { supabase } from '../../config/supabase';
 import { AuthRequest } from '../../middleware/auth.middleware';
 import { enviarPushNotification } from '../../services/pushNotifications.service';
 
+const notificarActualizacionListaEspera = async (clientName: string): Promise<void> => {
+    try {
+        const { data: metres, error: fetchError } = await supabase
+            .from('users')
+            .select('push_token')
+            .eq('role', 'maitre')
+            .not('push_token', 'is', null);
+
+        if (fetchError) {
+            console.error('⚠️ Error buscando metres para notificar:', fetchError);
+            return;
+        }
+
+        for (const metre of metres ?? []) {
+            if (metre.push_token) {
+                await enviarPushNotification(
+                    metre.push_token,
+                    '¡Nuevo cliente en espera!',
+                    `${clientName} se anotó en la lista de espera.`,
+                    { tipo: 'actualizacion_lista_espera' }
+                );
+            }
+        }
+    } catch (notifError) {
+        console.error('⚠️ Error al procesar notificaciones al metre:', notifError);
+    }
+};
+
 export const registrarCliente = async (req: Request, res: Response): Promise<Response> => {
     // Verifica que el archivo "foto" haya llegado
     if (!req.file) {
@@ -84,6 +112,7 @@ export const registrarClienteAnonimo = async (req: Request, res: Response): Prom
     try {
         // Llamada del servicio para registrar un cliente anonimo en la lista de espera
         const nuevoAnonimo = await registrarClienteAnonimoService(validacion.data);
+        await notificarActualizacionListaEspera(validacion.data.client_name);
 
         return res.status(201).json({ 
             mensaje: 'Cliente anónimo agregado a la lista de espera con éxito.',
@@ -184,7 +213,7 @@ export const ingresarListaEspera = async (req: Request, res: Response): Promise<
                 .insert([{
                     name: client_name,
                     photo: client_photo,
-                    role: 'cliente_anonimo', // O el rol anónimo que uses en tu base
+                    role: 'anonymous_client', // Debe coincidir con el rol que usan el resto de las consultas
                     status: 'approved'       // Los anónimos entran directo
                 }])
                 .select('id')
@@ -204,31 +233,7 @@ export const ingresarListaEspera = async (req: Request, res: Response): Promise<
             client_photo 
         });
 
-        // Logica de notificaciones al metre 
-        try {
-            const { data: metres, error: fetchError } = await supabase
-                .from('users')
-                .select('push_token')
-                .eq('role', 'metre')
-                .not('push_token', 'is', null);
-
-            if (fetchError) {
-                console.error('⚠️ Error buscando metres para notificar:', fetchError);
-            } else if (metres && metres.length > 0) {
-                for (const metre of metres) {
-                    if (metre.push_token) {
-                        await enviarPushNotification(
-                            metre.push_token,
-                            '¡Nuevo cliente en espera!',
-                            `${client_name} se anotó en la lista de espera.`,
-                            { tipo: 'actualizacion_lista_espera' } 
-                        );
-                    }
-                }
-            }
-        } catch (notifError) {
-            console.error('⚠️ Error al procesar notificaciones al metre:', notifError);
-        }
+        await notificarActualizacionListaEspera(client_name);
 
         return res.status(201).json({ 
             message: 'Anotado en la lista de espera con éxito', 

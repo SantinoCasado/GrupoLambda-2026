@@ -122,29 +122,38 @@ export const asignarMesa = async (req: AuthRequest, res: Response): Promise<Resp
     }
 
     try {
-        // 1. Ejecutamos la lógica de BD en el servicio
         const resultado = await asignarMesaService({ waiting_id, table_id });
+        let notificacionEnviada = false;
 
-        // 2. Disparamos la notificación al CLIENTE (si tiene token guardado)
-        // Como hicimos el select('*, users(push_token)') en el servicio, lo sacamos de ahí
-        const tokenCliente = resultado.users?.push_token;
-
-        if (tokenCliente) {
+        if (!resultado.recipient.push_token) {
+            console.warn(
+                `⚠️ Mesa #${resultado.table.table_number} asignada sin push: el cliente ${resultado.recipient.id} no tiene push_token.`
+            );
+        } else {
             try {
-                await enviarPushNotification(
-                    tokenCliente,
+                notificacionEnviada = await enviarPushNotification(
+                    resultado.recipient.push_token,
                     '¡Tu mesa está lista! 🍽️',
-                    'El metre te ha asignado una mesa. Por favor, acercate para sentarte.',
-                    { tipo: 'mesa_asignada', table_id: table_id } // Data para que la app del cliente reaccione
+                    `Te asignamos la mesa #${resultado.table.table_number}. Acercate para sentarte.`,
+                    {
+                        tipo: 'mesa_asignada',
+                        table_id,
+                        table_number: resultado.table.table_number,
+                        waiting_id,
+                    }
                 );
             } catch (notifError) {
                 console.error('⚠️ Error al notificar al cliente:', notifError);
             }
         }
 
-        return res.status(200).json({ 
-            message: 'Mesa asignada con éxito', 
-            data: resultado 
+        return res.status(200).json({
+            message: 'Mesa asignada con éxito',
+            notificacionEnviada,
+            data: {
+                waiting: resultado.waiting,
+                table: resultado.table,
+            },
         });
 
     } catch (error: any) {

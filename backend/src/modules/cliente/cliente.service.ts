@@ -198,10 +198,10 @@ export const ingresarClienteListaService = async (datos: DatosListaEspera) => {
     const { data: waitingRecord, error: insertError } = await supabase
         .from('waiting_list')
         .insert([{ 
-            user_id: datos.user_id, 
-            client_name: datos.client_name, 
-            client_photo: datos.client_photo 
-            // status asume 'waiting' por defecto
+            user_id: datos.user_id,
+            client_name: datos.client_name,
+            client_photo: datos.client_photo,
+            status: 'waiting'
         }])
         .select()
         .single();

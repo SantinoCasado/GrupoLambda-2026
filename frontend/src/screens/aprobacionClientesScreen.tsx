@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, ReactNode } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
@@ -8,8 +8,9 @@ import {
   ScrollView,
   Image,
   Vibration,
+  ImageSourcePropType,
   ActivityIndicator,
-  Modal,
+  Dimensions,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import {
@@ -18,13 +19,28 @@ import {
   responderSolicitudCliente,
 } from "../services/aprobacionClientesService";
 import { FeedbackModal } from "../components/FeedbackModal";
+import { CompanySpinner } from "../components/CompanySpinner";
 import { ChineseFrame } from "../components/ChineseFrame";
+import { ConfirmModal } from "../components/ConfirmModal";
 
 export default function AprobacionClientesScreen() {
   const [clientes, setClientes] = useState<ClientePendiente[]>([]);
   const [cargando, setCargando] = useState(true);
   const [procesandoId, setProcesandoId] = useState<string | null>(null);
+  const [procesandoAccion, setProcesandoAccion] = useState<"aprobado" | "rechazado" | null>(null);
+  const [clienteAEliminar, setClienteAEliminar] = useState<string | null>(null);
+  const [fotoCargando, setFotoCargando] = useState(true);
   const insets = useSafeAreaInsets();
+
+  // Carrusel horizontal de solicitudes (2 por página)
+  const scrollRef = useRef<ScrollView>(null);
+  const [pagina, setPagina] = useState(0);
+  const screenWidth = Dimensions.get("window").width;
+  const CLIENTES_POR_PAGINA = 2;
+  const agrupados: ClientePendiente[][] = [];
+  for (let i = 0; i < clientes.length; i += CLIENTES_POR_PAGINA) {
+    agrupados.push(clientes.slice(i, i + CLIENTES_POR_PAGINA));
+  }
 
   // Modal de confirmación previa a la acción
   const [confirmacion, setConfirmacion] = useState<{
@@ -42,7 +58,8 @@ export default function AprobacionClientesScreen() {
     visible: boolean;
     tipo: "exito" | "error" | "informacion";
     titulo: string;
-    mensaje: string;
+    mensaje: string | ReactNode;
+    iconoImagen?: ImageSourcePropType;
   }>({
     visible: false,
     tipo: "informacion",
@@ -72,6 +89,13 @@ export default function AprobacionClientesScreen() {
     cargarLista();
   }, []);
 
+  // Si la página actual queda fuera de rango (por ejemplo al aprobar/rechazar), la ajusta.
+  useEffect(() => {
+    if (agrupados.length > 0 && pagina >= agrupados.length) {
+      setPagina(agrupados.length - 1);
+    }
+  }, [agrupados.length]);
+
   const abrirConfirmacion = (cliente: ClientePendiente, accion: "aprobado" | "rechazado") => {
     ejecutarVibracion("toque");
     setConfirmacion({
@@ -88,21 +112,49 @@ export default function AprobacionClientesScreen() {
 
     setConfirmacion((prev) => ({ ...prev, visible: false }));
     setProcesandoId(id);
+    setProcesandoAccion(accion);
 
-    // Optimistic UI: lo remueve inmediatamente de la lista
-    setClientes((prev) => prev.filter((c) => c.id !== id));
+    try {
+      const { correoEnviado } = await responderSolicitudCliente(id, accion);
 
-    const res = await responderSolicitudCliente(id, accion);
-    setProcesandoId(null);
+      ejecutarVibracion(accion === "aprobado" ? "exito" : "error");
 
-    ejecutarVibracion(accion === "aprobado" ? "exito" : "error");
-
-    setModalFeedback({
-      visible: true,
-      tipo: accion === "aprobado" ? "exito" : "informacion",
-      titulo: accion === "aprobado" ? "Cliente Aprobado" : "Cliente Rechazado",
-      mensaje: `${nombres} ${apellidos}: ${res.mensaje}`,
-    });
+      setClienteAEliminar(id);
+      setModalFeedback({
+        visible: true,
+        tipo: accion === "aprobado" ? "exito" : "error",
+        titulo: accion === "aprobado" ? "Cliente Aprobado" : "Cliente Rechazado",
+        mensaje: (
+          <>
+            Cliente/a{" "}
+            <Text className="font-bold uppercase">
+              {nombres} {apellidos}
+            </Text>{" "}
+            fue{" "}
+            <Text className="font-bold uppercase">
+              {accion === "aprobado" ? "aprobado/a" : "rechazado/a"}
+            </Text>{" "}
+            correctamente{correoEnviado ? " Se le envió un correo de notificación." : "."}
+          </>
+        ),
+        ...(accion === "rechazado"
+          ? { iconoImagen: require("../../assets/images/reject-w.png") }
+          : {}),
+      });
+    } catch (error: any) {
+      ejecutarVibracion("error");
+      // La solicitud NO se quitó de la lista: sigue pendiente y se puede reintentar.
+      setClienteAEliminar(null);
+      setModalFeedback({
+        visible: true,
+        tipo: "error",
+        titulo: "Error al procesar la solicitud",
+        mensaje: error?.message || "No se pudo procesar la solicitud. Inténtelo nuevamente.",
+      });
+    } finally {
+      setProcesandoId(null);
+      setProcesandoAccion(null);
+    }
   };
 
   return (
@@ -140,23 +192,20 @@ export default function AprobacionClientesScreen() {
                   Pendientes: <Text className="font-extrabold text-mostaza uppercase">{clientes.length}</Text> • Dueño o Supervisor
                 </Text>
               </View>
-            </ChineseFrame>
+</ChineseFrame>
           </View>
         </View>
 
-        {/* Lista de Solicitudes */}
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 50, paddingTop: 6 }}
-        >
+        {/* Lista de Solicitudes (carrusel horizontal) */}
+        <View className="flex-1">
           {cargando ? (
             <View className="py-20 items-center justify-center">
               <ActivityIndicator size="large" color="#8B1A1A" />
               <Text className="mt-3 text-xs font-bold text-vino">Cargando solicitudes...</Text>
             </View>
           ) : clientes.length === 0 ? (
-            <View className="items-center justify-center rounded-2xl border border-dashed border-mostaza/60 bg-white/70 p-8 mt-6">
-              <Text className="text-4xl mb-2">✨</Text>
+            <View className="items-center justify-center bg-transparent p-8 mt-6">
+              <Image source={require("../../assets/images/yoga-y.png")} className="mb-3 h-12 w-12" resizeMode="contain" />
               <Text
                 style={{ fontFamily: "LaOriental" }}
                 className="text-base uppercase text-vino text-center"
@@ -168,155 +217,173 @@ export default function AprobacionClientesScreen() {
               </Text>
               <TouchableOpacity
                 onPress={cargarLista}
-                className="mt-4 rounded-xl border border-mostaza bg-mostaza/20 px-4 py-2"
+                className="mt-3 rounded-xl border border-calabaza bg-caramelo/10 px-4 py-2"
               >
-                <Text className="text-xs font-bold text-vino">Actualizar Lista</Text>
+                <Text className="text-xs font-bold text-calabaza">Actualizar Lista</Text>
               </TouchableOpacity>
             </View>
           ) : (
-            clientes.map((cliente) => {
-              const estaProcesando = procesandoId === cliente.id;
-
-              return (
-                <View
-                  key={cliente.id}
-                  className="mb-4 rounded-2xl border-2 border-caramelo bg-[#FFFDF9] p-4 shadow-md"
-                >
-                  {/* Cabecera de la Tarjeta con Tag de Fecha */}
-                  <View className="flex-row justify-between items-center mb-3">
-                    <View className="flex-row items-center">
-                      <View className="h-2.5 w-2.5 rounded-full bg-amber-500 mr-2" />
-                      <Text className="text-[11px] font-bold text-amber-800 uppercase tracking-wide">
-                        Solicitud Pendiente
-                      </Text>
-                    </View>
-                    <Text className="text-[10px] text-stone-500 font-semibold">
-                      {cliente.fechaRegistro}
-                    </Text>
-                  </View>
-
-                  {/* Contenedor Individual de Foto con Buen Tamaño + Datos */}
-                  <View className="flex-row items-center">
-                    <View className="mr-4 items-center justify-center rounded-2xl border-2 border-mostaza p-1 bg-[#FBE9DF]">
-                      <Image
-                        source={{ uri: cliente.fotoUri }}
-                        className="h-28 w-28 rounded-xl"
-                        resizeMode="cover"
-                      />
-                    </View>
-
-                    {/* Datos del Cliente */}
-                    <View className="flex-1">
-                      <Text className="text-base font-black text-vino">
-                        {cliente.apellidos}, {cliente.nombres}
-                      </Text>
-
-                      <View className="mt-1 flex-row items-center">
-                        <Text className="text-xs font-bold text-terracota">DNI: </Text>
-                        <Text className="text-xs font-semibold text-stone-700">{cliente.dni}</Text>
-                      </View>
-
-                      <View className="mt-1">
-                        <Text className="text-xs font-bold text-terracota">Email: </Text>
-                        <Text
-                          className="text-[11px] text-stone-700"
-                          numberOfLines={1}
-                          ellipsizeMode="tail"
-                        >
-                          {cliente.email}
-                        </Text>
-                      </View>
-
-                      <View className="mt-2 self-start rounded-md bg-mostaza/20 px-2 py-0.5 border border-mostaza/50">
-                        <Text className="text-[9px] font-bold text-amber-900">
-                          Requiere Aprobación
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-
-                  {/* Botones de Control: Aceptar o Rechazar */}
-                  <View className="mt-4 flex-row justify-between gap-3 border-t border-stone-200 pt-3">
-                    {/* Botón Rechazar */}
-                    <TouchableOpacity
-                      onPress={() => abrirConfirmacion(cliente, "rechazado")}
-                      disabled={estaProcesando}
-                      className="flex-1 flex-row items-center justify-center rounded-xl border border-terracota bg-[#FBE9DF] py-2.5 active:bg-rose-200"
+            <>
+              <ScrollView
+                ref={scrollRef}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={(e) => {
+                  setPagina(Math.round(e.nativeEvent.contentOffset.x / screenWidth));
+                }}
+                style={{ flex: 1 }}
+              >
+                {agrupados.map((grupo, index) => (
+                  <View key={index} style={{ width: screenWidth }} className="flex-1 px-5 pt-2">
+                    <ScrollView
+                      nestedScrollEnabled
+                      showsVerticalScrollIndicator={false}
+                      className="flex-1"
+                      contentContainerStyle={{ paddingBottom: 20, gap: 16 }}
                     >
-                      <Text className="text-xs font-bold text-terracota">✖ Rechazar</Text>
-                    </TouchableOpacity>
+                      {grupo.map((cliente) => {
+                        const estaProcesando = procesandoId === cliente.id;
 
-                    {/* Botón Aceptar */}
-                    <TouchableOpacity
-                      onPress={() => abrirConfirmacion(cliente, "aprobado")}
-                      disabled={estaProcesando}
-                      className="flex-1 flex-row items-center justify-center rounded-xl border border-amber-500 bg-mostaza py-2.5 active:bg-amber-600 shadow-sm"
-                    >
-                      <Text className="text-xs font-black text-vino uppercase">✔ Aceptar</Text>
-                    </TouchableOpacity>
+                        return (
+                          <View
+                            key={cliente.id}
+                            className="rounded-2xl border-2 border-caramelo bg-[#FFFDF9] p-4 shadow-md"
+                          >
+                            {/* Cabecera de la Tarjeta con Tag de Fecha */}
+                            <View className="flex-row justify-between items-center mb-3">
+                              <View className="flex-row items-center">
+                                <View className="h-2.5 w-2.5 rounded-full bg-amber-500 mr-2" />
+                                <Text className="text-[11px] font-bold text-amber-800 uppercase tracking-wide">
+                                  Solicitud Pendiente
+                                </Text>
+                              </View>
+                              <Text className="text-[10px] text-stone-500 font-semibold">
+                                {cliente.fechaRegistro}
+                              </Text>
+                            </View>
+
+                            {/* Contenedor Individual de Foto con Buen Tamaño + Datos */}
+                            <View className="flex-row items-center">
+                              <View className="mr-4 items-center justify-center rounded-2xl border-2 border-mostaza p-1 bg-[#FBE9DF] relative overflow-hidden">
+                                {fotoCargando && (
+                                  <View className="absolute inset-0 items-center justify-center">
+                                    <ActivityIndicator size="small" color="#8B1A1A" />
+                                  </View>
+                                )}
+                                <Image
+                                  source={{ uri: cliente.fotoUri }}
+                                  className="h-28 w-28 rounded-xl"
+                                  resizeMode="cover"
+                                  onLoadStart={() => setFotoCargando(true)}
+                                  onLoadEnd={() => setFotoCargando(false)}
+                                  onError={() => setFotoCargando(false)}
+                                />
+                              </View>
+
+                              {/* Datos del Cliente */}
+                              <View className="flex-1">
+                                <Text className="text-base font-black text-vino">
+                                  {cliente.apellidos}, {cliente.nombres}
+                                </Text>
+
+                                <View className="mt-2">
+                                  <Text className="text-[10px] font-bold text-terracota uppercase tracking-wide">
+                                    DNI:
+                                  </Text>
+                                  <Text className="text-sm  text-stone-700">
+                                    – {cliente.dni}
+                                  </Text>
+                                </View>
+
+                                <View className="mt-2">
+                                  <Text className="text-[10px] font-bold text-terracota tracking-wide">
+                                    Correo Electrónico:
+                                  </Text>
+                                  <Text
+                                    className="text-sm text-stone-700"
+                                    numberOfLines={1}
+                                    ellipsizeMode="tail"
+                                  >
+                                    – {cliente.email}
+                                  </Text>
+                                </View>
+                              </View>
+                            </View>
+
+                            {/* Botones de Control: Aceptar o Rechazar */}
+                            <View className="mt-4 flex-row justify-between gap-3 border-t border-stone-200 pt-3">
+                              {/* Botón Rechazar */}
+                              <TouchableOpacity
+                                onPress={() => abrirConfirmacion(cliente, "rechazado")}
+                                disabled={estaProcesando}
+                                className="flex-1 flex-row items-center justify-center rounded-xl border border-terracota bg-[#FBE9DF] py-2.5 active:bg-rose-200"
+                              >
+                                <Image source={require("../../assets/images/cross-c.png")} className="mr-1.5 h-3 w-3" resizeMode="contain" />
+                                <Text className="text-xs font-bold text-terracota">Rechazar</Text>
+                              </TouchableOpacity>
+
+                              {/* Botón Aceptar */}
+                              <TouchableOpacity
+                                onPress={() => abrirConfirmacion(cliente, "aprobado")}
+                                disabled={estaProcesando}
+                                className="flex-1 flex-row items-center justify-center rounded-xl border border-amber-500 bg-mostaza py-2.5 active:bg-amber-600 shadow-sm"
+                              >
+                                <Image source={require("../../assets/images/tick-v.png")} className="mr-1.5 h-5 w-5" resizeMode="contain" />
+                                <Text className="text-xs font-black text-vino uppercase">Aceptar</Text>
+                              </TouchableOpacity>
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </ScrollView>
                   </View>
+                ))}
+              </ScrollView>
+
+              {agrupados.length > 1 && (
+                <View className="flex-row items-center justify-center gap-2 py-0 mb-5">
+                  {agrupados.map((_, i) => (
+                    <View
+                      key={i}
+                      className={`h-2 w-2 rotate-45 ${pagina === i ? "bg-vino" : "bg-mostaza/30"}`}
+                    />
+                  ))}
                 </View>
-              );
-            })
+              )}
+            </>
           )}
-        </ScrollView>
+        </View>
 
         {/* Modal de Confirmación */}
-        <Modal
+        <ConfirmModal
           visible={confirmacion.visible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setConfirmacion((p) => ({ ...p, visible: false }))}
-        >
-          <View className="flex-1 items-center justify-center bg-black/60 px-6">
-            <View className="w-full rounded-2xl border-2 border-mostaza bg-[#FFF6EC] p-6 shadow-2xl">
-              <Text
-                style={{ fontFamily: "LaOriental" }}
-                className="text-xl uppercase text-vino text-center mb-2"
-              >
-                {confirmacion.accion === "aprobado" ? "Aprobar Cliente" : "Rechazar Cliente"}
+          titulo={confirmacion.accion === "aprobado" ? "Aprobar Cliente" : "Rechazar Cliente"}
+          mensaje={
+            <>
+              ¿Está seguro de que desea{" "}
+              <Text className="font-bold">
+                {confirmacion.accion === "aprobado" ? "APROBAR" : "RECHAZAR"}
+              </Text>{" "}
+              a{" "}
+              <Text className="font-bold text-mostaza">
+                {confirmacion.cliente?.nombres} {confirmacion.cliente?.apellidos}
               </Text>
+              ? Se enviará un correo automático informandole.
+            </>
+          }
+          textoConfirmar="Confirmar"
+          textoCancelar="Cancelar"
+          tipo={confirmacion.accion === "aprobado" ? "confirmar" : "peligro"}
+          onConfirm={ejecutarDecision}
+          onCancel={() => setConfirmacion((p) => ({ ...p, visible: false }))}
+        />
 
-              <Text className="text-center text-xs text-stone-700 mb-4">
-                ¿Está seguro de que desea{" "}
-                <Text className="font-bold">
-                  {confirmacion.accion === "aprobado" ? "APROBAR" : "RECHAZAR"}
-                </Text>{" "}
-                a{" "}
-                <Text className="font-bold text-vino">
-                  {confirmacion.cliente?.nombres} {confirmacion.cliente?.apellidos}
-                </Text>
-                ? Se enviará un correo automático informando la situación.
-              </Text>
-
-              <View className="flex-row gap-3">
-                <TouchableOpacity
-                  onPress={() => setConfirmacion((p) => ({ ...p, visible: false }))}
-                  className="flex-1 rounded-xl border border-stone-400 bg-stone-200 py-2.5 items-center"
-                >
-                  <Text className="text-xs font-bold text-stone-700">Cancelar</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={ejecutarDecision}
-                  className={`flex-1 rounded-xl py-2.5 items-center border ${
-                    confirmacion.accion === "aprobado"
-                      ? "bg-mostaza border-amber-600"
-                      : "bg-terracota border-rose-900"
-                  }`}
-                >
-                  <Text
-                    className={`text-xs font-black uppercase ${
-                      confirmacion.accion === "aprobado" ? "text-vino" : "text-white"
-                    }`}
-                  >
-                    Confirmar
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
+        {/* Spinner de proceso de la solicitud */}
+        <CompanySpinner
+          visible={procesandoAccion !== null}
+          mensaje={procesandoAccion === "aprobado" ? "Aprobando cliente..." : "Rechazando cliente..."}
+        />
 
         {/* Modal de Feedback */}
         <FeedbackModal
@@ -324,7 +391,14 @@ export default function AprobacionClientesScreen() {
           tipo={modalFeedback.tipo}
           titulo={modalFeedback.titulo}
           mensaje={modalFeedback.mensaje}
-          onClose={() => setModalFeedback((prev) => ({ ...prev, visible: false }))}
+          iconoImagen={modalFeedback.iconoImagen}
+          onClose={() => {
+            if (clienteAEliminar) {
+              setClientes((prev) => prev.filter((c) => c.id !== clienteAEliminar));
+              setClienteAEliminar(null);
+            }
+            setModalFeedback((prev) => ({ ...prev, visible: false }));
+          }}
         />
       </SafeAreaView>
     </>

@@ -1,8 +1,11 @@
 // src/context/AuthContext.tsx
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, useRef, ReactNode } from "react";
+import { AppState } from "react-native";
 import { Session } from "@supabase/supabase-js";
 import { getSupabaseClient } from "../config/supabase";
 import { obtenerTokenValido } from "../services/tokenService";
+import { guardarTokenEnBackend, sincronizarPushAlIniciarSesion } from "../services/pushNotificationsService";
+import { obtenerModuloNotificaciones } from "../services/notificationsGateway";
 
 interface AuthContextValue {
   sesion: Session | null;
@@ -16,6 +19,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const supabase = getSupabaseClient();
   const [sesion, setSesion] = useState<Session | null>(null);
   const [cargandoSesion, setCargandoSesion] = useState(true);
+  const usuarioSincronizado = useRef<string | null>(null);
 
   useEffect(() => {
     if (!supabase) {
@@ -43,6 +47,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       suscripcion.subscription.unsubscribe();
     };
   }, [supabase]);
+
+  useEffect(() => {
+    if (!sesion?.user?.id) {
+      usuarioSincronizado.current = null;
+      return;
+    }
+
+    const userId = sesion.user.id;
+    let sincronizando = false;
+    let activo = true;
+
+    const sincronizar = async () => {
+      if (!activo || sincronizando || usuarioSincronizado.current === userId) return;
+
+      sincronizando = true;
+      usuarioSincronizado.current = userId;
+      const sincronizado = await sincronizarPushAlIniciarSesion();
+      if (!activo) return;
+      if (!sincronizado) {
+        usuarioSincronizado.current = null;
+      }
+      sincronizando = false;
+    };
+
+    void sincronizar();
+    const suscripcion = AppState.addEventListener("change", (estado) => {
+      if (estado === "active") void sincronizar();
+    });
+
+    return () => {
+      activo = false;
+      suscripcion.remove();
+    };
+  }, [sesion]);
+
+  useEffect(() => {
+    if (!sesion?.user?.id) return;
+
+    const Notifications = obtenerModuloNotificaciones();
+    if (!Notifications?.addPushTokenListener) return;
+
+    const suscripcion = Notifications.addPushTokenListener((token) => {
+      const valor = typeof token === "string" ? token : token?.data;
+      if (typeof valor === "string") {
+        void guardarTokenEnBackend(valor);
+      }
+    });
+
+    return () => suscripcion.remove();
+  }, [sesion]);
 
   return (
     <AuthContext.Provider
