@@ -51,7 +51,7 @@ export const ACCESOS_RAPIDOS: AccesoRapido[] = [
     id: "acceso_metre",
     tituloVisual: "Metre",
     icono: "🛎️",
-    email: "nalvarez@restaurante.com",
+    email: "metre@restaurante.com",
     clave: "123456",
   },
   {
