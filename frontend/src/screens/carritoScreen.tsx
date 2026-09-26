@@ -1,12 +1,12 @@
 // src/screens/carritoScreen.tsx
 import React, { useState, useRef, useEffect } from "react";
 import { View, Text, FlatList, TouchableOpacity, Image, Alert, ActivityIndicator, Modal } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useCart, ItemCarrito } from "../context/carritoContext";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { CompanySpinner } from "../components/CompanySpinner";
 import { FeedbackModal } from "../components/FeedbackModal";
-import { crearPedidoApi, Pedido } from "../services/pedidosService";
+import { TeamNames } from "../components/TeamNames";
+import { crearPedidoApi, modificarPedidoRechazadoApi, Pedido } from "../services/pedidosService";
 import { supabase } from "../config/supabase";
 
 interface CarritoScreenProps {
@@ -14,6 +14,11 @@ interface CarritoScreenProps {
   clienteId: string;
   onVolver: () => void;
   onPedidoConfirmado: (pedido: Pedido) => void;
+  /** Pedido rechazado que se está corrigiendo. Si viene definido, el envío
+   *  corrige esa orden en vez de crear una nueva. */
+  pedidoIdEnEdicion?: string | null;
+  motivoRechazo?: string | null;
+  onCerrarEdicion?: () => void;
 }
 
 export function CarritoScreen({
@@ -21,8 +26,10 @@ export function CarritoScreen({
   clienteId,
   onVolver,
   onPedidoConfirmado,
+  pedidoIdEnEdicion,
+  motivoRechazo,
+  onCerrarEdicion,
 }: CarritoScreenProps) {
-  const insets = useSafeAreaInsets();
   const {
     carrito,
     eliminarDelCarrito,
@@ -32,6 +39,8 @@ export function CarritoScreen({
     tiempoEstimadoTotal,
     vaciarCarrito,
   } = useCart();
+
+  const modoEdicion = Boolean(pedidoIdEnEdicion);
 
   const [enviando, setEnviando] = useState(false);
   const [modalEsperaMozo, setModalEsperaMozo] = useState(false);
@@ -50,6 +59,26 @@ export function CarritoScreen({
     mensaje: "",
   });
   const vaciarTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const canalRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  const detenerSeguimiento = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+    if (canalRef.current) {
+      supabase.removeChannel(canalRef.current);
+      canalRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (vaciarTimerRef.current) clearTimeout(vaciarTimerRef.current);
+      detenerSeguimiento();
+    };
+  }, []);
 
   const abrirAviso = (
     titulo: string,
@@ -64,15 +93,43 @@ export function CarritoScreen({
     });
   };
 
-  useEffect(() => {
-    return () => {
-      if (vaciarTimerRef.current) clearTimeout(vaciarTimerRef.current);
-    };
-  }, []);
+  /**
+   * Reacción común al polling y a Realtime. Al ser rechazado el pedido se
+   * navega al seguimiento (no se queda en un toast) para que el cliente lea
+   * el motivo y pueda corregir la comanda desde ahí.
+   */
+  const manejarCambioEstado = (
+    estado: string,
+    motivo: string | null | undefined,
+    pedidoId: string
+  ) => {
+    if (estado === "in_preparation") {
+      detenerSeguimiento();
+      setModalEsperaMozo(false);
+      onPedidoConfirmado({ id: pedidoId, status: "in_preparation" } as Pedido);
+      return;
+    }
+
+    if (estado === "cancelled") {
+      detenerSeguimiento();
+      setModalEsperaMozo(false);
+      onPedidoConfirmado({
+        id: pedidoId,
+        status: "cancelled",
+        rejection_reason: motivo || "El mozo no pudo confirmar tu pedido.",
+      } as Pedido);
+    }
+  };
 
   const handleRealizarPedido = async () => {
     if (carrito.length === 0) {
-      abrirAviso("Carrito Vacío", "Agregá productos antes de confirmar el pedido.", "informacion");
+      abrirAviso(
+        modoEdicion ? "Comanda vacía" : "Carrito Vacío",
+        modoEdicion
+          ? "No podés reenviar una comanda vacía. Volvé a agregar productos o cancelá la edición."
+          : "Agregá productos antes de confirmar el pedido.",
+        "informacion"
+      );
       return;
     }
 
@@ -83,58 +140,39 @@ export function CarritoScreen({
         cantidad: Number(item.cantidad),
       }));
 
-      const resBackend: any = await crearPedidoApi({
-        id_cliente: clienteId,
-        numero_mesa: Number(numeroMesa),
-        productos: productosPayload,
-        order_type: "dine_in",
-      });
+      let orden: Pedido;
+      let pedidoId: string;
 
-      // Se extrae la orden real enviada por el backend
-      const orden: Pedido = resBackend?.pedido || resBackend;
-      const pedidoId = orden.id;
+      if (modoEdicion && pedidoIdEnEdicion) {
+        // Corrige la orden rechazada: el backend reemplaza los ítems y la
+        // devuelve a 'pending' para que el mozo vuelva a confirmarla.
+        const res = await modificarPedidoRechazadoApi(pedidoIdEnEdicion, {
+          productos: productosPayload,
+        });
+        orden = res.pedido;
+        pedidoId = orden.id;
+      } else {
+        const resBackend: any = await crearPedidoApi({
+          id_cliente: clienteId,
+          numero_mesa: Number(numeroMesa),
+          productos: productosPayload,
+          order_type: "dine_in",
+        });
+
+        orden = resBackend?.pedido || resBackend;
+        pedidoId = orden.id;
+      }
 
       if (!pedidoId) {
-        throw new Error("No se pudo identificar el pedido creado.");
+        throw new Error("No se pudo identificar el pedido.");
       }
 
       setPedidoCreado(orden);
       setModalEsperaMozo(true);
       vaciarCarrito();
 
-      // Polling de respaldo cada 2.5s para no depender únicamente del websocket
-      const timer = setInterval(async () => {
-        try {
-          const { data: ordenActual } = await supabase
-            .from("orders")
-            .select("id, status, rejection_reason")
-            .eq("id", pedidoId)
-            .maybeSingle();
-
-          if (ordenActual) {
-            if (ordenActual.status === "in_preparation" || ordenActual.status === "confirmed") {
-              clearInterval(timer);
-              supabase.removeChannel(canal);
-              setModalEsperaMozo(false);
-              onPedidoConfirmado(ordenActual as any);
-            } else if (ordenActual.status === "cancelled") {
-              clearInterval(timer);
-              supabase.removeChannel(canal);
-              setModalEsperaMozo(false);
-              abrirAviso(
-                "Pedido Cancelado",
-                ordenActual.rejection_reason || "El mozo no pudo confirmar tu pedido.",
-                "error"
-              );
-            }
-          }
-        } catch {
-          // Ignorado en microcorte
-        }
-      }, 2500);
-
       // Suscripción Realtime con el ID exacto
-      const canal = supabase
+      canalRef.current = supabase
         .channel(`pedido_${pedidoId}`)
         .on(
           "postgres_changes",
@@ -146,29 +184,41 @@ export function CarritoScreen({
           },
           (payload) => {
             const pedidoActualizado = payload.new as Pedido;
-            if (
-              pedidoActualizado.status === "in_preparation" ||
-              pedidoActualizado.status === "confirmed"
-            ) {
-              clearInterval(timer);
-              supabase.removeChannel(canal);
-              setModalEsperaMozo(false);
-              onPedidoConfirmado(pedidoActualizado);
-            } else if (pedidoActualizado.status === "cancelled") {
-              clearInterval(timer);
-              supabase.removeChannel(canal);
-              setModalEsperaMozo(false);
-              abrirAviso(
-                "Pedido Cancelado",
-                pedidoActualizado.rejection_reason || "El mozo no pudo confirmar tu pedido en este momento.",
-                "error"
-              );
-            }
+            manejarCambioEstado(
+              pedidoActualizado.status,
+              pedidoActualizado.rejection_reason,
+              pedidoId
+            );
           }
         )
         .subscribe();
+
+      // Polling de respaldo cada 2.5s para no depender únicamente del websocket
+      pollRef.current = setInterval(async () => {
+        try {
+          const { data: ordenActual } = await supabase
+            .from("orders")
+            .select("id, status, rejection_reason")
+            .eq("id", pedidoId)
+            .maybeSingle();
+
+          if (ordenActual) {
+            manejarCambioEstado(
+              ordenActual.status,
+              ordenActual.rejection_reason,
+              ordenActual.id
+            );
+          }
+        } catch {
+          // Ignorado en microcorte
+        }
+      }, 2500);
     } catch (err: any) {
-      abrirAviso("Error al enviar pedido", err.message || "Intente nuevamente.", "error");
+      abrirAviso(
+        modoEdicion ? "Error al reenviar el pedido" : "Error al enviar pedido",
+        err.message || "Intente nuevamente.",
+        "error"
+      );
     } finally {
       setEnviando(false);
     }
@@ -184,7 +234,9 @@ export function CarritoScreen({
         visible: true,
         tipo: "exito",
         titulo: "¡Carrito vaciado!",
-        mensaje: "Se eliminaron todos los productos de tu pedido.",
+        mensaje: modoEdicion
+          ? "Quitaste todos los productos. Agregá algo de nuevo para poder reenviar la comanda."
+          : "Se eliminaron todos los productos de tu pedido.",
       });
     }, 800);
   };
@@ -263,12 +315,7 @@ export function CarritoScreen({
   return (
     <View className="flex-1 px-6 pt-4 bg-amber-50/40">
       {/* Nombres del equipo */}
-      <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + 16 }}>
-        <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
-        <Text className="text-[10px] text-vino/70">Santino Casado</Text>
-        <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
-        <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
-      </View>
+      <TeamNames className="absolute right-4 z-10" style={{ top: 16 }} />
 
       {/* Cabecera */}
       <View className="mb-2">
@@ -284,10 +331,34 @@ export function CarritoScreen({
         />
       </View>
 
+      {/* Aviso de edición de comanda rechazada */}
+      {modoEdicion && (
+        <View className="mb-3 rounded-2xl border-2 border-red-300 bg-red-50 p-3">
+          <View className="flex-row items-center justify-between">
+            <Text className="flex-1 text-xs font-black uppercase text-red-800">
+              Editando comanda rechazada
+            </Text>
+            {onCerrarEdicion && (
+              <TouchableOpacity
+                onPress={onCerrarEdicion}
+                className="ml-2 rounded-lg bg-red-200/60 px-2 py-1 active:bg-red-200"
+              >
+                <Text className="text-[10px] font-bold text-red-800">Cancelar</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          {motivoRechazo && (
+            <Text className="mt-1 text-[11px] text-red-700">
+              Motivo del mozo: {motivoRechazo}
+            </Text>
+          )}
+        </View>
+      )}
+
       {/* Encabezado */}
       <View className="relative flex-row items-center justify-between mb-1 border-b border-mostaza/20 pb-5">
         <Text style={{ fontFamily: "LaOriental" }} className="absolute inset-x-0 z-10 text-center text-xl uppercase text-vino pointer-events-none pb-3">
-          Comanda Mesa #{numeroMesa}
+          {modoEdicion ? "Reenviar Comanda" : `Comanda Mesa #${numeroMesa}`}
         </Text>
         <Text className="text-sm font-bold text-vino">🛒</Text>
         {carrito.length > 0 ? (
@@ -316,7 +387,9 @@ export function CarritoScreen({
               Tu comanda está vacía
             </Text>
             <Text className="text-xs text-stone-500 mt-1">
-              Agregá platos o bebidas desde la carta para armar tu pedido.
+              {modoEdicion
+                ? "No podés reenviar una comanda vacía. Agregá productos o tocá Cancelar para volver."
+                : "Agregá platos o bebidas desde la carta para armar tu pedido."}
             </Text>
           </View>
         }
@@ -350,7 +423,7 @@ export function CarritoScreen({
                   resizeMode="contain"
                 />
                 <Text style={{ fontFamily: "LaOriental" }} className="mx-5 text-center text-l uppercase tracking-wider text-mostaza">
-                  Enviar Pedido al Mozo
+                  {modoEdicion ? "Reenviar Comanda al Mozo" : "Enviar Pedido al Mozo"}
                 </Text>
                 <Image
                   source={require("../../assets/images/sello.png")}
@@ -362,9 +435,6 @@ export function CarritoScreen({
           </TouchableOpacity>
         </View>
       )}
-
-      {/* Bottom padding for safe area */}
-      <View style={{ height: insets.bottom }} />
 
       {/* MODAL DE ESPERA: ESPERANDO CONFIRMACIÓN DEL MOZO */}
       <Modal visible={modalEsperaMozo} transparent animationType="fade">
@@ -390,7 +460,11 @@ export function CarritoScreen({
       <ConfirmModal
         visible={confirmandoVaciar}
         titulo="Vaciar carrito"
-        mensaje="¿Desea vaciar el carrito? Se eliminarán todos los productos de tu pedido."
+        mensaje={
+          modoEdicion
+            ? "¿Desea quitar todos los productos? Tu comanda rechazada no se modifica hasta que la reenvíes, y no podrás enviarla vacía."
+            : "¿Desea vaciar el carrito? Se eliminarán todos los productos de tu pedido."
+        }
         textoConfirmar="Vaciar"
         textoCancelar="Cancelar"
         tipo="peligro"

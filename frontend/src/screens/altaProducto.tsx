@@ -23,7 +23,7 @@ import { ChineseFrame } from "../components/ChineseFrame";
 import { OptionModal } from "../components/OptionModal";
 import { FeedbackModal } from "../components/FeedbackModal";
 import { CompanySpinner } from "../components/CompanySpinner";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
+import { TeamNames } from "../components/TeamNames";
 import { StatusBar } from "expo-status-bar";
 
 interface Props {
@@ -33,7 +33,6 @@ interface Props {
 
 export default function AltaProductoScreen({ categoria, onSuccess }: Props) {
   const esBebida = categoria === "bebida";
-  const insets = useSafeAreaInsets();
 
   const config = {
     titulo: esBebida ? "Alta de Bebida" : "Alta de Plato",
@@ -276,16 +275,11 @@ export default function AltaProductoScreen({ categoria, onSuccess }: Props) {
   };
 
   return (
-    <SafeAreaView className="flex-1">
+    <View className="flex-1">
       <StatusBar style="light" />
 
       {/* Nombres del equipo */}
-      <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + 16 }}>
-        <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
-        <Text className="text-[10px] text-vino/70">Santino Casado</Text>
-        <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
-        <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
-      </View>
+      <TeamNames className="absolute right-4 z-10" style={{ top: 16 }} />
 
       {/* Cabecera */}
       <View className="px-5 pt-4">
@@ -573,6 +567,6 @@ multiline
         visible={isLoading}
         mensaje={esBebida ? "Registrando bebida en la carta..." : "Registrando plato en la carta..."}
       />
-    </SafeAreaView>
+    </View>
   );
 }

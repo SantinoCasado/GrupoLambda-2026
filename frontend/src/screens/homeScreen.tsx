@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { View, Text, TouchableOpacity, ScrollView, Image, Vibration, Modal } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { UsuarioSeed } from "../data/usuariosPrecargados";
 import { ChineseFrame } from "../components/ChineseFrame";
+import { TeamNames } from "../components/TeamNames";
 import { useCart } from "../context/carritoContext";
 
 export type HomeDestino =
@@ -36,7 +36,6 @@ interface Props {
 }
 
 export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicitarMesa, pedidoActivoId, onVerEstadoPedido }: Props) {
-  const insets = useSafeAreaInsets();
   const [modalPerfilVisible, setModalPerfilVisible] = useState(false);
   const { carrito } = useCart();
 
@@ -56,7 +55,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
     <>
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: esCliente ? 140 : 50, paddingTop: insets.top }}
+        contentContainerStyle={{ paddingBottom: esCliente ? 140 : 50 }}
         showsVerticalScrollIndicator={false}
       >
         <StatusBar style="light" />
@@ -398,12 +397,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
       )}
 
       {/* Nombres del equipo */}
-      <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + 16 }}>
-        <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
-        <Text className="text-[10px] text-vino/70">Santino Casado</Text>
-        <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
-        <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
-      </View>
+      <TeamNames className="absolute right-4 z-10" style={{ top: 16 }} />
 
       {/* MODAL: Selección de Puesto / Rol */}
       <Modal visible={modalPerfilVisible} transparent animationType="fade">

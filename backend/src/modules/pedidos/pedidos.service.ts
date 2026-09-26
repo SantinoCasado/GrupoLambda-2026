@@ -370,17 +370,23 @@ export const obtenerPedidosPendientesBar = async () => {
 // Punto 13: Modificar productos de un pedido rechazado/cancelado
 export const modificarPedidoRechazado = async (
   idPedido: string,
-  items: ProductoItem[]
+  items: ProductoItem[],
+  reqUserId: string
 ) => {
   // 1. Verificar estado actual del pedido
   const { data: pedidoActual, error: errorBusqueda } = await supabase
     .from('orders')
-    .select('id, status, user_id, table_id')
+    .select('id, status, client_id, table_id')
     .eq('id', idPedido)
     .single();
   
   if (errorBusqueda || !pedidoActual) {
     throw new Error('El pedido especificado no existe');
+  }
+
+  // 1.b Solo el cliente que realizó la orden puede editarla
+  if (pedidoActual.client_id !== reqUserId) {
+    throw new Error('No tenés permiso para modificar este pedido');
   }
   
   if (pedidoActual.status !== 'cancelled') {
@@ -414,7 +420,17 @@ export const modificarPedidoRechazado = async (
     }
   }
 
-  // 3. Eliminar ítems anteriores del pedido
+  // 3. Guardar copia de los ítems actuales para poder restaurarlos si falla la inserción
+  const { data: itemsOriginales, error: errorLecturaItems } = await supabase
+    .from('order_items')
+    .select('product_id, quantity, unit_price')
+    .eq('order_id', idPedido);
+
+  if (errorLecturaItems) {
+    throw new Error(`Error al leer los ítems previos: ${errorLecturaItems.message}`);
+  }
+
+  // 4. Eliminar ítems anteriores del pedido
   const { error: errorBorrado } = await supabase
     .from('order_items')
     .delete()
@@ -424,7 +440,7 @@ export const modificarPedidoRechazado = async (
     throw new Error(`Error al limpiar ítems previos: ${errorBorrado.message}`);
   }
 
-  // 4. Insertar los nuevos ítems
+  // 5. Insertar los nuevos ítems
   const itemsAInsertar = items.map((item) => {
     const prod = mapaProductos.get(item.id_producto)!;
     return {
@@ -440,10 +456,31 @@ export const modificarPedidoRechazado = async (
     .insert(itemsAInsertar);
 
   if (errorInsert) {
+    // Restaurar los ítems originales para no dejar el pedido vacío
+    if (itemsOriginales && itemsOriginales.length > 0) {
+      const { error: errorRestauracion } = await supabase
+        .from('order_items')
+        .insert(
+          itemsOriginales.map((it) => ({
+            order_id: idPedido,
+            product_id: it.product_id,
+            quantity: it.quantity,
+            unit_price: it.unit_price,
+          }))
+        );
+
+      if (errorRestauracion) {
+        console.error(
+          `FATAL: no se pudo restaurar el pedido ${idPedido} tras fallar la inserción:`,
+          errorRestauracion.message
+        );
+      }
+    }
+
     throw new Error(`Error al registrar nuevos ítems: ${errorInsert.message}`);
   }
 
-  // 5. Volver el pedido a estado 'pending' y actualizar montos
+  // 6. Volver el pedido a estado 'pending' y actualizar montos
   const { data: pedidoActualizado, error: errorUpdate } = await supabase
     .from('orders')
     .update({
@@ -461,7 +498,7 @@ export const modificarPedidoRechazado = async (
     throw new Error(`Error al actualizar la orden: ${errorUpdate?.message}`);
   }
 
-  // 6. Notificar a los MOZOS que el cliente corrigió el pedido
+  // 7. Notificar a los MOZOS que el cliente corrigió el pedido
   try {
     const { data: mozos } = await supabase
       .from('users')

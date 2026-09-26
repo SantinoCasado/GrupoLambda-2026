@@ -78,6 +78,9 @@ function AppInterna() {
   const [enEsperaRegistrado, setEnEsperaRegistrado] = useState(false);
   const [idMesaCliente, setIdMesaCliente] = useState<string | null>(null);
   const [idPedidoActivo, setIdPedidoActivo] = useState<string | null>(null);
+  // Pedido rechazado que el cliente está corrigiendo en el carrito
+  const [idPedidoEnEdicion, setIdPedidoEnEdicion] = useState<string | null>(null);
+  const [motivoRechazoEdicion, setMotivoRechazoEdicion] = useState<string | null>(null);
   const [notifNuevoClientePendiente, setNotifNuevoClientePendiente] = useState(false);
   const [rolTickets, setRolTickets] = useState<"cocinero" | "cantinero">("cocinero");
   const [bannerNotif, setBannerNotif] = useState<{
@@ -498,6 +501,8 @@ function AppInterna() {
       setNumeroMesaCliente(null);
       setIdMesaCliente(null);
       setIdPedidoActivo(null); // Limpieza al salir
+      setIdPedidoEnEdicion(null);
+      setMotivoRechazoEdicion(null);
       setVistaPrivada("home");
       setVistaPublica("login");
     }
@@ -872,8 +877,17 @@ function AppInterna() {
             numeroMesa={numeroMesaCliente || 1}
             clienteId={usuarioActual.id}
             onVolver={volverAlInicio}
+            pedidoIdEnEdicion={idPedidoEnEdicion}
+            motivoRechazo={motivoRechazoEdicion}
+            onCerrarEdicion={() => {
+              setIdPedidoEnEdicion(null);
+              setMotivoRechazoEdicion(null);
+              setVistaPrivada("estado_pedido");
+            }}
             onPedidoConfirmado={(pedido) => {
               setIdPedidoActivo(pedido.id);
+              setIdPedidoEnEdicion(null);
+              setMotivoRechazoEdicion(null);
               setVistaPrivada("estado_pedido");
             }}
           />
@@ -886,6 +900,12 @@ function AppInterna() {
             onVolver={volverAlInicio}
             onIrAJuegos={() => {
               // Navegación a juegos de la mesa
+            }}
+            onEditarComanda={(motivo) => {
+              if (!idPedidoActivo) return;
+              setIdPedidoEnEdicion(idPedidoActivo);
+              setMotivoRechazoEdicion(motivo);
+              setVistaPrivada("carrito");
             }}
           />
         )}

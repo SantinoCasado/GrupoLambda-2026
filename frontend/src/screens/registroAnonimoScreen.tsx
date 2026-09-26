@@ -175,7 +175,7 @@ export function RegistroAnonimoScreen({ onVolver, onRegistroExitoso }: Props) {
       </View>
 
       {/* Cabecera */}
-      <View className="px-5 pt-16">
+      <View className="px-5 pt-28">
         <View className="mb-4">
           <Image
             source={require("../../assets/images/logo-name.png")}
