@@ -103,7 +103,6 @@ export const registrarClienteAnonimoService = async (datos: RegistrarAnonimoDTO)
 // Actualizar el estado de un cliente registrado 
 export const actualizarEstadoClienteService = async (id: string, status: 'approved' | 'rejected') => {
     // trae los datos del cliente ANTES de tocar nada.
-    // nos asegura de tener el email y el push_token para notificarle pase lo que pase.
     const { data: clienteOriginal, error: errorBusqueda } = await supabase
         .from('users')
         .select('*')
@@ -119,7 +118,6 @@ export const actualizarEstadoClienteService = async (id: string, status: 'approv
 
     // Evalua la accion del supervisor
     if (status === 'approved') {
-        // SI APRUEBA: Solo actualiza el estado a 'approved'
         const { data: clienteActualizado, error: errorUpdate } = await supabase
             .from('users')
             .update({ status: 'approved' })
@@ -133,15 +131,11 @@ export const actualizarEstadoClienteService = async (id: string, status: 'approv
         datosRespuesta = clienteActualizado;
 
     } else if (status === 'rejected') {
-        // SI RECHAZA: Lo borra completamente del sistema
-        
-        // Borra el usuario del sistema de Autenticación (Libera el email para que vuelva a intentar)
         const { error: errorAuth } = await supabase.auth.admin.deleteUser(id);
         if (errorAuth) {
             console.warn('Advertencia: No se pudo borrar el usuario de Auth:', errorAuth.message);
         }
 
-        // Borramos el registro de la tabla pública (Por si no tienen configurado el borrado en cascada en Supabase)
         const { error: errorDelete } = await supabase
             .from('users')
             .delete()
@@ -151,12 +145,11 @@ export const actualizarEstadoClienteService = async (id: string, status: 'approv
             throw new Error(`Error eliminando al cliente rechazado: ${errorDelete.message}`);
         }
         
-        // Forzamos el estado a rejected en la respuesta para que el frontend sepa qué pasó
         datosRespuesta.status = 'rejected'; 
     }
 
-    // Dispara el correo electronico de forma asincrona
-    await enviarNotificacionAprobacion(clienteOriginal.email, clienteOriginal.first_name, status);
+    // Guarda el booleano que devuelve el mail
+    const emailEnviado = await enviarNotificacionAprobacion(clienteOriginal.email, clienteOriginal.first_name, status);
 
     // Dispara el Push Notification si tiene token guardado
     if (clienteOriginal.push_token) {
@@ -173,8 +166,11 @@ export const actualizarEstadoClienteService = async (id: string, status: 'approv
         );
     }
 
-    // Devuelve el resultado al controlador
-    return datosRespuesta;
+    // bandera del email adentro del objeto que devolvemos
+    return {
+        ...datosRespuesta,
+        email_enviado: emailEnviado
+    };
 };
 
 // Listar clientes (Sirve para el CU-06 de aprobaciones)
