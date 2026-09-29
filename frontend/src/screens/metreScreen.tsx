@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import { supabase } from "../config/supabase";
 import { ChineseFrame } from "../components/ChineseFrame";
-import { TeamNames } from "../components/TeamNames";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { CompanySpinner } from "../components/CompanySpinner";
 import { FeedbackModal } from "../components/FeedbackModal";
@@ -180,8 +179,6 @@ export function MetreScreen({ onCerrarSesion }: Props) {
 
   return (
     <View className="flex-1">
-      {/* Nombres del equipo */}
-      <TeamNames className="absolute right-4 z-10" style={{ top: 16 }} />
 
       {/* Cabecera */}
       <View className="px-5 pt-4">

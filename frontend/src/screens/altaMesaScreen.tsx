@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ChineseFrame } from "../components/ChineseFrame";
-import { TeamNames } from "../components/TeamNames";
 import { StatusBar } from "expo-status-bar";
 
 import {
@@ -307,9 +306,6 @@ export default function AltaMesaScreen() {
     <>
       <View className="flex-1">
         <StatusBar style="light" />
-
-        {/* Nombres del equipo */}
-        <TeamNames className="absolute right-4 z-10" style={{ top: 16 }} />
 
         {/* Cabecera idéntica a Alta Empleados */}
         <View className="px-5 pt-4">

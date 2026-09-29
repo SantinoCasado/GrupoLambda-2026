@@ -18,6 +18,7 @@ import AltaProductoScreen from "./src/screens/altaProducto";
 import AltaMesaScreen from "./src/screens/altaMesaScreen";
 import RegistroClienteScreen from "./src/screens/registroClienteScreen";
 import AprobacionClientesScreen from "./src/screens/aprobacionClientesScreen";
+import { SplashScreen } from "./src/screens/splashScreen";
 import { LoginScreen } from "./src/screens/loginScreen";
 import { CartaScreen } from "./src/screens/cartaScreen";
 import { CarritoScreen } from "./src/screens/carritoScreen";
@@ -68,6 +69,7 @@ export default function App() {
 }
 
 function AppInterna() {
+  const [mostrarSplash, setMostrarSplash] = useState(true);
   const [usuarioActual, setUsuarioActual] = useState<UsuarioSeed | null>(null);
   const [vistaPrivada, setVistaPrivada] = useState<VistaPrivada>("home");
   const [vistaPublica, setVistaPublica] = useState<"login" | "registro_cliente" | "registro_anonimo" | "espera_mesa">("login");
@@ -522,6 +524,14 @@ function AppInterna() {
     Vibration.vibrate([0, 40]);
     setVistaPrivada("home");
   };
+
+  if (mostrarSplash) {
+    return (
+      <View style={{ flex: 1, backgroundColor: "#FFF6EC" }}>
+        <SplashScreen onFinish={() => setMostrarSplash(false)} duracionMinimaMs={1800} />
+      </View>
+    );
+  }
 
   const renderVista = () => {
     // 1. Vistas Públicas

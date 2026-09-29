@@ -5,7 +5,6 @@ import { useCart, ItemCarrito } from "../context/carritoContext";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { CompanySpinner } from "../components/CompanySpinner";
 import { FeedbackModal } from "../components/FeedbackModal";
-import { TeamNames } from "../components/TeamNames";
 import { crearPedidoApi, modificarPedidoRechazadoApi, Pedido } from "../services/pedidosService";
 import { supabase } from "../config/supabase";
 
@@ -314,8 +313,6 @@ export function CarritoScreen({
 
   return (
     <View className="flex-1 px-6 pt-4 bg-amber-50/40">
-      {/* Nombres del equipo */}
-      <TeamNames className="absolute right-4 z-10" style={{ top: 16 }} />
 
       {/* Cabecera */}
       <View className="mb-2">

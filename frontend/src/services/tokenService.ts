@@ -1,4 +1,3 @@
-// src/services/tokenService.ts
 import { getSupabaseClient } from "../config/supabase";
 
 // Margen de seguridad antes del vencimiento para refrescar anticipadamente

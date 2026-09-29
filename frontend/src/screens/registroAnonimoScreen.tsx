@@ -166,14 +166,6 @@ export function RegistroAnonimoScreen({ onVolver, onRegistroExitoso }: Props) {
         <Image source={require("../../assets/images/left-arrow-y.png")} className="h-5 w-5" resizeMode="contain" />
       </TouchableOpacity>
 
-      {/* Nombres del equipo */}
-      <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + 60 }}>
-        <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
-        <Text className="text-[10px] text-vino/70">Santino Casado</Text>
-        <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
-        <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
-      </View>
-
       {/* Cabecera */}
       <View className="px-5 pt-28">
         <View className="mb-4">
@@ -189,7 +181,8 @@ export function RegistroAnonimoScreen({ onVolver, onRegistroExitoso }: Props) {
           />
           <ChineseFrame className="mt-2 bg-vino">
             <View className="items-center rounded-xl bg-mostaza/15 px-5 py-5">
-              <Text style={{ fontFamily: "LaOriental" }} className="text-2xl text-mostaza uppercase text-xl">
+              <Text style={{ fontFamily: "LaOriental" }} className="text-2xl text-mostaza uppercase text-center w-full"
+>
                 Ingresar como Invitado
               </Text>
               <Text className="mt-1 text-xs font-semibold text-amber-100">

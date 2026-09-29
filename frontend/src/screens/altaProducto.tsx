@@ -23,7 +23,6 @@ import { ChineseFrame } from "../components/ChineseFrame";
 import { OptionModal } from "../components/OptionModal";
 import { FeedbackModal } from "../components/FeedbackModal";
 import { CompanySpinner } from "../components/CompanySpinner";
-import { TeamNames } from "../components/TeamNames";
 import { StatusBar } from "expo-status-bar";
 
 interface Props {
@@ -277,9 +276,6 @@ export default function AltaProductoScreen({ categoria, onSuccess }: Props) {
   return (
     <View className="flex-1">
       <StatusBar style="light" />
-
-      {/* Nombres del equipo */}
-      <TeamNames className="absolute right-4 z-10" style={{ top: 16 }} />
 
       {/* Cabecera */}
       <View className="px-5 pt-4">

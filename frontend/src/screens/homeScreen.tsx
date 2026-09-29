@@ -3,7 +3,6 @@ import { View, Text, TouchableOpacity, ScrollView, Image, Vibration, Modal } fro
 import { StatusBar } from "expo-status-bar";
 import { UsuarioSeed } from "../data/usuariosPrecargados";
 import { ChineseFrame } from "../components/ChineseFrame";
-import { TeamNames } from "../components/TeamNames";
 import { useCart } from "../context/carritoContext";
 
 export type HomeDestino =
@@ -442,9 +441,6 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
           </TouchableOpacity>
         </View>
       )}
-
-      {/* Nombres del equipo */}
-      <TeamNames className="absolute right-4 z-10" style={{ top: 16 }} />
 
       {/* MODAL: Selección de Puesto / Rol */}
       <Modal visible={modalPerfilVisible} transparent animationType="fade">

@@ -139,16 +139,7 @@ export function LoginScreen({
   };
 
   return (
-    <>
       <SafeAreaView className="flex-1">
-        <StatusBar style="light" />
-
-        <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + 16 }}>
-          <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
-          <Text className="text-[10px] text-vino/70">Santino Casado</Text>
-          <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
-          <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
-        </View>
 
       <ScrollView className="flex-1 px-5 pt-20" contentContainerStyle={{ paddingBottom: 50 }}>
         {/* Encabezado */}
@@ -315,6 +306,5 @@ export function LoginScreen({
         onClose={() => setModalFeedback((prev) => ({ ...prev, visible: false }))}
       />
       </SafeAreaView>
-    </>
   );
 }

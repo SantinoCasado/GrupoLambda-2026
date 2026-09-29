@@ -18,7 +18,6 @@ import { validateClienteForm, validarPaso1Cliente, registrarCliente, ClienteForm
 import { obtenerTokenPush } from "../services/pushNotificationsService";
 import { FeedbackModal } from "../components/FeedbackModal";
 import { CompanySpinner } from "../components/CompanySpinner";
-import { TeamNames } from "../components/TeamNames";
 import { ChineseFrame } from "../components/ChineseFrame";
 
 interface Props {
@@ -291,12 +290,6 @@ export default function RegistroClienteScreen({
           <Image source={require("../../assets/images/left-arrow-y.png")} className="h-5 w-5" resizeMode="contain" />
         </TouchableOpacity>
       )}
-
-      {/* Nombres del equipo */}
-      <TeamNames
-        className="absolute right-4 z-10"
-        style={{ top: modo === "metre" || usuarioLogueado ? 16 : insets.top + 60 }}
-      />
 
       {/* Cabecera */}
       <View className={`px-5 ${modo === "metre" || usuarioLogueado ? "pt-4" : "pt-28"}`}>

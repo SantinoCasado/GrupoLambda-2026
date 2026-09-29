@@ -19,7 +19,6 @@ import { FeedbackModal } from "../components/FeedbackModal";
 import { CompanySpinner } from "../components/CompanySpinner";
 import { ChineseFrame } from "../components/ChineseFrame";
 import { ConfirmModal } from "../components/ConfirmModal";
-import { TeamNames } from "../components/TeamNames";
 
 
 interface Props {
@@ -284,9 +283,6 @@ export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props
 
       <StatusBar style="light" />
 
-      {/* Nombres del equipo */}
-      <TeamNames className="absolute right-4 z-10" style={{ top: 16 }} />
-
       {/* Cabecera */}
       <View className="px-5 pt-4">
         <View className="mb-4">
@@ -332,7 +328,6 @@ export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props
         }}
         style={{ flex: 1 }}
       >
-
         
         {/* SECCIÓN 0: DNI e Información Personal */}
         <View style={{ width: screenWidth }} className="flex-1 px-5 pt-2">
