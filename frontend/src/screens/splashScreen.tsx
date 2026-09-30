@@ -7,11 +7,9 @@ import {
   Image,
   StyleSheet,
   StatusBar,
-  Dimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("screen");
+import ScreenBackground from "../components/ScreenBackground";
 
 interface SplashScreenProps {
   onFinish: () => void;
@@ -83,25 +81,11 @@ export function SplashScreen({
         backgroundColor="transparent"
       />
 
-      {/* Capa de fondo que cubre el 100% de la pantalla */}
-      <View
-        style={[
-          styles.fondoPantallaCompleta,
-          { backgroundColor: "#FFF6EC" },
-        ]}
-      />
-      <Image
-        source={require("../../assets/images/background-test-3.png")}
-        style={styles.fondoPantallaCompleta}
-        resizeMode="cover"
-      />
-
-      {/* Desvanece todo el contenido */}
+      {/* Fondo + adornos, dentro del layer animable para que desvanecen juntos */}
       <Animated.View
         style={{
           flex: 1,
           opacity: fadeAnim,
-          backgroundColor: "transparent",
           paddingTop: insets.top + 16,
           paddingBottom: insets.bottom + 16,
           paddingHorizontal: 24,
@@ -109,7 +93,45 @@ export function SplashScreen({
           alignItems: "center",
         }}
       >
-        <View className="h-1" />
+        <ScreenBackground />
+
+        {/* Esferas ornamentales en las esquinas superiores */}
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            top: insets.top - 10,
+            left: 10,
+            width: 66,
+            height: 132,
+          }}
+        >
+          <Image
+            source={require("../../assets/images/background-sphere.png")}
+            style={{ width: "100%", height: "100%" }}
+            resizeMode="contain"
+          />
+        </View>
+
+        <View
+          pointerEvents="none"
+          style={{
+            position: "absolute",
+            top: insets.top - 10,
+            right: 10,
+            width: 66,
+            height: 132,
+            transform: [{ scaleX: -1 }],
+          }}
+        >
+          <Image
+            source={require("../../assets/images/background-sphere.png")}
+            style={{ width: "100%", height: "100%" }}
+            resizeMode="contain"
+          />
+        </View>
+
+        <View style={{ height: 110 }} />
 
         {/* Centro: Logo girando 1:1 + Nombre */}
         <View style={{ alignItems: "center" }}>
@@ -133,17 +155,10 @@ export function SplashScreen({
           </View>
 
           <Image
-            source={require("../../assets/images/logo-name.png")}
-            className="mt-4 h-14 w-60"
+            source={require("../../assets/images/name.png")}
+            className="my-7 h-20 w-60"
             resizeMode="contain"
           />
-
-          <Text
-            style={{ fontFamily: "LaOriental" }}
-            className="text-base text-vino tracking-widest uppercase mt-1.5 font-bold"
-          >
-            Sabor Tradicional
-          </Text>
         </View>
 
         {/* Pie: Integrantes */}
@@ -167,7 +182,7 @@ export function SplashScreen({
               <View
                 key={nombre}
                 style={{
-                  backgroundColor: "rgba(255, 246, 236, 0.85)",
+                  backgroundColor: "#FFF8EA",
                   borderColor: "rgba(212, 160, 23, 0.6)",
                   borderWidth: 1.5,
                   borderRadius: 12,
@@ -179,12 +194,16 @@ export function SplashScreen({
                 }}
               >
                 <View style={{ flexDirection: "row", alignItems: "center", flex: 1 }}>
-                  <Text style={{ fontSize: 16, marginRight: 12 }}>👤</Text>
+                  <Image
+                    source={require("../../assets/images/supervisor-c.png")}
+                    style={{ width: 24, height: 24, marginRight: 12 }}
+                    resizeMode="contain"
+                  />
                   <Text className="text-sm font-black text-vino">
                     {nombre}
                   </Text>
                 </View>
-                <Text className="text-xs text-mostaza font-bold">UTN-FRA</Text>
+                <Text className="text-xs text-calabaza font-bold">UTN-FRA</Text>
               </View>
             ))}
           </View>
@@ -201,13 +220,6 @@ export function SplashScreen({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF6EC",
-  },
-  fondoPantallaCompleta: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    backgroundColor: "#FCE7CB",
   },
 });
