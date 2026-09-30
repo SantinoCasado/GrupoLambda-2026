@@ -1,3 +1,5 @@
+import { supabase } from '../config/supabase';
+
 interface PushMessage {
     to: string;
     sound: string;
