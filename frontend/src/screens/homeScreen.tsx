@@ -303,74 +303,78 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
               {/* Botón 1: Gestión de Mesas y Espera */}
               <TouchableOpacity
                 onPress={() => navegar("metre")}
-                className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota shadow-md"
+                className="items-center justify-center rounded-2xl border-2 border-mostaza bg-vino p-6 active:bg-terracota shadow-md"
               >
-                <Image source={require("../../assets/images/table-y.png")} className="h-7 w-7 mr-3" resizeMode="contain" />
-                <View className="flex-1">
-                  <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
-                    Gestión de Mesas y Espera
-                  </Text>
-                  <Text className="text-[11px] font-semibold text-amber-100">
-                    Ver lista de espera y asignar mesas libres
-                  </Text>
-                </View>
-                <Image source={require("../../assets/images/right-arrow-y.png")} className="h-6 w-6" resizeMode="contain" />
+                <Image
+                  source={require("../../assets/images/table-y.png")}
+                  className="mb-3 h-48 w-48"
+                  resizeMode="contain"
+                />
+                <Text
+                  style={{ fontFamily: "LaOriental" }}
+                  className="text-center text-2xl uppercase tracking-wider text-mostaza"
+                >
+                  Gestión de Mesas y Espera
+                </Text>
               </TouchableOpacity>
 
               {/* Botón 2: Registrar Cliente en Puerta */}
               <TouchableOpacity
                 onPress={() => navegar("registro_metre")}
-                className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota shadow-md"
+                className="items-center justify-center rounded-2xl border-2 border-mostaza bg-vino p-6 active:bg-terracota shadow-md"
               >
-                <Image source={require("../../assets/images/employeeRegistration-y.png")} className="h-7 w-7 mr-3" resizeMode="contain" />
-                <View className="flex-1">
-                  <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
-                    Registrar Cliente
-                  </Text>
-                  <Text className="text-[11px] font-semibold text-amber-100">
-                    Alta presencial con escaneo de DNI y foto
-                  </Text>
-                </View>
-                <Image source={require("../../assets/images/right-arrow-y.png")} className="h-6 w-6" resizeMode="contain" />
+                <Image
+                  source={require("../../assets/images/audit-y.png")}
+                  className="mb-3 h-14 w-14"
+                  resizeMode="contain"
+                />
+                <Text
+                  style={{ fontFamily: "LaOriental" }}
+                  className="text-center text-sm uppercase tracking-wider text-mostaza"
+                >
+                  Registrar Cliente
+                </Text>
               </TouchableOpacity>
             </View>
           )}
 
           {/* 5. MOZO */}
           {perfil === "mozo" && (
-            <View className="gap-y-4">
+            <View className="gap-y-6">
               <Text className="mb-1 text-xs font-bold text-vino uppercase">Operación de Salón</Text>
 
               <TouchableOpacity
                 onPress={() => navegar("comandas")}
-                className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota shadow-md"
+                className=" h-80 my-5 items-center justify-center rounded-2xl border-2 border-mostaza bg-vino p-6 active:bg-terracota shadow-md"
               >
-                <Image source={require("../../assets/images/serving-y.png")} className="h-7 w-7 mr-3" resizeMode="contain" />
-                <View className="flex-1">
-                  <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
-                    Comandas
-                  </Text>
-                  <Text className="text-[11px] font-semibold text-amber-100">
-                    Gestionar comandas pendientes
-                  </Text>
-                </View>
-                <Image source={require("../../assets/images/right-arrow-y.png")} className="h-6 w-6" resizeMode="contain" />
+                <Image
+                  source={require("../../assets/images/serving-y.png")}
+                  className="mb-3 h-48 w-48"
+                  resizeMode="contain"
+                />
+                <Text
+                  style={{ fontFamily: "LaOriental" }}
+                  className="text-center text-3xl uppercase tracking-wider text-mostaza"
+                >
+                  Comandas
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
                 onPress={() => navegar("chat_mesas")}
-                className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota shadow-md"
+                className="items-center justify-center rounded-2xl border-2 border-mostaza bg-vino p-3 active:bg-terracota shadow-md"
               >
-                <Image source={require("../../assets/images/table-y.png")} className="h-7 w-7 mr-3" resizeMode="contain" />
-                <View className="flex-1">
-                  <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
-                    Chat Mesas
-                  </Text>
-                  <Text className="text-[11px] font-semibold text-amber-100">
-                    Responder consultas de las mesas
-                  </Text>
-                </View>
-                <Image source={require("../../assets/images/right-arrow-y.png")} className="h-6 w-6" resizeMode="contain" />
+                <Image
+                  source={require("../../assets/images/table-y.png")}
+                  className="mb-1 h-24 w-24"
+                  resizeMode="contain"
+                />
+                <Text
+                  style={{ fontFamily: "LaOriental" }}
+                  className="text-center text-xl uppercase tracking-wider text-mostaza"
+                >
+                  Chat Mesas
+                </Text>
               </TouchableOpacity>
             </View>
           )}

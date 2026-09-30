@@ -35,6 +35,7 @@ export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props
   const [cuil, setCuil] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmarPassword, setConfirmarPassword] = useState("");
   const [perfil] = useState<string>(perfilInicial);
   const [fotoUri, setFotoUri] = useState<string | null>(null);
 
@@ -92,6 +93,9 @@ export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props
         break;
       case "password":
         valid = value.length >= 6;
+        break;
+      case "confirmarPassword":
+        valid = value.length > 0 && value === password;
         break;
     }
 
@@ -191,6 +195,7 @@ export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props
       const cleaned = { ...prev };
       delete cleaned.email;
       delete cleaned.password;
+      delete cleaned.confirmarPassword;
       delete cleaned.fotoUri;
       return { ...cleaned, ...paso1Errors };
     });
@@ -219,6 +224,7 @@ export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props
       cuil,
       email,
       password,
+      confirmarPassword,
       fotoUri,
     });
 
@@ -263,6 +269,7 @@ export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props
           setCuil("");
           setEmail("");
           setPassword("");
+          setConfirmarPassword("");
           setFotoUri(null);
           setErrors({});
           scrollRef.current?.scrollTo({ x: 0, animated: false });
@@ -359,7 +366,7 @@ export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props
                 onChangeText={(v) => { setNombres(v); clearFieldError("nombres", v); }}
                 placeholder="Ingrese los nombres"
                 placeholderTextColor="#a37e1f"
-                className={`rounded-xl border px-4 py-3 text-stone-700 ${
+                className={`rounded-xl border  bg-[#FFF8EA] pl-4 py-3 text-stone-700 ${
                   errors.nombres ? "border-terracota" : "border-mostaza"
                 }`}
               />
@@ -374,7 +381,7 @@ export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props
                 onChangeText={(v) => { setApellidos(v); clearFieldError("apellidos", v); }}
                 placeholder="Ingrese los apellidos"
                 placeholderTextColor="#a37e1f"
-                className={`rounded-xl border px-4 py-3 text-stone-700 ${
+                className={`rounded-xl border  bg-[#FFF8EA] pl-4 py-3 text-stone-700 ${
                   errors.apellidos ? "border-terracota" : "border-mostaza"
                 }`}
               />
@@ -391,7 +398,7 @@ export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props
                 maxLength={8}
                 placeholder="Ejemplo: 38123456"
                 placeholderTextColor="#a37e1f"
-                className={`rounded-xl border px-4 py-3 text-stone-700 ${
+                className={`rounded-xl border  bg-[#FFF8EA] pl-4 py-3 text-stone-700 ${
                   errors.dni ? "border-terracota" : "border-mostaza"
                 }`}
               />
@@ -408,7 +415,7 @@ export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props
                 maxLength={11}
                 placeholder="Ejemplo: 20381234562"
                 placeholderTextColor="#a37e1f"
-                className={`rounded-xl border px-4 py-3 text-stone-700 ${
+                className={`rounded-xl border  bg-[#FFF8EA] pl-4 py-3 text-stone-700 ${
                   errors.cuil ? "border-terracota" : "border-mostaza"
                 }`}
               />
@@ -418,7 +425,7 @@ export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props
 
           {/* Paginación + Siguiente */}
           <View className="mx-6 mt-4 items-center">
-            <View className="flex-row items-center justify-center gap-2 py-1 mb-3">
+            <View className="flex-row items-center justify-center gap-2 py-1 my-3">
               {[0, 1].map((i) => (
                 <View
                   key={i}
@@ -430,7 +437,7 @@ export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props
             </View>
             <TouchableOpacity
               onPress={handleSiguiente}
-              className="w-full flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
+              className="w-full flex-row items-center justify-center rounded-2xl border border-calabaza mt-3 bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
             >
               <Text style={{ fontFamily: "LaOriental" }}  className="text-s  text-calabaza">Siguiente</Text>
             </TouchableOpacity>
@@ -456,7 +463,7 @@ export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props
                 autoCapitalize="none"
                 placeholder="empleado@restaurante.com"
                 placeholderTextColor="#a37e1f"
-                className={`rounded-xl border px-4 py-3 text-stone-700 ${
+                className={`rounded-xl border bg-[#FFF8EA] pl-4 py-3 text-stone-700 ${
                   errors.email ? "border-terracota" : "border-mostaza"
                 }`}
               />
@@ -472,18 +479,34 @@ export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props
                 secureTextEntry
                 placeholder="Mínimo seis caracteres"
                 placeholderTextColor="#a37e1f"
-                className={`rounded-xl border px-4 py-3 text-stone-700 ${
+                className={`rounded-xl border bg-[#FFF8EA] pl-4 py-3 text-stone-700 ${
                   errors.password ? "border-terracota" : "border-mostaza"
                 }`}
               />
               {errors.password && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.password}</Text>}
             </View>
-          </View>
 
-          <View className="mx-4 mt-5 rounded-2xl border border-mostaza p-4">
-            <Text className="mb-2 text-s font-bold text-vino">
+            {/* Confirmar Contraseña */}
+            <View>
+              <Text className="mb-1 text-s font-bold text-vino">Confirmar Contraseña *</Text>
+              <TextInput
+                value={confirmarPassword}
+                onChangeText={(v) => { setConfirmarPassword(v); clearFieldError("confirmarPassword", v); }}
+                secureTextEntry
+                placeholder="Repita la contraseña"
+                placeholderTextColor="#a37e1f"
+                className={`rounded-xl border bg-[#FFF8EA] pl-4 py-3 text-stone-700 ${
+                  errors.confirmarPassword ? "border-terracota" : "border-mostaza"
+                }`}
+              />
+              {errors.confirmarPassword && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.confirmarPassword}</Text>}
+            </View>
+          </View>
+          
+          <Text className="mt-4 mb-2 ml-6 text-s font-bold text-vino">
               Fotografía Personal*
             </Text>
+          <View className="self-center w-[88%] h-[32%] bg-[#FFF8EA] rounded-2xl border border-mostaza p-4">
 
             {fotoUri ? (
               <View className="items-center">
@@ -508,7 +531,7 @@ export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props
                   ejecutarVibracion("toque");
                   setIsCameraOpen(true);
                 }}
-                className="h-36 items-center justify-center rounded-xl border border-dashed border-amber-600/50"
+                className="h-[100%] items-center justify-center rounded-xl border border-dashed border-amber-600/50"
               >
                 <Image source={require("../../assets/images/camera.png")} className="mb-1 h-9 w-9" />
                 <Text className="text-xs font-bold text-terracota">Activar Cámara en Vivo</Text>
@@ -524,7 +547,7 @@ export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props
           <TouchableOpacity
               onPress={handleSubmit}
               disabled={isSubmitting}
-              className="mt-6 flex-row items-center justify-center rounded-2xl border border-amber-400/40 bg-vino py-3 active:bg-terracota"
+              className="mt-7 flex-row items-center justify-center rounded-2xl border border-amber-400/40 bg-vino py-3 active:bg-terracota"
             >
               <Image
                 source={require("../../assets/images/sello.png")}
@@ -540,32 +563,6 @@ export default function AltaEmpleadoScreen({ perfilInicial = "cocinero" }: Props
                 resizeMode="contain"
               />
             </TouchableOpacity>
-
-          {/* Paginación + Volver */}
-          <View className="mx-6 mt-4 items-center">
-            <View className="flex-row items-center justify-center gap-2 py-1 mb-3">
-              {[0, 1].map((i) => (
-                <View
-                  key={i}
-                  className={`h-2 w-2 rotate-45 ${
-                    currentStep === i ? "bg-vino" : "bg-mostaza/30"
-                  }`}
-                />
-              ))}
-            </View>
-            <TouchableOpacity
-              onPress={() => {
-                ejecutarVibracion("toque");
-                scrollRef.current?.scrollTo({
-                  x: 0,
-                  animated: true,
-                });
-              }}
-              className="w-full flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
-            >
-              <Text style={{ fontFamily: "LaOriental" }} className="text-s text-calabaza">Volver</Text>
-            </TouchableOpacity>
-          </View>
           </ScrollView>
         </View>
       </ScrollView>

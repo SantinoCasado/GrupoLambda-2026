@@ -9,6 +9,7 @@ export interface ClienteFormErrors {
   dni?: string;
   email?: string;
   password?: string;
+  confirmarPassword?: string;
   fotoUri?: string;
 }
 
@@ -49,6 +50,7 @@ export function validateClienteForm(data: {
   dni: string;
   email: string;
   password?: string;
+  confirmarPassword?: string;
   fotoUri: string | null;
 }): ClienteFormErrors {
   const errors: ClienteFormErrors = {};
@@ -89,6 +91,13 @@ export function validateClienteForm(data: {
     errors.password = "La contraseña es obligatoria.";
   } else if (data.password.length < 6) {
     errors.password = "La contraseña debe tener al menos 6 caracteres.";
+  }
+
+  // Confirmación de contraseña
+  if (!data.confirmarPassword) {
+    errors.confirmarPassword = "Debe confirmar la contraseña.";
+  } else if (data.confirmarPassword !== data.password) {
+    errors.confirmarPassword = "Las contraseñas no coinciden.";
   }
 
   // Foto tomada con cámara obligatoria
