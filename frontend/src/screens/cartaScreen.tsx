@@ -47,6 +47,13 @@ const ICONO_CATEGORIA: Record<Categoria, string> = {
   dessert: "🍰",
 };
 
+// Título del header según la categoría que se está viendo.
+const TITULO_CATEGORIA: Record<Categoria, string> = {
+  dish: "Carta de Platos",
+  drink: "Carta de Bebidas",
+  dessert: "Carta de Postres",
+};
+
 // Carrusel de fotos de un producto. Es un componente propio porque la carta
 // muestra una tarjeta por página y cada una necesita su posición de foto y su
 // referencia de scroll independientes. Mide su propio tamaño para que la foto
@@ -318,64 +325,29 @@ export function CartaScreen({
   return (
     <View className="flex-1 bg-amber-50/40">
       {/* 1. Header con Mesa y Consulta al Mozo */}
-      <View className="flex-row items-center justify-between border-b border-mostaza/20 bg-vino px-5 py-3 shadow-md">
-        {onVolver ? (
-          <TouchableOpacity onPress={onVolver} className="py-1 pr-3">
-            <Text className="text-sm font-bold text-amber-100">← Volver</Text>
-          </TouchableOpacity>
-        ) : (
-          <View className="w-10" />
-        )}
+      <View className="flex-row items-center border-b border-mostaza/20 bg-vino px-5 py-3 shadow-md">
+
+        <View className="flex-1" />
 
         <View className="items-center">
           <Text style={{ fontFamily: "LaOriental" }} className="text-xl uppercase text-mostaza">
-            Carta Digital
+            {TITULO_CATEGORIA[categoriaActiva]}
           </Text>
-          {numeroMesa ? (
-            <Text className="text-[11px] font-bold text-amber-200">
-              Mesa #{numeroMesa}
-            </Text>
-          ) : null}
         </View>
 
         {/* Botón Consulta al Mozo (Punto 11) */}
-        {esCliente && onAbrirChatMozo ? (
-          <TouchableOpacity
-            onPress={onAbrirChatMozo}
-            className="flex-row items-center rounded-xl border border-mostaza/60 bg-calabaza/90 px-2.5 py-1.5 active:bg-calabaza"
-          >
-            <Text className="mr-1 text-sm">💬</Text>
-            <Text className="text-[11px] font-extrabold text-white uppercase">Mozo</Text>
-          </TouchableOpacity>
-        ) : (
-          <View className="w-10" />
-        )}
-      </View>
-
-      {/* 2. Pestañas de Categoría — solo las secciones permitidas para el rol.
-          Con una sola sección visible la barra se oculta. */}
-      {categoriasVisibles.length > 1 && (
-        <View className="flex-row border-b border-mostaza/20 bg-vino/95 px-4 py-2 justify-around">
-          {CATEGORIAS.filter((c) => categoriasVisibles.includes(c.id)).map((categoria) => {
-            const activa = categoriaActiva === categoria.id;
-            return (
-              <TouchableOpacity
-                key={categoria.id}
-                onPress={() => setCategoriaSeleccionada(categoria.id)}
-                className={`rounded-xl px-4 py-1.5 ${activa ? "bg-mostaza" : "bg-black/20"}`}
-              >
-                <Text
-                  className={`text-xs font-bold ${
-                    activa ? "text-vino" : "text-amber-100/70"
-                  }`}
-                >
-                  {categoria.etiqueta}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+        <View className="flex-1 items-end">
+          {esCliente && onAbrirChatMozo ? (
+            <TouchableOpacity
+              onPress={onAbrirChatMozo}
+              className="flex-row items-center rounded-xl border border-mostaza/60 bg-calabaza/90 px-2.5 py-1.5 active:bg-calabaza"
+            >
+              <Text className="mr-1 text-sm">💬</Text>
+              <Text className="text-[11px] font-extrabold text-white uppercase">Mozo</Text>
+            </TouchableOpacity>
+          ) : null}
         </View>
-      )}
+      </View>
 
       {/* 3. Contenido Principal — una tarjeta por página, scroll vertical tipo Reels */}
       <View onLayout={onLayoutPagina} className="flex-1">
@@ -419,25 +391,24 @@ export function CartaScreen({
                     {/* Ficha descriptiva */}
                     <View className="mt-3.5">
                       <View className="flex-row items-start justify-between">
-                        <Text className="mr-2 flex-1 text-lg font-black text-vino">
+                        <Text className="mr-2 mb-2 pr-5 flex-1 text-xl font-black text-vino">
                           {item.nombre}
                         </Text>
-                        <Text className="text-2xl font-black text-calabaza">
+                        <Text className="text-3xl font-black text-calabaza">
                           ${item.precio}
                         </Text>
                       </View>
 
                       <View className="mt-1 flex-row items-center">
                         <View className="rounded-md bg-amber-100 px-2 py-0.5">
-                          <Text className="text-[11px] font-bold text-amber-900">
-                            ⏱ {item.tiempoElaboracion} min elaboración
+                          <Text className="text-sm font-bold text-amber-900">
+                            ⏱ {item.tiempoElaboracion} minutos
                           </Text>
                         </View>
                       </View>
-
                       <Text
                         numberOfLines={3}
-                        className="mt-2 text-xs leading-relaxed text-stone-600"
+                        className="px-5 mt-2 text-s text-stone-600"
                       >
                         {item.descripcion}
                       </Text>
@@ -461,15 +432,24 @@ export function CartaScreen({
                 ) : esCliente ? (
                       <TouchableOpacity
                         onPress={() => agregarAlCarrito(item)}
-                        className="mt-3 flex-row items-center justify-center rounded-2xl bg-vino py-3 shadow active:bg-terracota"
+                        className="mt-3 flex-row items-center justify-center rounded-2xl bg-vino py-3 active:bg-terracota"
                       >
-                        <Text className="mr-2 text-base">🛒</Text>
+                        <Image
+                          source={require("../../assets/images/sello.png")}
+                          className="h-7 w-7"
+                          resizeMode="contain"
+                        />
                         <Text
                           style={{ fontFamily: "LaOriental" }}
-                          className="text-sm font-bold uppercase tracking-wider text-mostaza"
+                          className="mx-5 text-s uppercase tracking-wider text-mostaza"
                         >
                           Agregar a la Mesa
                         </Text>
+                        <Image
+                          source={require("../../assets/images/sello.png")}
+                          className="h-7 w-7"
+                          resizeMode="contain"
+                        />
                       </TouchableOpacity>
                     ) : null}
                   </View>

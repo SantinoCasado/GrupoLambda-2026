@@ -27,7 +27,7 @@ const PERFILES_EMPLEADO = [
 
 interface Props {
   usuario: UsuarioSeed;
-  onNavigate: (destino: HomeDestino, tipoCarta?: "dish" | "drink" | "todo" | string) => void;
+  onNavigate: (destino: HomeDestino, tipoCarta?: "comida" | "bebida" | "postre" | "todo" | string) => void;
   numeroMesa?: number | null;
   onSolicitarMesa?: () => void;
   pedidoActivoId?: string | null;
@@ -54,7 +54,12 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
     <>
       <ScrollView
         className="flex-1"
-        contentContainerStyle={{ paddingBottom: esCliente ? 140 : 50 }}
+        contentContainerStyle={{
+          // flexGrow deja que el contenido se estire a la altura de la pantalla;
+          // sin esto el flex-1 de los botones no tiene altura que repartir.
+          flexGrow: 1,
+          paddingBottom: esCliente ? 140 : esAdmin ? 0 : 50,
+        }}
         showsVerticalScrollIndicator={false}
       >
         <StatusBar style="light" />
@@ -85,70 +90,89 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
         </View>
 
         {/* Contenido según rol */}
-        <View className="px-6 pt-6">
+        <View className={`px-6 pt-6 ${esAdmin ? "flex-1" : ""}`}>
           {/* 1. GESTIÓN ADMIN */}
           {esAdmin && (
-            <View className="gap-y-4">
-              <Text className="mb-1 text-xs font-bold text-vino uppercase">Gestión Restaurante</Text>
+            <View className="flex-1 gap-y-4">
+              <Text className="mb-1 text-xs font-bold text-vino uppercase">Gestión del Restaurante</Text>
 
-              <TouchableOpacity
-                onPress={() => {
-                  Vibration.vibrate([0, 40]);
-                  setModalPerfilVisible(true);
-                }}
-                className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota"
-              >
-                <Image source={require("../../assets/images/employeeRegistration-y.png")} className="h-7 w-7 mr-3" resizeMode="contain" />
-                <View className="flex-1">
-                  <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
-                    Alta de Empleados
-                  </Text>
-                  <Text className="text-[11px] font-semibold text-amber-100">Registrar nuevo personal</Text>
-                </View>
-                <Image source={require("../../assets/images/right-arrow-y.png")} className="h-7 w-7" resizeMode="contain" />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => navegar("mesas")}
-                className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota"
-              >
-                <Image source={require("../../assets/images/table-y.png")} className="h-7 w-7 mr-3" resizeMode="contain" />
-                <View className="flex-1">
-                  <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
-                    Mesas Y QR
-                  </Text>
-                  <Text className="text-[11px] font-semibold text-amber-100">Gestionar mesas y código QR</Text>
-                </View>
-                <Image source={require("../../assets/images/right-arrow-y.png")} className="h-7 w-7" resizeMode="contain" />
-              </TouchableOpacity>
-
+              {/* Acción principal: absorbe la altura sobrante para que los tres
+                  botones de abajo queden pegados al final de la sección. */}
               <TouchableOpacity
                 onPress={() => navegar("clientes")}
-                className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota"
+                className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza bg-vino px-6 active:bg-terracota"
+                style={{ minHeight: 220 }}
               >
-                <Image source={require("../../assets/images/userAprovation-y.png")} className="h-7 w-7 mr-3" resizeMode="contain" />
-                <View className="flex-1">
-                  <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
-                    Aprobación de Clientes
-                  </Text>
-                  <Text className="text-[11px] font-semibold text-amber-100">Revisar solicitudes pendientes</Text>
-                </View>
-                <Image source={require("../../assets/images/right-arrow-y.png")} className="h-7 w-7" resizeMode="contain" />
+                <Image
+                  source={require("../../assets/images/userAprovation-y.png")}
+                  className="h-32 w-32"
+                  resizeMode="contain"
+                />
+                <Text
+                  style={{ fontFamily: "LaOriental" }}
+                  className="mt-3 text-center text-2xl uppercase tracking-wider text-mostaza"
+                >
+                  Aprobación de Clientes
+                </Text>
               </TouchableOpacity>
 
+              {/* Segunda acción: más grande que las de abajo, más chica que la principal */}
               <TouchableOpacity
-                onPress={() => navegar("carta", "comida")}
-                className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota"
+                onPress={() => Vibration.vibrate([0, 40])}
+                className="flex-row items-center justify-center rounded-2xl border-2 border-mostaza bg-vino px-6 py-4 active:bg-terracota"
               >
-                <Image source={require("../../assets/images/food-y.png")} className="h-7 w-7 mr-3" resizeMode="contain" />
-                <View className="flex-1">
-                  <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
-                    Carta Digital
-                  </Text>
-                  <Text className="text-[11px] font-semibold text-amber-100">Consultar los productos de la carta</Text>
-                </View>
-                <Image source={require("../../assets/images/right-arrow-y.png")} className="h-7 w-7" resizeMode="contain" />
+                <Image
+                  source={require("../../assets/images/audit-y.png")}
+                  className="h-12 w-12"
+                  resizeMode="contain"
+                />
+                <Text
+                  style={{ fontFamily: "LaOriental" }}
+                  className="ml-4 text-lg uppercase tracking-wider text-mostaza"
+                >
+                  Estadísticas
+                </Text>
               </TouchableOpacity>
+
+              {/* Acciones secundarias */}
+              <View className="mb-5  flex-row gap-2">
+                <TouchableOpacity
+                  onPress={() => {
+                    Vibration.vibrate([0, 40]);
+                    setModalPerfilVisible(true);
+                  }}
+                  className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza bg-vino p-3 active:bg-terracota"
+                >
+                  <Image
+                    source={require("../../assets/images/employeeRegistration-y.png")}
+                    className="h-10 w-10"
+                    resizeMode="contain"
+                  />
+                  <Text
+                    style={{ fontFamily: "LaOriental" }}
+                    className="mt-2 text-center text-xs uppercase tracking-wide text-mostaza"
+                  >
+                    Alta de Empleados
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => navegar("mesas")}
+                  className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza bg-vino p-3 active:bg-terracota"
+                >
+                  <Image
+                    source={require("../../assets/images/table-y.png")}
+                    className="h-10 w-10"
+                    resizeMode="contain"
+                  />
+                  <Text
+                    style={{ fontFamily: "LaOriental" }}
+                    className="mt-2 text-center text-xs uppercase tracking-wide text-mostaza"
+                  >
+                    Mesas Y QR
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 
@@ -204,7 +228,14 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
           {/* 3. CLIENTE (Platos, Bebidas y Carrito) */}
           {esCliente && (
             <View className="gap-y-4">
-              <Text className="mb-1 text-xs font-bold text-vino uppercase">Atención en Salón</Text>
+              <View className="mb-1 flex-row items-center justify-between">
+                <Text className="text-xs font-bold text-vino uppercase">Atención en Salón</Text>
+                {numeroMesa ? (
+                  <View className="rounded-lg border border-vino bg-mostaza px-2 py-0.5">
+                    <Text className="text-xs font-bold text-vino">MESA #{numeroMesa}</Text>
+                  </View>
+                ) : null}
+              </View>
 
               {!numeroMesa ? (
                 /* ESTADO 1: SIN MESA ASIGNADA */
@@ -226,13 +257,6 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
               ) : (
                 /* ESTADO 2: YA TIENE MESA ASIGNADA */
                 <>
-                  <View className="flex-row items-center justify-between rounded-xl bg-emerald-950/60 border border-emerald-500/50 p-3">
-                    <Text className="text-xs font-bold text-emerald-400">
-                      ✓ Ubicado en Mesa #{numeroMesa}
-                    </Text>
-                    <Text className="text-[10px] text-amber-200 uppercase font-semibold">Salón Habilitado</Text>
-                  </View>
-
                   {/* Carta de Platos */}
                   <TouchableOpacity
                     onPress={() => navegar("carta", "comida")}
@@ -267,25 +291,6 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                     <Image source={require("../../assets/images/right-arrow-y.png")} className="h-6 w-6" resizeMode="contain" />
                   </TouchableOpacity>
                 </>
-              )}
-
-              {/* Botón de Seguimiento si hay comanda en curso */}
-              {pedidoActivoId && (
-                <TouchableOpacity
-                  onPress={onVerEstadoPedido}
-                  className="mb-3 flex-row items-center rounded-2xl border-2 border-emerald-600 bg-emerald-700/90 p-4 shadow-md active:bg-emerald-800"
-                >
-                  <Image source={require("../../assets/images/cart-y.png")} className="h-8 w-8 mr-3" resizeMode="contain" />
-                  <View className="flex-1">
-                    <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase text-white font-bold">
-                      Ver Estado de mi Pedido
-                    </Text>
-                    <Text className="text-xs text-emerald-100">
-                      Comanda en preparación en cocina. Revisá tiempos y avance.
-                    </Text>
-                  </View>
-                  <Text className="text-lg font-bold text-white">→</Text>
-                </TouchableOpacity>
               )}
             </View>
           )}
@@ -324,23 +329,6 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                   </Text>
                   <Text className="text-[11px] font-semibold text-amber-100">
                     Alta presencial con escaneo de DNI y foto
-                  </Text>
-                </View>
-                <Image source={require("../../assets/images/right-arrow-y.png")} className="h-6 w-6" resizeMode="contain" />
-              </TouchableOpacity>
-
-              {/* Botón 3: Carta Digital */}
-              <TouchableOpacity
-                onPress={() => navegar("carta", "comida")}
-                className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota shadow-md"
-              >
-                <Image source={require("../../assets/images/food-y.png")} className="h-7 w-7 mr-3" resizeMode="contain" />
-                <View className="flex-1">
-                  <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
-                    Carta Digital
-                  </Text>
-                  <Text className="text-[11px] font-semibold text-amber-100">
-                    Consultar los productos de la carta
                   </Text>
                 </View>
                 <Image source={require("../../assets/images/right-arrow-y.png")} className="h-6 w-6" resizeMode="contain" />
@@ -384,22 +372,6 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                 </View>
                 <Image source={require("../../assets/images/right-arrow-y.png")} className="h-6 w-6" resizeMode="contain" />
               </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => navegar("carta", "comida")}
-                className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-terracota shadow-md"
-              >
-                <Image source={require("../../assets/images/food-y.png")} className="h-7 w-7 mr-3" resizeMode="contain" />
-                <View className="flex-1">
-                  <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-mostaza">
-                    Carta Digital
-                  </Text>
-                  <Text className="text-[11px] font-semibold text-amber-100">
-                    Consultar los productos de la carta
-                  </Text>
-                </View>
-                <Image source={require("../../assets/images/right-arrow-y.png")} className="h-6 w-6" resizeMode="contain" />
-              </TouchableOpacity>
             </View>
           )}
 
@@ -421,29 +393,49 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
         </View>
       </ScrollView>
 
-      {/* Botón Mi Pedido fijo al pie de la pantalla (solo clientes) */}
+      {/* Botón fijo al pie: Mi Pedido, o Ver Estado si hay pedido activo (solo clientes) */}
       {esCliente && (
         <View className="px-6 pb-6 pt-2">
-          <TouchableOpacity
-            onPress={() => navegar("carrito")}
-            className="flex-row items-center rounded-2xl border-2 border-vino bg-mostaza p-4 active:bg-mostaza/80"
-          >
-            <Image source={require("../../assets/images/cart-v.png")} className="h-7 w-7 mr-3" resizeMode="contain" />
-            <View className="flex-1">
-              <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-vino font-black">
-                Mi Pedido ({carrito.length})
-              </Text>
-              <Text className="text-[11px] font-semibold text-stone-800">
-                Revisar pedido y confirmar
-              </Text>
-            </View>
-            <Image source={require("../../assets/images/right-arrow-y.png")} className="h-6 w-6 tint-vino" resizeMode="contain" />
-          </TouchableOpacity>
+          {pedidoActivoId ? (
+            <TouchableOpacity
+              onPress={onVerEstadoPedido}
+              className="flex-row items-center rounded-2xl border-2 border-emerald-600 bg-emerald-700/90 p-4 shadow-md active:bg-emerald-800"
+            >
+              <Image source={require("../../assets/images/cart-w.png")} className="h-8 w-8 mr-3" resizeMode="contain" />
+              <View className="flex-1">
+                <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase text-white">
+                  Ver Estado de mi Pedido
+                </Text>
+                <Text className="text-xs text-emerald-100">
+                  Pedido en preparación. Revisá tiempos y avance.
+                </Text>
+              </View>
+              <Image source={require("../../assets/images/right-arrow-w.png")} className="h-6 w-6" resizeMode="contain" />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity
+              onPress={() => navegar("carrito")}
+              className="flex-row items-center rounded-2xl border-2 border-vino bg-mostaza p-4 active:bg-mostaza/80"
+            >
+              <Image source={require("../../assets/images/cart-v.png")} className="h-7 w-7 mr-3" resizeMode="contain" />
+              <View className="flex-1">
+                <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase tracking-wider text-vino font-black">
+                  Mi Pedido ({carrito.length})
+                </Text>
+                <Text className="text-[11px] font-semibold text-stone-800">
+                  Revisar pedido y confirmar
+                </Text>
+              </View>
+              <Image source={require("../../assets/images/right-arrow-v.png")} className="h-6 w-6 tint-vino" resizeMode="contain" />
+            </TouchableOpacity>
+          )}
         </View>
       )}
 
-      {/* MODAL: Selección de Puesto / Rol */}
-      <Modal visible={modalPerfilVisible} transparent animationType="fade">
+      {/* MODAL: Selección de Puesto / Rol. Montado solo al abrirlo: en Android
+          cada Modal crea una ventana nativa aunque visible={false}. */}
+      {modalPerfilVisible && (
+      <Modal visible transparent animationType="fade">
         <View className="flex-1 items-center justify-center bg-black/50 px-6">
           <ChineseFrame className="w-full max-w-sm bg-vino shadow-2xl p-3">
             <View className="px-2 pb-3 pt-5">
@@ -489,6 +481,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
           </ChineseFrame>
         </View>
       </Modal>
+      )}
     </>
   );
 }

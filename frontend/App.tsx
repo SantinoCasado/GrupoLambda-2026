@@ -717,6 +717,19 @@ function AppInterna() {
               .maybeSingle();
             if (mesaData?.id) setIdMesaCliente(mesaData.id);
             setEnEsperaRegistrado(false);
+
+            // Consulta si tiene comanda activa en preparación, igual que el login normal.
+            // Sin esto el footer del home muestra "Mi Pedido" aunque haya pedido en curso.
+            const { data: pedidoEnCurso } = await supabase
+              .from("orders")
+              .select("id")
+              .eq("client_id", usuarioActual.id)
+              .in("status", ["pending", "in_preparation", "ready"])
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            setIdPedidoActivo(pedidoEnCurso?.id ?? null);
             setVistaPrivada("home");
           }}
         />
@@ -730,12 +743,6 @@ function AppInterna() {
     usuarioActual.perfil === "cocinero" || usuarioActual.perfil === "cantinero";
   const esCliente =
     usuarioActual.perfil === "cliente_registrado" || usuarioActual.perfil === "cliente_anonimo";
-  // Personal jerárquico: ve la vista de administración de la carta (dar de baja productos).
-  const esStaffCarta =
-    usuarioActual.perfil === "dueño" ||
-    usuarioActual.perfil === "supervisor" ||
-    usuarioActual.perfil === "metre" ||
-    usuarioActual.perfil === "mozo";
 
   // 3. Vista Home
   if (vistaPrivada === "home") {
@@ -793,7 +800,7 @@ function AppInterna() {
       : vistaPrivada === "comandas" || vistaPrivada === "chat_mesas"
       ? usuarioActual.perfil === "mozo" || esAdmin
       : vistaPrivada === "carta"
-      ? esProducto || esCliente || esStaffCarta
+      ? esProducto || esCliente
       : vistaPrivada === "carrito" || vistaPrivada === "estado_pedido"
       ? esCliente
       : true;

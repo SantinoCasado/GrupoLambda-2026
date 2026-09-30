@@ -44,7 +44,6 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
   const [mesaAsignada, setMesaAsignada] = useState<{ id: string; numero: number } | null>(null);
   const [waitingListId, setWaitingListId] = useState<string | null>(null);
 
-
   // Modales
   const [modalEncuestas, setModalEncuestas] = useState(false);
   const [modalSalir, setModalSalir] = useState(false);
@@ -420,8 +419,10 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
 
       <CompanySpinner visible={saliendo} mensaje="Saliendo del local..." />
 
-      {/* MODAL CÁMARA */}
-      <Modal visible={escaneandoQR} animationType="slide">
+      {/* MODAL CÁMARA. Montado solo al abrirlo: en Android cada Modal crea una
+          ventana nativa aunque visible={false}. */}
+      {escaneandoQR && (
+      <Modal visible animationType="slide">
         <View className="flex-1 bg-black">
           <CameraView
             style={{ flex: 1 }}
@@ -437,9 +438,11 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
           </TouchableOpacity>
         </View>
       </Modal>
+      )}
 
       {/* MODAL TURNO CANCELADO POR EL METRE */}
-      <Modal visible={modalCancelado} transparent animationType="fade">
+      {modalCancelado && (
+      <Modal visible transparent animationType="fade">
         <View className="flex-1 items-center justify-center bg-black/80 px-6">
           <View className="w-full max-w-sm rounded-3xl border border-terracota/60 bg-vino p-6 shadow-2xl">
             <Image
@@ -486,9 +489,11 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
           </View>
         </View>
       </Modal>
+      )}
 
       {/* MODAL RESULTADOS ENCUESTAS */}
-      <Modal visible={modalEncuestas} transparent animationType="fade">
+      {modalEncuestas && (
+      <Modal visible transparent animationType="fade">
         <View className="flex-1 items-center justify-center bg-black/75 px-6">
           <View className="w-full max-w-sm rounded-2xl bg-vino p-5 border border-mostaza">
             <Text style={{ fontFamily: "LaOriental" }} className="text-lg text-mostaza text-center mb-3">
@@ -516,6 +521,7 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
           </View>
         </View>
       </Modal>
+      )}
       </View>
     </View>
   );

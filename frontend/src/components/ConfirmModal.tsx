@@ -29,6 +29,11 @@ export function ConfirmModal({
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
+  // No montar el <Modal> cuando está oculto: en Android cada Modal crea una
+  // ventana nativa aunque visible={false}, y mantenerlos siempre montados
+  // genera trabajo en el hilo de UI en cada cambio de pantalla.
+  if (!visible) return null;
+
   const esPeligro = tipo === "peligro";
   const icono = esPeligro
     ? require("../../assets/images/important-y.png")
@@ -37,7 +42,7 @@ export function ConfirmModal({
   const colorBotonActivo = esPeligro ? "active:bg-rose-700" : "active:bg-amber-600";
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+    <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
       <View className="flex-1 items-center justify-center bg-black/60 px-6">
         <ChineseFrame className="w-full max-w-sm bg-vino shadow-2xl p-3">
           <View className="items-center rounded-xl bg-mostaza/15 px-4 py-6">

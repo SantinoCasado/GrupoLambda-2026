@@ -127,16 +127,13 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos, onEditarCo
     <View className="flex-1 bg-amber-50 px-4 pt-2">
       {/* Header */}
       <View className="mb-4 flex-row items-center justify-between border-b border-mostaza/30 pb-3">
-        <TouchableOpacity onPress={onVolver} className="px-2 py-1">
-          <Text className="font-bold text-vino">← Volver</Text>
-        </TouchableOpacity>
 
         <View className="items-center">
           <Text style={{ fontFamily: "LaOriental" }} className="text-xl uppercase text-vino">
             Mesa #{numMesa}
           </Text>
           <Text className="text-[10px] font-bold text-stone-500">
-            Seguimiento en Vivo
+            Seguimiento del pedido
           </Text>
         </View>
 
@@ -247,7 +244,7 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos, onEditarCo
           ))}
 
           <View className="mt-3 flex-row justify-between pt-2 border-t border-mostaza/20">
-            <Text className="text-sm font-bold text-stone-800">Total Abonado / A Pagar:</Text>
+            <Text className="text-sm font-bold text-vino">TOTAL</Text>
             <Text className="text-lg font-black text-calabaza">
               ${Number(pedido?.total_amount || 0).toLocaleString("es-AR")}
             </Text>
