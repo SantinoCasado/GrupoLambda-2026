@@ -31,6 +31,8 @@ import { ComandasScreen } from "./src/screens/comandasScreen";
 import { ChatMesasScreen } from "./src/screens/chatMesasScreen";
 import { MetreScreen } from "./src/screens/metreScreen";
 import { EstadoPedidoScreen } from "./src/screens/estadoPedidoScreen";
+import { JuegosHomeScreen } from "./src/screens/juegosHome";
+import { MemotestScreen } from "./src/screens/memotestScreen";
 import { TicketsScreen } from "./src/screens/ticketsScreen";
 
 const NO_PHOTO = require("./assets/images/no-photo.jpg");
@@ -56,6 +58,8 @@ type VistaPrivada =
   | "carta"
   | "carrito"
   | "estado_pedido"
+  | "juegos"
+  | "memotest"
   | "tickets";
 
 export default function App() {
@@ -783,7 +787,7 @@ function AppInterna() {
       ? usuarioActual.perfil === "mozo" || esAdmin
       : vistaPrivada === "carta"
       ? esProducto || esCliente
-      : vistaPrivada === "carrito" || vistaPrivada === "estado_pedido"
+      : vistaPrivada === "carrito" || vistaPrivada === "estado_pedido" || vistaPrivada === "juegos"
       ? esCliente
       : true;
 
@@ -903,9 +907,7 @@ function AppInterna() {
           <EstadoPedidoScreen
             pedidoId={idPedidoActivo || ""}
             onVolver={volverAlInicio}
-            onIrAJuegos={() => {
-              // Navegación a juegos de la mesa
-            }}
+            onIrAJuegos={() => setVistaPrivada("juegos")}
             onEditarComanda={(motivo) => {
               if (!idPedidoActivo) return;
               setIdPedidoEnEdicion(idPedidoActivo);
@@ -913,6 +915,19 @@ function AppInterna() {
               setVistaPrivada("carrito");
             }}
           />
+        )}
+
+        {/* Juegos de la Mesa */}
+        {vistaPrivada === "juegos" && (
+          <JuegosHomeScreen
+            onVolver={() => setVistaPrivada("estado_pedido")}
+            onIrAMemotest={() => setVistaPrivada("memotest")}
+          />
+        )}
+
+        {/* Memotest */}
+        {vistaPrivada === "memotest" && (
+          <MemotestScreen onVolver={() => setVistaPrivada("juegos")} />
         )}
 
         {/* Comandas del Mozo */}

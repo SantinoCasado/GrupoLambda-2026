@@ -477,7 +477,7 @@ export function CartaScreen({
           <View className="flex-row items-center justify-between">
             <View>
               <Text className="text-sm font-bold uppercase text-amber-200">
-                Importe acumulado ({carrito.length} ítems):
+                Importe acumulado ({carrito.length} ítem/s):
               </Text>
               {/* Buen tamaño requerido por Punto 12 */}
               <Text className="text-3xl font-black text-mostaza">

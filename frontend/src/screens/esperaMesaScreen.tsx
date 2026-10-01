@@ -110,7 +110,7 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
 
             mostrarMensaje(
               "¡Mesa Asignada!",
-              `El metre te asignó la Mesa #${num}. Por favor, escaneá el QR ubicado en tu mesa para ver el menú.`,
+              `El metre te asignó la Mesa #${num}. Escaneá el QR ubicado en tu mesa para ver el menú.`,
               "exito",
               require("../../assets/images/food-y.png")
             );
@@ -325,7 +325,7 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
             )}
             <Text className="text-center text-xs text-calabaza">
               {mesaAsignada
-                ? `Mesa asignada: #${mesaAsignada.numero}. Por favor, escaneá su código QR para ver el menú.`
+                ? `Escaneá el código QR de la mesa #${mesaAsignada.numero} para ver el menú.`
                 : qrEntradaEscaneado
                 ? "Esperando asignación de mesa..."
                 : "Escaneá el QR de la entrada para anunciar tu llegada."}
@@ -351,29 +351,23 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
               Escanear QR
             </Text>
           </TouchableOpacity>
-        ) : /*Capaz que lo saco*/ (
-          <View className="w-full items-center rounded-2xl bg-emerald-950/60 p-3 border border-emerald-500/40">
-            <Text className="text-emerald-400 font-bold text-center text-xs">
-              ✓ Ingreso confirmado en puerta
-            </Text>
-          </View>
-        )}
-
-        {/* 2. Botón QR Mesa (Se activa si el Metre le asignó mesa) */}
-        {mesaAsignada && (
-          <TouchableOpacity
-            onPress={() => abrirEscaner("mesa")}
-            className="mt-3 w-full flex-row items-center justify-center rounded-2xl bg-emerald-600 py-3.5 shadow-md active:bg-emerald-700"
-          >
-            <Image
-              source={require("../../assets/images/table-w.png")}
-              className="mr-2 h-6 w-6"
-              resizeMode="contain"
-            />
-            <Text style={{ fontFamily: "LaOriental" }} className="text-sm uppercase text-white">
-              Escanear QR en la Mesa #{mesaAsignada.numero}
-            </Text>
-          </TouchableOpacity>
+        ) : (
+          /* 2. Botón QR Mesa (Se activa si el Metre le asignó mesa) */
+          mesaAsignada && (
+            <TouchableOpacity
+              onPress={() => abrirEscaner("mesa")}
+              className="mt-3 w-full flex-row items-center justify-center rounded-2xl bg-emerald-600 py-3.5 shadow-md active:bg-emerald-700"
+            >
+              <Image
+                source={require("../../assets/images/table-w.png")}
+                className="mr-2 h-6 w-6"
+                resizeMode="contain"
+              />
+              <Text style={{ fontFamily: "LaOriental" }} className="text-sm uppercase text-white">
+                Escanear QR en la Mesa #{mesaAsignada.numero}
+              </Text>
+            </TouchableOpacity>
+          )
         )}
 
         {/* 3. Encuestas previas */}

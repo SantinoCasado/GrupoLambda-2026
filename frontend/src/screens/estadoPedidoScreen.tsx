@@ -263,16 +263,16 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos, onEditarCo
             onPress={onIrAJuegos}
             className="mb-6 flex-row items-center rounded-2xl border-2 border-mostaza bg-calabaza p-4 shadow-md active:bg-vino"
           >
-            <Text className="text-3xl mr-3">🎮</Text>
+            <Image source={require("../../assets/images/joystick-w.png")} className="h-8 w-8 mr-3" resizeMode="contain" />
             <View className="flex-1">
-              <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase text-white font-bold">
-                Jugar en la Mesa
+              <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase text-white">
+                Jugos
               </Text>
               <Text className="text-xs text-amber-100">
-                Jugá mientras esperás la comida y ganá descuentos en tu cuenta.
+                Jugá mientras esperás y ganá descuentos.
               </Text>
             </View>
-            <Text className="text-lg font-bold text-mostaza">→</Text>
+            <Image source={require("../../assets/images/right-arrow-w.png")} className="h-6 w-6" resizeMode="contain" />
           </TouchableOpacity>
         )}
       </ScrollView>
