@@ -1,5 +1,13 @@
 import React from "react";
-import { View, Text, Image, TouchableOpacity, ScrollView, Vibration } from "react-native";
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  ScrollView,
+  Vibration,
+  ImageSourcePropType,
+} from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { ChineseFrame } from "../components/ChineseFrame";
 
@@ -8,8 +16,23 @@ interface Props {
   onIrAMemotest: () => void;
 }
 
-const JUEGOS = [
-  { clave: "memotest", numero: 1, titulo: "Memotest", descripcion: "Encuentra los pares" },
+interface Juego {
+  clave: string;
+  numero: number;
+  titulo: string;
+  descripcion: string;
+  /** Los juegos sin icono muestran su número en un círculo. */
+  icono?: ImageSourcePropType;
+}
+
+const JUEGOS: Juego[] = [
+  {
+    clave: "memotest",
+    numero: 1,
+    titulo: "Memotest",
+    descripcion: "Encuentra los pares",
+    icono: require("../../assets/images/tiles-y.png"),
+  },
   { clave: "juego2", numero: 2, titulo: "Juego 2", descripcion: "Próximamente" },
   { clave: "juego3", numero: 3, titulo: "Juego 3", descripcion: "Próximamente" },
 ];
@@ -43,6 +66,10 @@ export function JuegosHomeScreen({ onVolver, onIrAMemotest }: Props) {
             </View>
           </ChineseFrame>
         </View>
+
+        <View className="mb-5 flex-row items-center justify-between">
+          <Text className="text-xs font-bold text-vino uppercase">Para pasar el tiempo</Text>
+          </View>
       </View>
 
       <ScrollView
@@ -61,21 +88,29 @@ export function JuegosHomeScreen({ onVolver, onIrAMemotest }: Props) {
               Vibration.vibrate([0, 40]);
               console.log(`${juego.titulo} — pendiente de implementación`);
             }}
-            className="mb-4 flex-row items-center rounded-2xl border-2 border-mostaza bg-calabaza p-4 shadow-md active:bg-vino"
+            className="mb-4 flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 shadow-md active:bg-vino/80"
           >
-            <View className="mr-3 h-12 w-12 items-center justify-center rounded-full border-2 border-mostaza bg-vino">
-              <Text style={{ fontFamily: "LaOriental" }} className="text-xl text-mostaza">
-                {juego.numero}
-              </Text>
-            </View>
+            {juego.icono ? (
+              <Image
+                source={juego.icono}
+                className="mr-3 h-12 w-12"
+                resizeMode="contain"
+              />
+            ) : (
+              <View className="mr-3 h-12 w-12 items-center justify-center rounded-full border-2 border-mostaza bg-vino">
+                <Text style={{ fontFamily: "LaOriental" }} className="text-xl text-mostaza">
+                  {juego.numero}
+                </Text>
+              </View>
+            )}
             <View className="flex-1">
-              <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase text-white">
+              <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase text-mostaza">
                 {juego.titulo}
               </Text>
               <Text className="text-xs text-amber-100">{juego.descripcion}</Text>
             </View>
             <Image
-              source={require("../../assets/images/right-arrow-w.png")}
+              source={require("../../assets/images/right-arrow-y.png")}
               className="h-6 w-6"
               resizeMode="contain"
             />

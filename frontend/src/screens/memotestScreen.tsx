@@ -31,7 +31,7 @@ const CARAS = [
   require("../../assets/images/games/tile-2.png"),
 ];
 
-const REVERSO = require("../../assets/images/games/tile-back.png");
+const REVERSO = require("../../assets/images/games/bamboo.png");
 
 const LOGO = require("../../assets/images/games/tiles-logo.png");
 
@@ -68,6 +68,8 @@ export function MemotestScreen({ onVolver }: Props) {
   const [previsualizando, setPrevisualizando] = useState(true);
   // Las instrucciones se muestran en cada entrada a la pantalla.
   const [mostrarReglas, setMostrarReglas] = useState(true);
+  // El premio se gana una sola vez y no se pierde al reintentar.
+  const [premioGanado, setPremioGanado] = useState(false);
 
   // Bloquea el toque mientras el par fallido vuelve a voltearse.
   const bloqueadoRef = useRef(false);
@@ -195,11 +197,30 @@ export function MemotestScreen({ onVolver }: Props) {
     iniciarDeal();
   };
 
+  // El premio se gana una sola vez: queda en verde aunque el jugador reintente.
+  // El efecto corre tras el commit, cuando `movimientos` ya incluye el
+  // incremento del último par, así que la condición es la misma que `gano`.
+  useEffect(() => {
+    if (terminado && intentos === 1 && movimientos <= PAR) setPremioGanado(true);
+  }, [terminado, intentos, movimientos]);
+
   // Solo cuenta como victoria al primer intento: al reintentar ya no hay
   // descuento, aunque se alcance el par (`won_on_first_try` del backend).
   const gano = intentos === 1 && movimientos <= PAR;
 
-  const paresCompletados = cartas.filter((c) => c.emparejada).length;
+  /** Estado de la insignia "-10%": ganada > disponible (primer intento) > perdida. */
+  const insignias = {
+    ganada: { fondo: "bg-[#10b981]", texto: "text-white" },
+    disponible: { fondo: "bg-mostaza", texto: "text-vino" },
+    perdida: { fondo: "bg-stone-100", texto: "text-stone-500" },
+  };
+  const insignia = premioGanado
+    ? insignias.ganada
+    : intentos === 1
+    ? insignias.disponible
+    : insignias.perdida;
+
+  const paresCompletados = cartas.filter((c) => c.emparejada).length/2;
   const totalPares = cartas.length / 2;
 
   /** Cierra las instrucciones y reparte las cartas. */
@@ -249,9 +270,68 @@ export function MemotestScreen({ onVolver }: Props) {
         </View>
       </Modal>
 
+      {/* Resultado de la partida: ofrece repetir o volver a Juegos */}
+      <Modal
+        visible={terminado}
+        transparent
+        animationType="fade"
+        onRequestClose={onVolver}
+      >
+        <View className="flex-1 items-center justify-center bg-black/60 px-6">
+          <ChineseFrame className="w-full max-w-sm bg-vino shadow-2xl p-3">
+            <View className="items-center rounded-xl bg-mostaza/15 px-4 py-6">
+              <Image
+                source={LOGO}
+                className="mb-4 h-24 w-24"
+                resizeMode="contain"
+              />
+              <Text
+                style={{ fontFamily: "LaOriental" }}
+                className="mb-3 text-center text-xl uppercase tracking-wide text-mostaza"
+              >
+                {gano ? "¡Felicidades!" : "¡Ganaste!"}
+              </Text>
+              <Text className="mb-6 text-center text-sm font-medium leading-5 text-amber-100">
+                {gano
+                  ? `¡Ganaste un 10% de descuento en tu pedido!`
+                  : intentos > 1
+                  ? `Encontraste todos los pares.`
+                  : `Encontraste todos los pares.`}
+              </Text>
+
+              <View className="w-full flex-row gap-3">
+                <TouchableOpacity
+                  onPress={reiniciar}
+                  className="flex-1 items-center rounded-2xl bg-mostaza py-3.5 active:bg-amber-600"
+                >
+                  <Text
+                    style={{ fontFamily: "LaOriental" }}
+                    className="text-center uppercase tracking-wider text-vino"
+                  >
+                    Jugar de nuevo
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={onVolver}
+                  className="flex-1 items-center justify-center align-center rounded-2xl border border-vino bg-mostaza/20 py-3.5 active:opacity-80"
+                >
+                  <Text
+                    style={{ fontFamily: "LaOriental" }}
+                    className="text-center uppercase tracking-wider text-mostaza"
+                  >
+                    Volver
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </ChineseFrame>
+        </View>
+      </Modal>
+
       {/* Cabecera */}
       <View className="px-5 pt-4">
-        <View className="mb-4">
+        <View className="mt-3 mb-4">
           <Image
             source={require("../../assets/images/logo-name.png")}
             className="h-20 w-auto self-center"
@@ -263,15 +343,28 @@ export function MemotestScreen({ onVolver }: Props) {
             resizeMode="contain"
           />
           <ChineseFrame className="mt-2 bg-vino">
-            <View className="items-center rounded-xl bg-mostaza/15 px-4 py-4">
+            <View className="relative items-center rounded-xl bg-mostaza/15 px-4 py-4">
               <Text style={{ fontFamily: "LaOriental" }} className="text-2xl text-mostaza uppercase">
                 Memotest
               </Text>
               <Text className="mt-1 text-xs font-semibold text-amber-100">
-                {intentos === 1
+                {premioGanado
+                  ? "¡Descuento asegurado! Ahora jugá por diversión."
+                  : intentos === 1
                   ? "Gana en el primer intento y obten un 10% de descuento"
                   : "Desafía tu memoria en este juego de cartas."}
               </Text>
+
+              <View
+                className={`absolute right-5 top-4 rounded-full px-2.5 py-1 ${insignia.fondo}`}
+              >
+                <Text
+                  style={{ fontFamily: "LaOriental" }}
+                  className={`justify-center align-center text-xs uppercase ${insignia.texto}`}
+                >
+                  -10%
+                </Text>
+              </View>
             </View>
           </ChineseFrame>
         </View>
@@ -282,7 +375,7 @@ export function MemotestScreen({ onVolver }: Props) {
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
       >
-        <View className="mb-4 flex-row items-center justify-between rounded-2xl border border-mostaza/40 bg-vino px-4 py-3">
+        <View className="my-4 flex-row items-center justify-between rounded-2xl border border-mostaza/40 bg-vino px-4 py-3">
           <Text className="text-xs font-semibold uppercase text-amber-100">
               Pares completados
             </Text>
@@ -291,83 +384,52 @@ export function MemotestScreen({ onVolver }: Props) {
             </Text>
         </View>
 
-        {terminado ? (
-          <View className="items-center rounded-2xl border-2 border-mostaza bg-calabaza px-5 py-6">
-            <Image
-              source={LOGO}
-              className="mb-3 h-24 w-24"
-              resizeMode="contain"
-            />
-            <Text style={{ fontFamily: "LaOriental" }} className="text-xl uppercase text-white">
-              {gano ? "¡Perfecto!" : "Completado"}
-            </Text>
-            <Text className="mt-2 text-center text-xs font-semibold text-amber-100">
-              {gano
-                ? `Encontraste todos los pares en ${
-                    movimientos === 1 ? "1 movimiento" : `${movimientos} movimientos`
-                  }, al primer intento.`
-                : intentos > 1
-                ? `Encontraste todos los pares, pero no al primer intento. El par era ${PAR}.`
-                : `Encontraste todos los pares, pero en ${movimientos} movimientos. El par era ${PAR}.`}
-            </Text>
+        <View className="flex-row flex-wrap justify-center mt-5" style={{ gap: 20 }}>
+          {cartas.map((carta, indice) => {
+            const mostrando = animaciones[indice];
 
-            <TouchableOpacity
-              onPress={reiniciar}
-              className="mt-4 rounded-2xl bg-mostaza px-6 py-3 active:bg-terracota"
-            >
-              <Text style={{ fontFamily: "LaOriental" }} className="text-sm uppercase text-vino">
-                Jugar de nuevo
-              </Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View className="flex-row flex-wrap justify-" style={{ gap: 12 }}>
-            {cartas.map((carta, indice) => {
-              const mostrando = animaciones[indice];
-
-              return (
-                <TouchableOpacity
-                  key={carta.id}
-                  onPress={() => tapCarta(indice)}
-                  disabled={carta.emparejada}
-                  style={{ width: lado, height: lado }}
+            return (
+              <TouchableOpacity
+                key={carta.id}
+                onPress={() => tapCarta(indice)}
+                disabled={carta.emparejada}
+                style={{ width: lado, height: lado }}
+              >
+                <Animated.View
+                  style={{
+                    flex: 1,
+                    borderRadius: 16,
+                    opacity: mostrando,
+                  }}
                 >
-                  <Animated.View
-                    style={{
-                      flex: 1,
-                      borderRadius: 16,
-                      opacity: mostrando,
-                    }}
-                  >
-                    <Image
-                      source={CARAS[carta.cara === "1" ? 0 : 1]}
-                      className="h-full w-full rounded-2xl"
-                      resizeMode="cover"
-                    />
-                  </Animated.View>
+                  <Image
+                    source={CARAS[carta.cara === "1" ? 0 : 1]}
+                    className="h-full w-full rounded-2xl"
+                    resizeMode="cover"
+                  />
+                </Animated.View>
 
-                  <Animated.View
-                    pointerEvents="none"
-                    style={{
-                      position: "absolute",
-                      top: 0,
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      opacity: mostrarOculto(mostrando),
-                    }}
-                  >
-                    <Image
-                      source={REVERSO}
-                      className="h-full w-full rounded-2xl"
-                      resizeMode="cover"
-                    />
-                  </Animated.View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        )}
+                <Animated.View
+                  pointerEvents="none"
+                  style={{
+                    position: "absolute",
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    opacity: mostrarOculto(mostrando),
+                  }}
+                >
+                  <Image
+                    source={REVERSO}
+                    className="h-full w-full rounded-2xl"
+                    resizeMode="cover"
+                  />
+                </Animated.View>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
       </ScrollView>
     </View>
   );
