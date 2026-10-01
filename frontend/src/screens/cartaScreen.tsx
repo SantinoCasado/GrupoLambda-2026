@@ -183,6 +183,7 @@ export function CartaScreen({
   const [cargando, setCargando] = useState(true);
   const [itemAEliminar, setItemAEliminar] = useState<ItemMenu | null>(null);
   const [altoPagina, setAltoPagina] = useState(0);
+  const [altoBarra, setAltoBarra] = useState(0);
   const [eliminando, setEliminando] = useState(false);
   const [modalFeedback, setModalFeedback] = useState<{
     visible: boolean;
@@ -225,6 +226,13 @@ export function CartaScreen({
   const onLayoutPagina = (event: LayoutChangeEvent) => {
     const { height } = event.nativeEvent.layout;
     if (height > 0 && height !== altoPagina) setAltoPagina(height);
+  };
+
+  // La barra inferior es absolute y se superpone a la lista, así que su alto
+  // real hay que medirlo: el importe y el conteo de ítems cambian con el carrito.
+  const onLayoutBarra = (event: LayoutChangeEvent) => {
+    const { height } = event.nativeEvent.layout;
+    if (height > 0 && height !== altoBarra) setAltoBarra(height);
   };
 
   // Cálculo del total acumulado y tiempo acumulado para mostrar siempre visible (Punto 12)
@@ -381,7 +389,7 @@ export function CartaScreen({
                 className="px-5 pt-3"
                 style={{
                   height: altoPagina,
-                  paddingBottom: muestraBarraInferior ? 110 : 12,
+                  paddingBottom: muestraBarraInferior ? altoBarra : 0,
                 }}
               >
                 <View className="mb-3 flex-1 overflow-hidden rounded-3xl border-2 border-mostaza/40 bg-white shadow-xl">
@@ -462,17 +470,20 @@ export function CartaScreen({
 
       {/* 4. BARRA INFERIOR FIJA: IMPORTE ACUMULADO VISIBLE EN TODO MOMENTO (Punto 12) */}
       {muestraBarraInferior && onIrAlCarrito && (
-        <View className="absolute bottom-0 left-0 right-0 border-t-2 border-mostaza bg-vino px-5 py-3 shadow-2xl">
+        <View
+          onLayout={onLayoutBarra}
+          className="absolute bottom-0 left-0 right-0 border-t-2 border-mostaza bg-vino px-5 py-3 shadow-2xl"
+        >
           <View className="flex-row items-center justify-between">
             <View>
-              <Text className="text-[10px] font-bold uppercase text-amber-200">
+              <Text className="text-sm font-bold uppercase text-amber-200">
                 Importe acumulado ({carrito.length} ítems):
               </Text>
               {/* Buen tamaño requerido por Punto 12 */}
-              <Text className="text-2xl font-black text-mostaza">
+              <Text className="text-3xl font-black text-mostaza">
                 ${importeAcumulado.toLocaleString("es-AR")}
               </Text>
-              <Text className="text-[10px] text-amber-100/70">
+              <Text className="text-sm text-amber-100/70">
                 ⏱ Tiempo estimado: ~{tiempoEstimadoMax} min
               </Text>
             </View>
@@ -481,10 +492,9 @@ export function CartaScreen({
               onPress={onIrAlCarrito}
               className="flex-row items-center rounded-2xl bg-calabaza px-4 py-2.5 shadow active:bg-calabaza/80"
             >
-              <Text style={{ fontFamily: "LaOriental" }} className="mr-1.5 text-xs font-black uppercase text-white">
-                Ver Comanda
+              <Text style={{ fontFamily: "LaOriental" }} className="text-xs font-black uppercase text-white">
+                Ver pedido
               </Text>
-              <Text className="text-base">➔</Text>
             </TouchableOpacity>
           </View>
         </View>

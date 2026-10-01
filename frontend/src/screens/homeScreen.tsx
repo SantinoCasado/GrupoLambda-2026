@@ -340,7 +340,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
 
           {/* 5. MOZO */}
           {perfil === "mozo" && (
-            <View className="gap-y-6">
+            <View className="gap-y-1">
               <Text className="mb-1 text-xs font-bold text-vino uppercase">Operación de Salón</Text>
 
               <TouchableOpacity

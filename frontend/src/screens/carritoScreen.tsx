@@ -281,7 +281,7 @@ export function CarritoScreen({
             onPress={() => eliminarDelCarrito(item.id)}
             className="rounded-lg bg-terracota/20 px-2 py-0.5 mb-2 active:bg-terracota/40"
           >
-            <Text className="text-[10px] font-bold text-terracota">✕ Quitar</Text>
+            <Text className="text-[10px] font-bold text-terracota">✕</Text>
           </TouchableOpacity>
 
           <View className="flex-row items-center bg-stone-100 rounded-xl px-1 py-1 border border-stone-200">
@@ -353,11 +353,10 @@ export function CarritoScreen({
       )}
 
       {/* Encabezado */}
-      <View className="relative flex-row items-center justify-between mb-1 border-b border-mostaza/20 pb-5">
+      <View className="relative flex-row items-center justify-between mb-5 border-b border-mostaza/20 pb-5">
         <Text style={{ fontFamily: "LaOriental" }} className="absolute inset-x-0 z-10 text-center text-xl uppercase text-vino pointer-events-none pb-3">
-          {modoEdicion ? "Reenviar Comanda" : `Comanda Mesa #${numeroMesa}`}
+          {modoEdicion ? "Reenviar pedido" : `Pedido Mesa #${numeroMesa}`}
         </Text>
-        <Text className="text-sm font-bold text-vino">🛒</Text>
         {carrito.length > 0 ? (
           <TouchableOpacity onPress={() => setConfirmandoVaciar(true)} className="ml-auto h-8 items-center justify-center rounded-xl bg-terracota/10 px-3 active:bg-terracota/20 z-20">
             <Text className="text-terracota text-xs font-bold">Vaciar</Text>
@@ -396,13 +395,13 @@ export function CarritoScreen({
       {carrito.length > 0 && (
         <View className="border-t border-mostaza/30 pt-3 pb-4">
           <View className="flex-row justify-between items-center mb-1">
-            <Text className="text-xs font-medium text-stone-600">Tiempo de preparación estimado:</Text>
-            <Text className="text-xs font-bold text-vino">⏱ {tiempoEstimadoTotal} min</Text>
+            <Text className="text-sm font-medium text-stone-600">Tiempo de preparación estimado:</Text>
+            <Text className="text-sm font-bold text-vino">⏱ {tiempoEstimadoTotal} min</Text>
           </View>
 
           <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-base font-bold text-stone-800">Total pedido:</Text>
-            <Text className="text-2xl font-black text-calabaza">${total.toLocaleString("es-AR")}</Text>
+            <Text className="text-xl font-bold text-stone-800">Total pedido:</Text>
+            <Text className="text-3xl font-black text-calabaza">${total.toLocaleString("es-AR")}</Text>
           </View>
 
           <TouchableOpacity

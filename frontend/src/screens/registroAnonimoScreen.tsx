@@ -225,7 +225,7 @@ export function RegistroAnonimoScreen({ onVolver, onRegistroExitoso }: Props) {
               Foto *
             </Text>
 
-            <View className="w-[88%] h-full bg-[#FFF8EA] self-center rounded-2xl border border-mostaza p-4 mb-6">
+            <View className="w-[88%] h-62 bg-[#FFF8EA] self-center rounded-2xl border border-mostaza p-4 mb-6">
               {fotoUri ? (
               <View className="items-center">
                 <Image

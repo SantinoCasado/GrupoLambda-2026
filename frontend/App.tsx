@@ -637,32 +637,14 @@ function AppInterna() {
             }
 
             if (usuario.perfil === "cliente_registrado") {
-              // 1. Consulta si ya tiene mesa activa en waiting_list
-              const { data: espera } = await supabase
-                .from("waiting_list")
-                .select("assigned_table_id, status")
-                .eq("user_id", usuario.id)
-                .maybeSingle();
+              // El cliente registrado siempre arranca por la puerta: escanear el
+              // QR de entrada, esperar que el metre le asigne una mesa y recién
+              // ahí escanear el QR de la mesa para llegar al home.
+              setNumeroMesaCliente(null);
+              setIdMesaCliente(null);
+              setEnEsperaRegistrado(true);
 
-              if (
-                espera?.assigned_table_id &&
-                (espera.status === "assigned" || espera.status === "seated")
-              ) {
-                const { data: mesaData } = await supabase
-                  .from("restaurant_tables")
-                  .select("id, table_number")
-                  .eq("id", espera.assigned_table_id)
-                  .maybeSingle();
-
-                setIdMesaCliente(mesaData?.id ?? espera.assigned_table_id);
-                setNumeroMesaCliente(mesaData?.table_number ?? 1);
-                setEnEsperaRegistrado(false);
-              } else {
-                setNumeroMesaCliente(null);
-                setEnEsperaRegistrado(true);
-              }
-
-              // 2. Consulta si tiene comanda activa en preparación
+              // Consulta si tiene comanda activa en preparación
               const { data: pedidoEnCurso } = await supabase
                 .from("orders")
                 .select("id")
