@@ -88,7 +88,7 @@ export const ChineseFrame = ({ children, className = "", color = MOSTAZA }: Chin
           <ChineseCorner color={color} size={CORNER} x={INSET} y={h - CORNER - INSET} rotation={270} />
         </Svg>
       )}
-      <View style={{ padding: GUTTER }}>{children}</View>
+      <View style={{ padding: GUTTER, flexGrow: 1 }}>{children}</View>
     </View>
   );
 };
