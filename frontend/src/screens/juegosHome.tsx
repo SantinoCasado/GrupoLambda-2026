@@ -14,6 +14,8 @@ import { ChineseFrame } from "../components/ChineseFrame";
 interface Props {
   onVolver: () => void;
   onIrAMemotest: () => void;
+  onIrAPuzzle: () => void;
+  onIrABolita: () => void;
 }
 
 interface Juego {
@@ -33,11 +35,28 @@ const JUEGOS: Juego[] = [
     descripcion: "Encuentra los pares",
     icono: require("../../assets/images/tiles-y.png"),
   },
-  { clave: "juego2", numero: 2, titulo: "Juego 2", descripcion: "Próximamente" },
-  { clave: "juego3", numero: 3, titulo: "Juego 3", descripcion: "Próximamente" },
+  {
+    clave: "puzzle",
+    numero: 2,
+    titulo: "Armá el puzzle",
+    descripcion: "Ordená las fichas",
+    icono: require("../../assets/images/games/tiles-logo.png"),
+  },
+  {
+    clave: "bolita",
+    numero: 3,
+    titulo: "¿Y la bolita?",
+    descripcion: "Encuentra la bolita",
+    icono: require("../../assets/images/games/cup.png"),
+  },
 ];
 
-export function JuegosHomeScreen({ onVolver, onIrAMemotest }: Props) {
+export function JuegosHomeScreen({
+  onVolver,
+  onIrAMemotest,
+  onIrAPuzzle,
+  onIrABolita,
+}: Props) {
   return (
     <View className="flex-1">
       <StatusBar style="light" />
@@ -83,6 +102,14 @@ export function JuegosHomeScreen({ onVolver, onIrAMemotest }: Props) {
             onPress={() => {
               if (juego.clave === "memotest") {
                 onIrAMemotest();
+                return;
+              }
+              if (juego.clave === "puzzle") {
+                onIrAPuzzle();
+                return;
+              }
+              if (juego.clave === "bolita") {
+                onIrABolita();
                 return;
               }
               Vibration.vibrate([0, 40]);

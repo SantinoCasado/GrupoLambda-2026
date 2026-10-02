@@ -33,6 +33,8 @@ import { MetreScreen } from "./src/screens/metreScreen";
 import { EstadoPedidoScreen } from "./src/screens/estadoPedidoScreen";
 import { JuegosHomeScreen } from "./src/screens/juegosHome";
 import { MemotestScreen } from "./src/screens/memotestScreen";
+import { PuzzleScreen } from "./src/screens/puzzleScreen";
+import { ShellGameScreen } from "./src/screens/shellgameScreen";
 import { TicketsScreen } from "./src/screens/ticketsScreen";
 
 const NO_PHOTO = require("./assets/images/no-photo.jpg");
@@ -60,6 +62,8 @@ type VistaPrivada =
   | "estado_pedido"
   | "juegos"
   | "memotest"
+  | "puzzle"
+  | "bolita"
   | "tickets";
 
 export default function App() {
@@ -787,7 +791,7 @@ function AppInterna() {
       ? usuarioActual.perfil === "mozo" || esAdmin
       : vistaPrivada === "carta"
       ? esProducto || esCliente
-      : vistaPrivada === "carrito" || vistaPrivada === "estado_pedido" || vistaPrivada === "juegos"
+      : vistaPrivada === "carrito" || vistaPrivada === "estado_pedido" || vistaPrivada === "juegos" || vistaPrivada === "bolita" || vistaPrivada === "puzzle"
       ? esCliente
       : true;
 
@@ -922,12 +926,24 @@ function AppInterna() {
           <JuegosHomeScreen
             onVolver={() => setVistaPrivada("estado_pedido")}
             onIrAMemotest={() => setVistaPrivada("memotest")}
+            onIrAPuzzle={() => setVistaPrivada("puzzle")}
+            onIrABolita={() => setVistaPrivada("bolita")}
           />
         )}
 
         {/* Memotest */}
         {vistaPrivada === "memotest" && (
           <MemotestScreen onVolver={() => setVistaPrivada("juegos")} />
+        )}
+
+        {/* Puzzle de ordenar fichas */}
+        {vistaPrivada === "puzzle" && (
+          <PuzzleScreen onVolver={() => setVistaPrivada("juegos")} />
+        )}
+
+        {/* Juego de la bolita */}
+        {vistaPrivada === "bolita" && (
+          <ShellGameScreen onVolver={() => setVistaPrivada("juegos")} />
         )}
 
         {/* Comandas del Mozo */}

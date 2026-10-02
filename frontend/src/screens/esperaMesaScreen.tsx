@@ -60,6 +60,7 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
 
   const [permission, requestPermission] = useCameraPermissions();
   const scanLockRef = useRef(false);
+  const salidaIniciadaRef = useRef(false);
 
   const mostrarMensaje = (
     titulo: string,
@@ -131,6 +132,9 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
           filter: `id=eq.${waitingListId}`,
         },
         () => {
+          // Si la baja la generó el propio cliente al salir, no es una
+          // cancelación del metre: el modal no debe aparecer.
+          if (salidaIniciadaRef.current) return;
           setModalCancelado(true);
         }
       )
@@ -235,6 +239,7 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
   };
 
   const confirmarSalida = async () => {
+    salidaIniciadaRef.current = true; // el DELETE de abajo es nuestro, no del metre
     setSaliendo(true);
     try {
       const targetUserId = cliente.user_id || cliente.id;
@@ -328,7 +333,11 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
           Hola, {cliente?.client_name || "Invitado"}
         </Text>
         <Text className="text-center text-xs text-amber-100/70 my-3">
-          Estado: {mesaAsignada ? `Mesa #${mesaAsignada.numero} Asignada` : "En lista de espera"}
+          Estado: {mesaAsignada
+            ? `Mesa #${mesaAsignada.numero} Asignada`
+            : qrEntradaEscaneado
+            ? "En lista de espera"
+            : "Anunciá tu llegada"}
         </Text>
 
         {/* Estado actual */}
