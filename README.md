@@ -56,6 +56,7 @@ Esta sección reúne evidencia visual del sistema. Las capturas existentes se mu
 | ------------------------------- | ------------------------------------------------------------------------ |
 | Logo del proyecto               | ![Logo del restaurante](./assets/logo.png)                               |
 | Pantalla de inicio              | ![Pantalla de inicio](./assets/Inicio.jpeg)                              |
+| Accesos rápidos de perfiles     | ![Modal de accesos rápidos para pruebas](./assets/accesos_rapidos.jpeg)  |
 | Imagen de splash                | ![Splash del proyecto](./assets/splash.jpeg)                             |
 | Mockup de login                 | ![Mockup de login](./assets/makeup/logIn.png)                            |
 | Mockup de registro              | ![Mockup de registro](./assets/makeup/registro.png)                      |
@@ -68,7 +69,7 @@ Esta sección reúne evidencia visual del sistema. Las capturas existentes se mu
 
 ### Walkthroughs por perfil
 
-Las capturas están agrupadas por rol para recorrer los flujos de cada tipo de usuario. Los perfiles sin capturas quedan señalados para completar la galería más adelante.
+Las capturas están agrupadas por rol para recorrer los flujos disponibles en cada perfil; los pasos aún no fotografiados se detallan en el apartado de capturas pendientes.
 
 <a id="walkthrough-dueno"></a>
 
@@ -90,9 +91,18 @@ Las capturas están agrupadas por rol para recorrer los flujos de cada tipo de u
 
 #### Walkthrough: Supervisor
 
-**Pendiente de capturas.** Directorio previsto: `assets/mapeo/supervisor/`.
-
-Agregar, cuando estén disponibles: dashboard; aprobación/rechazo de clientes; alta de empleados y mesas; confirmaciones, errores y resultados exitosos.
+| Paso / pantalla                           | Captura                                                                                                |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| Dashboard                                 | ![Dashboard del supervisor](./assets/mapeo/supervisor/supervisor_dashboard.jpeg)                       |
+| Gestión de mesas y QR                     | ![Gestión de mesas del supervisor](./assets/mapeo/supervisor/supervisor_dashboardMesas.jpeg)           |
+| Error de validación de mesa duplicada     | ![Validación de mesa duplicada](./assets/mapeo/supervisor/supervisor_mesas_validator.jpeg)             |
+| Selección de perfil para alta de empleado | ![Selección del perfil de empleado](./assets/mapeo/supervisor/supervisor_altaEmpleado_seleccion.jpeg)  |
+| Alta de empleado, paso 1                  | ![Alta de empleado del supervisor, paso 1](./assets/mapeo/supervisor/supervisor_altaEmpleado_1.jpeg)   |
+| Alta de empleado, paso 2                  | ![Alta de empleado del supervisor, paso 2](./assets/mapeo/supervisor/supervisor_altaEmpleado_2.jpeg)   |
+| Alta de mesa, paso 1                      | ![Alta de mesa del supervisor, paso 1](./assets/mapeo/supervisor/supervisor_altaMesa_1.jpeg)           |
+| Alta de mesa, paso 2                      | ![Alta de mesa del supervisor, paso 2](./assets/mapeo/supervisor/supervisor_altaMesa_2.jpeg)           |
+| Confirmación de alta de mesa              | ![Confirmación de alta de mesa](./assets/mapeo/supervisor/supervisor_altaMesa_confirmacion.jpeg)       |
+| Aprobación de clientes                    | ![Aprobación de clientes por supervisor](./assets/mapeo/supervisor/supervisor_aprobacionClientes.jpeg) |
 
 <a id="walkthrough-metre"></a>
 
@@ -101,6 +111,7 @@ Agregar, cuando estén disponibles: dashboard; aprobación/rechazo de clientes; 
 | Paso / pantalla              | Captura                                                                              |
 | ---------------------------- | ------------------------------------------------------------------------------------ |
 | Dashboard del metre          | ![Dashboard del metre](./assets/mapeo/metre/metre_dashboard.jpeg)                    |
+| Gestión de mesas             | ![Gestor de mesas del metre](./assets/mapeo/metre/metre_gestorMesas.jpeg)            |
 | Registro asistido de cliente | ![Registro de cliente por el metre](./assets/mapeo/metre/metre_registroCliente.jpeg) |
 
 Pendiente de agregar: lista de espera completa, asignación y liberación de mesas, cliente eliminado de la cola y confirmaciones o errores.
@@ -109,27 +120,37 @@ Pendiente de agregar: lista de espera completa, asignación y liberación de mes
 
 #### Walkthrough: Mozo
 
-| Paso / pantalla        | Captura                                                                       |
-| ---------------------- | ----------------------------------------------------------------------------- |
-| Dashboard del mozo     | ![Dashboard del mozo](./assets/mapeo/mozo/mozo_dashboard.jpeg)                |
-| Acceso a chats / mesas | ![Dashboard de chats del mozo](./assets/mapeo/mozo/mozo_dashboard_chats.jpeg) |
+| Paso / pantalla         | Captura                                                                                     |
+| ----------------------- | ------------------------------------------------------------------------------------------- |
+| Dashboard del mozo      | ![Dashboard del mozo](./assets/mapeo/mozo/mozo_dashboard.jpeg)                              |
+| Acceso a chats / mesas  | ![Dashboard de chats del mozo](./assets/mapeo/mozo/mozo_dashboard_chats.jpeg)               |
+| Ejemplo de chat en vivo | ![Conversación de consulta al mozo en la mesa 2](./assets/mapeo/mozo/mozo_chatEjemplo.jpeg) |
+| Comandas                | ![Comandas visibles para el mozo](./assets/mapeo/mozo/mozo_comandas.jpeg)                   |
 
-Pendiente de agregar: conversación con cliente, consulta recibida, respuesta, comanda entrante, pedido listo, entrega, solicitud de cuenta y confirmación del pago.
+Pendiente de agregar: pedido listo, entrega, solicitud de cuenta y confirmación del pago.
+
 <a id="walkthrough-cocinero"></a>
 
 #### Walkthrough: Cocinero
 
-**Pendiente de capturas.** Directorio previsto: `assets/mapeo/cocinero/`.
-
-Agregar, cuando estén disponibles: dashboard, alta de plato, selección/captura de tres imágenes, carta de platos, ticket de cocina, ítem marcado como listo y modales de validación/éxito/error.
+| Paso / pantalla       | Captura                                                                            |
+| --------------------- | ---------------------------------------------------------------------------------- |
+| Dashboard             | ![Dashboard del cocinero](./assets/mapeo/cocinero/cocinero_dashboard.jpeg)         |
+| Alta de plato, paso 1 | ![Alta de plato, datos](./assets/mapeo/cocinero/cocinero_altaPlato_1.jpeg)         |
+| Alta de plato, paso 2 | ![Alta de plato, fotografías](./assets/mapeo/cocinero/cocinero_altaPlato_2.jpeg)   |
+| Carta de platos       | ![Carta de platos del cocinero](./assets/mapeo/cocinero/cocinero_cartaPlatos.jpeg) |
 
 <a id="walkthrough-cantinero"></a>
 
 #### Walkthrough: Cantinero
 
-**Pendiente de capturas.** Directorio previsto: `assets/mapeo/cantinero/`.
-
-Agregar, cuando estén disponibles: dashboard, alta de bebida, selección/captura de tres imágenes, carta de bebidas, ticket de bar, ítem marcado como listo y modales de validación/éxito/error.
+| Paso / pantalla                  | Captura                                                                                                     |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Dashboard                        | ![Dashboard del cantinero](./assets/mapeo/cantinero/cantinero_dashboard.jpeg)                               |
+| Alta de bebida, paso 1           | ![Alta de bebida, datos](./assets/mapeo/cantinero/cantinero_altaBebida_1.jpeg)                              |
+| Alta de bebida, paso 2           | ![Alta de bebida, fotografías](./assets/mapeo/cantinero/cantinero_altaBebida_2.jpeg)                        |
+| Validación de campos incompletos | ![Error de validación en el alta de bebida](./assets/mapeo/cantinero/cantinero_altaBebida_validations.jpeg) |
+| Carta de bebidas                 | ![Carta de bebidas del cantinero](./assets/mapeo/cantinero/cantinero_cartaBebidas.jpeg)                     |
 
 <a id="walkthrough-clientes"></a>
 
@@ -156,19 +177,21 @@ Pendiente de agregar: registro anónimo completo, solicitud de mesa, espera, asi
 
 ### Chats y conversaciones
 
-La captura del acceso del mozo a chats está en [Walkthrough: Mozo](#walkthrough-mozo). La conversación completa cliente–mozo todavía no tiene captura en el repositorio; agregar aquí imágenes que muestren mensajes, remitente, fecha/hora, recepción y respuesta.
+El [walkthrough del Mozo](#walkthrough-mozo) contiene el acceso a chats y un ejemplo de conversación en vivo. Se pueden añadir capturas de otros mensajes, notificaciones y estados de lectura.
 
 <a id="modales-y-resultados"></a>
 
 ### Modales y resultados
 
-**Pendiente de capturas.** Agregar evidencia de:
+Agregar más evidencia de:
 
 - Confirmaciones antes de acciones destructivas o cambios de estado.
 - Resultados exitosos de alta de empleado, producto, mesa, cliente y pedido.
 - Rechazo de registro o pedido, con el mensaje visible para el usuario.
 - Errores de validación de formularios y errores de conexión/servidor.
 - Confirmación de recepción, cobro, cuenta solicitada y mesa liberada.
+
+Captura disponible de una validación de mesa duplicada: [ver walkthrough del Supervisor](#walkthrough-supervisor).
 
 <a id="evidencia-de-notificaciones-push"></a>
 
@@ -179,7 +202,7 @@ La captura del acceso del mozo a chats está en [Walkthrough: Mozo](#walkthrough
 | iOS        | ![Notificación push en iOS](./assets/notifications/pushNoti_Ios.jpeg)         |
 | Android    | ![Notificación push en Android](./assets/notifications/pushNoti_android.jpeg) |
 
-Pendiente de agregar capturas por evento: nuevo cliente, cambios de lista de espera, mesa asignada, chat, pedido nuevo/modificado, cocina/bar, pedido listo, solicitud de cuenta y confirmación/liberación de mesa.
+Las capturas actuales muestran notificaciones del sistema en iOS y Android. Se pueden sumar evidencias por evento: nuevo cliente, lista de espera, mesa asignada, chat, cocina/bar, pedido listo y cierre de cuenta.
 
 <a id="galeria-codigos-qr"></a>
 
@@ -233,12 +256,12 @@ Pendiente de agregar capturas por evento: nuevo cliente, cambios de lista de esp
 
 Este índice queda abierto para incorporar nuevas evidencias sin reestructurar el README. Mantener las imágenes dentro de `assets/mapeo/<perfil>/`, `assets/notifications/`, `assets/qrs/` o `assets/tests/`, y agregar cada captura en el subapartado correspondiente.
 
-- Dashboards y walkthroughs completos de supervisor, cocinero y cantinero.
-- Formularios de alta de producto y fotos individuales de platos/bebidas.
-- Dashboard y walkthrough completo de cada rol, incluyendo cambios de estado y navegación de regreso.
+- Pasos adicionales de los walkthroughs por perfil, como lista de espera, pedido listo, entrega y cierre de cuenta.
+- Vistas de las fotografías individuales seleccionadas para platos y bebidas.
+- Transiciones de navegación y estados de operación que todavía no tengan captura.
 - Modales de confirmación, validación, éxito, rechazo y error.
 - Flujo detallado del cliente registrado y del cliente anónimo.
-- Conversaciones de chat, comandas, tickets y estados de pedidos.
+- Tickets completos y estados de pedidos posteriores a la comanda.
 - Encuestas, gráficos y pantallas de cuenta/pago.
 - Notificaciones push separadas por evento y perfil destinatario.
 
