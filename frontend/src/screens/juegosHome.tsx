@@ -40,14 +40,14 @@ const JUEGOS: Juego[] = [
     numero: 2,
     titulo: "Armá el puzzle",
     descripcion: "Ordená las fichas",
-    icono: require("../../assets/images/games/tiles-logo.png"),
+    icono: require("../../assets/images/puzzle-y.png"),
   },
   {
     clave: "bolita",
     numero: 3,
     titulo: "¿Y la bolita?",
     descripcion: "Encuentra la bolita",
-    icono: require("../../assets/images/games/cup.png"),
+    icono: require("../../assets/images/ball-y.png"),
   },
 ];
 
