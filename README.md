@@ -21,6 +21,7 @@ Repositorio oficial del grupo para el Trabajo Final Integrador (TFI). La aplicac
   - [Cantinero](#walkthrough-cantinero)
   - [Cliente registrado y anónimo](#walkthrough-clientes)
 - [Notificaciones push](#evidencia-de-notificaciones-push)
+  - [Correos transaccionales](#correos-transaccionales)
 - [Chats y conversaciones](#chats-y-conversaciones)
 - [Modales y resultados](#modales-y-resultados)
 - [Códigos QR](#galeria-codigos-qr)
@@ -108,13 +109,16 @@ Las capturas están agrupadas por rol para recorrer los flujos disponibles en ca
 
 #### Walkthrough: Metre
 
-| Paso / pantalla              | Captura                                                                              |
-| ---------------------------- | ------------------------------------------------------------------------------------ |
-| Dashboard del metre          | ![Dashboard del metre](./assets/mapeo/metre/metre_dashboard.jpeg)                    |
-| Gestión de mesas             | ![Gestor de mesas del metre](./assets/mapeo/metre/metre_gestorMesas.jpeg)            |
-| Registro asistido de cliente | ![Registro de cliente por el metre](./assets/mapeo/metre/metre_registroCliente.jpeg) |
+| Paso / pantalla                         | Captura                                                                                               |
+| --------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Dashboard del metre                     | ![Dashboard del metre](./assets/mapeo/metre/metre_dashboard.jpeg)                                     |
+| Gestión de mesas, estado vacío          | ![Gestor de mesas vacío del metre](./assets/mapeo/metre/metre_gestorMesas_1.jpeg)                     |
+| Gestión de mesas, con cliente en espera | ![Gestor de mesas con cliente en espera](./assets/mapeo/metre/metre_gestorMesas_2.jpeg)               |
+| Selección de mesa para asignación       | ![Selección de mesa para asignar al cliente](./assets/mapeo/metre/metre_asignarMesa_seleccionar.jpeg) |
+| Confirmación de asignación              | ![Confirmación de mesa asignada](./assets/mapeo/metre/metre_asignarMesa_confirmacion.jpeg)            |
+| Registro asistido de cliente            | ![Registro de cliente por el metre](./assets/mapeo/metre/metre_registroCliente.jpeg)                  |
 
-Pendiente de agregar: lista de espera completa, asignación y liberación de mesas, cliente eliminado de la cola y confirmaciones o errores.
+Pendiente de agregar: eliminación de un cliente de la cola y liberación de mesa al finalizar la estadía.
 
 <a id="walkthrough-mozo"></a>
 
@@ -203,6 +207,14 @@ Captura disponible de una validación de mesa duplicada: [ver walkthrough del Su
 | Android    | ![Notificación push en Android](./assets/notifications/pushNoti_android.jpeg) |
 
 Las capturas actuales muestran notificaciones del sistema en iOS y Android. Se pueden sumar evidencias por evento: nuevo cliente, lista de espera, mesa asignada, chat, cocina/bar, pedido listo y cierre de cuenta.
+
+<a id="correos-transaccionales"></a>
+
+### Correos transaccionales
+
+| Evento                         | Captura                                                                       |
+| ------------------------------ | ----------------------------------------------------------------------------- |
+| Rechazo de registro de cliente | ![Correo automático de rechazo del registro](./assets/notifications/mail.png) |
 
 <a id="galeria-codigos-qr"></a>
 
