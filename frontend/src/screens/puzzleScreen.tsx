@@ -12,6 +12,7 @@ import {
   Easing,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import Svg, { Image as SvgImage } from "react-native-svg";
 import { ChineseFrame } from "../components/ChineseFrame";
 import { ConfirmModal } from "../components/ConfirmModal";
 
@@ -23,7 +24,7 @@ type Fase = "reglas" | "jugando" | "moviendo" | "terminado";
 
 const TOTAL = 9;
 /** Movimientos óptimos con los que se gana el 15%. */
-const PAR = 20;
+const PAR = 30;
 /** Cantidad de movimientos legales del mezclado. Impar: nunca puede quedar resuelto. */
 const PASOS_MEZCLA = 31;
 const MS_MOVIMIENTO = 150;
@@ -32,6 +33,18 @@ const GAP = 8;
 /** Estado ordenado: el 0 es el hueco y siempre queda en la última celda. */
 const RESUELTO = [1, 2, 3, 4, 5, 6, 7, 8, 0];
 
+/**
+ * La partida arranca siempre con este tablero. Sale de un BFS sobre los 181.440
+ * estados alcanzables del 8-puzzle, así que su solución mínima es de 8
+ * movimientos: entra holgado en el PAR de 30.
+ * Para volver al azar: reemplazar el cuerpo de `nuevoTablero` por
+ * `mezclar(PASOS_MEZCLA)` y borrar TABLERO_FIJO.
+ */
+const TABLERO_FIJO = [4, 1, 2, 6, 0, 3, 7, 5, 8];
+
+/** Reparte la partida: hoy, siempre el mismo tablero. */
+const nuevoTablero = () => [...TABLERO_FIJO];
+
 const anchoPantalla = Dimensions.get("window").width;
 /** El ancho descuenta el padding del ScrollView y las separaciones. */
 const CELDA = Math.floor(
@@ -39,6 +52,45 @@ const CELDA = Math.floor(
 );
 const PASO = CELDA + GAP;
 const LADO_TABLERO = CELDA * 3 + GAP * 2;
+
+const IMAGEN = require("../../assets/images/games/puzzle-image.png");
+/**
+ * La imagen se dibuja al ancho de las 3 celdas, sin sumar los GAP: así el
+ * rompecabezas armado muestra la foto completa de punta a punta y lo único que
+ * no llega a verse son los 8 px que quedan entre ficha y ficha.
+ */
+const LADO_IMAGEN = CELDA * 3;
+
+/**
+ * La pieza `id` pertenece a la celda `id - 1` del estado ordenado (RESUELTO es
+ * [1..8, 0]), así que el recorte que le toca es fijo y no depende de dónde esté
+ * parada en el tablero.
+ */
+const fragmentoDe = (id: number) => ({
+  col: (id - 1) % 3,
+  row: Math.floor((id - 1) / 3),
+});
+
+/**
+ * Una ficha es la ventana de 1/9 de la foto que le toca a esa pieza. El recorte
+ * lo hace el `viewBox` con origen desplazado; como el Svg mide lo mismo que su
+ * viewBox, el bitmap se dibuja 1:1 y sin reescalado.
+ */
+const FragmentoPieza = ({ id }: { id: number }) => {
+  const { col, row } = fragmentoDe(id);
+  return (
+    <Svg width={CELDA} height={CELDA} viewBox={`${col * CELDA} ${row * CELDA} ${CELDA} ${CELDA}`}>
+      <SvgImage
+        href={IMAGEN}
+        x={0}
+        y={0}
+        width={LADO_IMAGEN}
+        height={LADO_IMAGEN}
+        preserveAspectRatio="none"
+      />
+    </Svg>
+  );
+};
 
 /** Celdas vecinas ortogonales de una celda. */
 const adyacentes = (celda: number) =>
@@ -99,16 +151,16 @@ const INSIGNIAS = {
 
 const MENSAJES: Record<Fase, string> = {
   reglas: "Tocá comenzar para jugar",
-  jugando: "Tocá la ficha junto al hueco",
+  jugando: "Movimientos",
   moviendo: "Un momento…",
   terminado: "¡Ordenado!",
 };
 
 export function PuzzleScreen({ onVolver }: Props) {
-  // La partida inicial y sus posiciones se sortean una sola vez, en el primer
+  // La partida inicial y sus posiciones se reparten una sola vez, en el primer
   // render, así no hay un primer cuadro con todas las fichas apiladas.
   const [inicio] = useState(() => {
-    const base = mezclar(PASOS_MEZCLA);
+    const base = nuevoTablero();
     const x: Animated.Value[] = [];
     const y: Animated.Value[] = [];
     for (let id = 0; id < TOTAL; id++) {
@@ -129,6 +181,8 @@ export function PuzzleScreen({ onVolver }: Props) {
   const [aciertoEnPar, setAciertoEnPar] = useState(false);
   const [premioGanado, setPremioGanado] = useState(false);
   const [mostrarReinicio, setMostrarReinicio] = useState(false);
+  /** Referencia de la foto armada. Verla es gratis: no toca la oportunidad del 15%. */
+  const [mostrarImagen, setMostrarImagen] = useState(false);
   /** Copia visible del tablero: las fichas apagadas se recalculan al mover. */
   const [tablero, setTablero] = useState<number[]>(inicio.base);
   /** Estado inicial de la partida en curso: reiniciar vuelve acá, no al montaje. */
@@ -168,12 +222,12 @@ export function PuzzleScreen({ onVolver }: Props) {
   );
 
   /**
-   * Arranca una partida. Reiniciar conserva el mismo tablero sorteado, así que
+   * Arranca una partida. Reiniciar conserva el mismo tablero repartido, así que
    * `intentos` solo sube ahí: nunca vuelve a 1 y el 15% no vuelve a jugarse.
    */
   const empezar = useCallback(
     (mismaPartida: boolean) => {
-      const base = mismaPartida ? tableroInicial : mezclar(PASOS_MEZCLA);
+      const base = mismaPartida ? tableroInicial : nuevoTablero();
       // "Jugar de nuevo" deja esa partida como la nueva base reiniciable.
       if (!mismaPartida) setTableroInicial(base);
       fijar(base);
@@ -264,6 +318,8 @@ export function PuzzleScreen({ onVolver }: Props) {
     : INSIGNIAS.perdida;
 
   const movibles = adyacentes(tablero.indexOf(0));
+  /** La pieza que falta en el hueco; 0 cuando el hueco ya está en su celda. */
+  const piezaAusente = RESUELTO[tablero.indexOf(0)];
 
   return (
     <View className="flex-1">
@@ -276,7 +332,7 @@ export function PuzzleScreen({ onVolver }: Props) {
             <View className="items-center rounded-xl bg-mostaza/15 px-4 py-6">
               <Image
                 source={require("../../assets/images/games/puzzle-image.png")}
-                className="mb-4 h-20 w-20"
+                className="mb-4 h-48 w-48"
                 resizeMode="contain"
               />
               <Text
@@ -286,9 +342,8 @@ export function PuzzleScreen({ onVolver }: Props) {
                 Cómo jugar
               </Text>
               <Text className="mb-6 text-center text-sm font-medium leading-5 text-amber-100">
-                Deslizá las fichas hasta ordenarlas del 1 al 8. Solo se mueven las que están al
-                lado del hueco. Si lo resolvés en {PAR} movimientos o menos al primer intento, ganás
-                un 15% de descuento en tu pedido.
+                Deslizá las fichas hasta armar la imagen. Solo se mueven las que están al lado del
+                espacio vacío.
               </Text>
 
               <TouchableOpacity
@@ -313,8 +368,8 @@ export function PuzzleScreen({ onVolver }: Props) {
           <ChineseFrame className="w-full max-w-sm bg-vino shadow-2xl p-3">
             <View className="items-center rounded-xl bg-mostaza/15 px-4 py-6">
               <Image
-                source={require("../../assets/images/games/tiles-logo.png")}
-                className="mb-4 h-20 w-20"
+                source={require("../../assets/images/games/puzzle-image.png")}
+                className="mb-4 h-48 w-48"
                 resizeMode="contain"
               />
               <Text
@@ -325,10 +380,10 @@ export function PuzzleScreen({ onVolver }: Props) {
               </Text>
               <Text className="mb-6 text-center text-sm font-medium leading-5 text-amber-100">
                 {aciertoEnPar && intentos === 1
-                  ? `¡Ordenaste las fichas en ${movimientos} movimientos y ganaste un 15% de descuento en tu pedido!`
+                  ? `¡Armaste la imagen en ${movimientos} movimientos y ganaste un 15% de descuento en tu pedido!`
                   : aciertoEnPar
-                  ? `Ordenaste las fichas en ${movimientos} movimientos, pero el 15% se ganaba solo sin reiniciar el tablero.`
-                  : `Ordenaste las fichas en ${movimientos} movimientos. El 15% era para resolverlo en ${PAR} o menos al primer intento.`}
+                  ? `¡Felicitaciones! Armaste la imagen.`
+                  : `¡Felicitaciones! Armaste la imagen.`}
               </Text>
 
               <View className="w-full flex-row gap-3">
@@ -361,16 +416,30 @@ export function PuzzleScreen({ onVolver }: Props) {
         </View>
       </Modal>
 
+      {/* Imagen de referencia: solo la foto. Se monta al abrirla porque en
+          Android cada Modal crea una ventana nativa aunque visible={false}. */}
+      {mostrarImagen && (
+        <Modal visible transparent animationType="fade" onRequestClose={() => setMostrarImagen(false)}>
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => setMostrarImagen(false)}
+            className="flex-1 items-center justify-center bg-black/80 px-6"
+          >
+            <Image source={IMAGEN} className="aspect-square w-full max-w-sm" resizeMode="contain" />
+          </TouchableOpacity>
+        </Modal>
+      )}
+
       {/* Aviso antes de reiniciar: reiniciar quema el 15% */}
       <ConfirmModal
         visible={mostrarReinicio}
-        titulo="Reiniciar el puzzle?"
+        titulo="¿Reiniciar el puzzle?"
         mensaje={
           intentos === 1
             ? "Si reiniciás, perdés el 15% de descuento: solo se gana resolviendo el puzzle al primer intento."
             : "El 15% ya no está disponible. Podés reiniciar el mismo puzzle para seguir practicando."
         }
-        textoConfirmar="Sí, reiniciar"
+        textoConfirmar="Reiniciar"
         textoCancelar="Seguir jugando"
         tipo={intentos === 1 ? "peligro" : "confirmar"}
         onConfirm={() => {
@@ -399,14 +468,14 @@ export function PuzzleScreen({ onVolver }: Props) {
               <Text style={{ fontFamily: "LaOriental" }} className="text-2xl text-mostaza uppercase">
                 Rompecabezas
               </Text>
-              <Text className="mt-1 text-xs font-semibold text-amber-100">
+              <Text className="mt-1 text-xs px-3 text-center font-semibold text-amber-100">
                 {premioGanado
                   ? "¡Descuento asegurado! Ahora jugá por diversión."
                   : premioDisponible
-                  ? `Ordená las fichas en ${PAR} movimientos o menos y ganá un 15% de descuento`
+                  ? `Armá la imagen en ${PAR} movimientos o menos y ganá un 15% de descuento`
                   : intentos > 1
-                  ? "Reiniciaste el tablero y el 15% ya no está disponible."
-                  : `El 15% se ganaba ordenando en ${PAR} movimientos o menos al primer intento.`}
+                  ? "Ejercitá tu mente con este rompecabezas artistico."
+                  : `Ejercitá tu mente con este rompecabezas artistico.`}
               </Text>
 
               <View
@@ -432,7 +501,7 @@ export function PuzzleScreen({ onVolver }: Props) {
         <View className="my-4 flex-row items-center justify-between rounded-2xl border border-mostaza/40 bg-vino px-4 py-3">
           <Text className="text-xs font-semibold uppercase text-amber-100">{MENSAJES[fase]}</Text>
           <Text style={{ fontFamily: "LaOriental" }} className="text-base text-mostaza">
-            {movimientos} / {PAR}
+            {intentos > 1 ? movimientos : `${movimientos} / ${PAR}`}
           </Text>
         </View>
 
@@ -457,20 +526,26 @@ export function PuzzleScreen({ onVolver }: Props) {
               }}
             >
               {id === 0 ? (
-                <View className="flex-1 rounded-2xl border-2 border-dashed border-mostaza/40" />
+                /* El hueco no es una pieza: se insinúa la que falta y, si ya está
+                   en su celda (puzzle resuelto), no se insinúa ninguna. */
+                <View className="flex-1 overflow-hidden rounded-2xl border-2 border-dashed border-mostaza/40">
+                  {piezaAusente > 0 && (
+                    <View style={{ opacity: 0.18 }}>
+                      <FragmentoPieza id={piezaAusente} />
+                    </View>
+                  )}
+                </View>
               ) : (
                 <TouchableOpacity
                   onPress={() => tocarFicha(id)}
                   disabled={fase !== "jugando"}
                   activeOpacity={0.75}
-                  className={`flex-1 items-center justify-center rounded-2xl border-2 border-vino bg-mostaza ${
+                  className={`flex-1 overflow-hidden rounded-2xl border-2 border-vino ${
                     // Solo se mueven las vecinas al hueco: el resto se ve apagado.
                     movibles.includes(tablero.indexOf(id)) ? "" : "opacity-50"
                   }`}
                 >
-                  <Text style={{ fontFamily: "LaOriental" }} className="text-4xl text-vino">
-                    {id}
-                  </Text>
+                  <FragmentoPieza id={id} />
                 </TouchableOpacity>
               )}
             </Animated.View>
@@ -478,17 +553,31 @@ export function PuzzleScreen({ onVolver }: Props) {
         </View>
 
         {fase === "jugando" && (
-          <TouchableOpacity
-            onPress={() => setMostrarReinicio(true)}
-            className="mt-8 w-[90%] self-center items-center justify-center rounded-2xl border border-mostaza/60 bg-vino py-3 active:bg-vino/80"
-          >
-            <Text
-              style={{ fontFamily: "LaOriental" }}
-              className="text-center uppercase tracking-wider text-mostaza"
+          <View className="mt-8 w-[90%] flex-row gap-3 self-center">
+            <TouchableOpacity
+              onPress={() => setMostrarReinicio(true)}
+              className="flex-1 items-center justify-center rounded-2xl border border-mostaza/60 bg-vino py-3 active:bg-vino/80"
             >
-              Reiniciar
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={{ fontFamily: "LaOriental" }}
+                className="text-center uppercase tracking-wider text-mostaza"
+              >
+                Reiniciar
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              onPress={() => setMostrarImagen(true)}
+              className="flex-1 items-center justify-center rounded-2xl border border-caramelo bg-calabaza py-3 active:bg-vino/80"
+            >
+              <Text
+                style={{ fontFamily: "LaOriental" }}
+                className="text-center uppercase text-white"
+              >
+                Ver Imagen
+              </Text>
+            </TouchableOpacity>
+          </View>
         )}
       </ScrollView>
     </View>

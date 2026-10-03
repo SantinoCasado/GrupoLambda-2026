@@ -39,7 +39,7 @@ const JUEGOS: Juego[] = [
     clave: "puzzle",
     numero: 2,
     titulo: "Armá el puzzle",
-    descripcion: "Ordená las fichas",
+    descripcion: "Armá la imagen",
     icono: require("../../assets/images/puzzle-y.png"),
   },
   {

@@ -69,11 +69,11 @@ export function ConfirmModal({
               <TouchableOpacity
                 onPress={onConfirm}
                 disabled={cargando || confirmarDeshabilitado}
-                className={`flex-1 rounded-2xl py-3.5 ${colorBoton} ${colorBotonActivo} ${
+                className={`flex-1 justify-center align-center rounded-2xl py-3.5 ${colorBoton} ${colorBotonActivo} ${
                   confirmarDeshabilitado ? "opacity-50" : ""
                 }`}
               >
-                <Text style={{ fontFamily: "LaOriental" }} className="text-center uppercase tracking-wider text-vino">
+                <Text style={{ fontFamily: "LaOriental" }} className=" uppercase text-center  text-vino">
                   {textoConfirmar}
                 </Text>
               </TouchableOpacity>
