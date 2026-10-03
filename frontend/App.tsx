@@ -474,24 +474,41 @@ function AppInterna() {
       const clienteId = usuarioActual?.id || clienteAnonimo?.user_id || clienteAnonimo?.id;
 
       if (clienteId) {
-        // 1. Busca si tenía entrada en waiting_list (por si tiene mesa asignada)
-        const { data: espera } = await supabase
+        // 1. Trae TODAS sus entradas. Antes usaba .maybeSingle(): con dos
+        //    filas duplicadas PostgREST devuelve error (PGRST116) y `data`
+        //    quedaba en null, así que los pasos 2 y 3 no se ejecutaban y cada
+        //    cierre de sesión dejaba la mesa ocupada y la fila en la lista.
+        const { data: esperas, error: errorEspera } = await supabase
           .from("waiting_list")
           .select("id, assigned_table_id")
-          .eq("user_id", clienteId)
-          .maybeSingle();
+          .eq("user_id", clienteId);
 
-        // 2. Si tenía mesa asignada, la libera a 'free'
-        if (espera?.assigned_table_id) {
+        if (errorEspera) {
+          console.warn(
+            "⚠️ No se pudieron leer las entradas de lista de espera:",
+            errorEspera.message
+          );
+        }
+
+        const mesaIds = Array.from(
+          new Set(
+            (esperas ?? [])
+              .map((entrada) => entrada.assigned_table_id)
+              .filter((id): id is string => Boolean(id))
+          )
+        );
+
+        // 2. Libera todas las mesas que tuviera asignadas
+        for (const mesaId of mesaIds) {
           await supabase
             .from("restaurant_tables")
             .update({ availability: "free" })
-            .eq("id", espera.assigned_table_id);
+            .eq("id", mesaId);
         }
 
-        // 3. Borra la entrada de la lista de espera
-        if (espera?.id) {
-          await supabase.from("waiting_list").delete().eq("id", espera.id);
+        // 3. Borra todas sus entradas de la lista de espera
+        if (esperas && esperas.length > 0) {
+          await supabase.from("waiting_list").delete().eq("user_id", clienteId);
         }
 
         // 4. Si era anónimo, limpia el usuario temporal y su foto

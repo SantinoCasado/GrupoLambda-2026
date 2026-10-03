@@ -52,7 +52,12 @@ export const ChineseFrame = ({ children, className = "", color = MOSTAZA }: Chin
 
   const onLayout = (e: LayoutChangeEvent) => {
     const { width, height } = e.nativeEvent.layout;
-    setSize({ width, height });
+
+    // setSize con un objeto nuevo nunca puede hacer bail-out en React: cada
+    // onLayout dispara un re-render y, si el <Svg> participa del layout, otro
+    // onLayout. Devolviendo `prev` cuando nada cambió, React descarta el
+    // render por completo.
+    setSize((prev) => (prev.width === width && prev.height === height ? prev : { width, height }));
   };
 
   const w = size.width;

@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   Image,
   Modal,
-  ScrollView,
   ImageSourcePropType,
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
@@ -45,11 +44,11 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
   const [mesaAsignada, setMesaAsignada] = useState<{ id: string; numero: number } | null>(null);
   const [waitingListId, setWaitingListId] = useState<string | null>(null);
 
+
   // Modales
   const [modalEncuestas, setModalEncuestas] = useState(false);
   const [modalSalir, setModalSalir] = useState(false);
   const [saliendo, setSaliendo] = useState(false);
-  const [cargandoIngreso, setCargandoIngreso] = useState(false);
   const [modalCancelado, setModalCancelado] = useState(false);
   const [modalMensaje, setModalMensaje] = useState<ModalMensajeInfo>({
     visible: false,
@@ -60,7 +59,6 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
 
   const [permission, requestPermission] = useCameraPermissions();
   const scanLockRef = useRef(false);
-  const salidaIniciadaRef = useRef(false);
 
   const mostrarMensaje = (
     titulo: string,
@@ -68,9 +66,6 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
     tipo: "exito" | "error" | "informacion" = "informacion",
     iconoImagen?: ImageSourcePropType
   ) => {
-    // Cierra el registro en curso en el mismo render en que se muestra el
-    // mensaje, para que spinner y feedback nunca coexistan.
-    setCargandoIngreso(false);
     setModalMensaje({
       visible: true,
       titulo,
@@ -116,7 +111,7 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
 
             mostrarMensaje(
               "¡Mesa Asignada!",
-              `El metre te asignó la Mesa #${num}. Escaneá el QR ubicado en tu mesa para ver el menú.`,
+              `El metre te asignó la Mesa #${num}. Por favor, escaneá el QR ubicado en tu mesa para ver el menú.`,
               "exito",
               require("../../assets/images/food-y.png")
             );
@@ -132,9 +127,6 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
           filter: `id=eq.${waitingListId}`,
         },
         () => {
-          // Si la baja la generó el propio cliente al salir, no es una
-          // cancelación del metre: el modal no debe aparecer.
-          if (salidaIniciadaRef.current) return;
           setModalCancelado(true);
         }
       )
@@ -174,7 +166,6 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
         data.toLowerCase().includes("entrada")
       ) {
         // Impacta en waiting_list al escanear el qr
-        setCargandoIngreso(true);
         const res = await ingresarAListaEsperaLocal(
           cliente.user_id || cliente.id,
           cliente.client_name,
@@ -239,7 +230,6 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
   };
 
   const confirmarSalida = async () => {
-    salidaIniciadaRef.current = true; // el DELETE de abajo es nuestro, no del metre
     setSaliendo(true);
     try {
       const targetUserId = cliente.user_id || cliente.id;
@@ -271,27 +261,23 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
   };
 
   return (
-    <View className="flex-1" style={{ paddingTop: insets.top + 4 }}>
-      {/* Salir del local. Va en el flujo y no absoluto para que la cabecera
-          nunca quede por debajo ni dependa de offsets sobre insets.top. */}
-      <View className="flex-row justify-end px-4">
-        <TouchableOpacity
-          onPress={() => setModalSalir(true)}
-          className="rounded-xl border border-mostaza bg-vino p-2.5 active:bg-terracota"
-        >
-          <Image
-            source={require("../../assets/images/exit-door-y.png")}
-            className="h-6 w-6"
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
-      </View>
+    <View className="flex-1 pt-4" style={{ paddingTop: insets.top + 4 }}>
+      {/* Salir del local */}
+      <TouchableOpacity
+        onPress={() => setModalSalir(true)}
+        className="absolute right-4 z-10 rounded-xl border border-mostaza bg-vino p-2.5"
+        style={{ top: insets.top + 20 }}
+      >
+        <Image
+          source={require("../../assets/images/exit-door-y.png")}
+          className="h-6 w-6"
+          resizeMode="contain"
+        />
+      </TouchableOpacity>
 
-      {/* Cabecera. Tiene que estar en el flujo de flex: si es absoluta no
-          ocupa altura y el flex-1 de abajo centra contra toda la pantalla,
-          haciendo que la tarjeta se monte sobre el logo. */}
-      <View className="px-5 pt-4">
-        <View className="mb-3">
+      {/* Cabecera */}
+      <View className="absolute left-0 right-0 px-5 pt-24">
+        <View className="mb-4">
           <Image
             source={require("../../assets/images/logo-name.png")}
             className="h-20 w-auto self-center"
@@ -305,43 +291,31 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
         </View>
       </View>
 
-      {/* Contenido: la tarjeta ocupa todo el espacio libre bajo la cabecera.
-          El ScrollView con flexGrow centra cuando entra y deja scrollear
-          cuando los íconos grandes no entran en pantallas bajas. */}
-      <View className="flex-1 px-6" style={{ paddingBottom: insets.bottom + 8 }}>
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{ flexGrow: 1 }}
-        showsVerticalScrollIndicator={false}
-      >
-      <ChineseFrame className="flex-1 bg-vino/90 shadow-2xl" color="#f7b538">
-      <View className="flex-1 items-center justify-center p-3">
+      <View className="flex-1 justify-center px-6">
+      <ChineseFrame className="bg-vino/90 shadow-2xl" color="#f7b538">
+      <View className="items-center p-6">
         {/* Foto y Nombre */}
         {cliente?.client_photo ? (
           <Image
             source={{ uri: cliente.client_photo }}
-            className="h-20 w-20 rounded-full border-2 border-mostaza"
+            className="h-24 w-24 rounded-full border-2 border-mostaza"
           />
         ) : (
           <Image
             source={require("../../assets/images/no-photo.jpg")}
-            className="h-20 w-20 rounded-full border-2 border-mostaza"
+            className="h-24 w-24 rounded-full border-2 border-mostaza"
             resizeMode="cover"
           />
         )}
-        <Text style={{ fontFamily: "LaOriental" }} className="mt-5 text-2xl text-mostaza">
+        <Text style={{ fontFamily: "LaOriental" }} className="mt-3 text-2xl text-mostaza">
           Hola, {cliente?.client_name || "Invitado"}
         </Text>
-        <Text className="text-center text-xs text-amber-100/70 my-3">
-          Estado: {mesaAsignada
-            ? `Mesa #${mesaAsignada.numero} Asignada`
-            : qrEntradaEscaneado
-            ? "En lista de espera"
-            : "Anunciá tu llegada"}
+        <Text className="text-center text-xs text-amber-100/70 mt-1">
+          Estado: {mesaAsignada ? `Mesa #${mesaAsignada.numero} Asignada` : "En lista de espera"}
         </Text>
 
         {/* Estado actual */}
-        <View className="mt-2 w-[95%] rounded-xl bg-[#FAE9DF] p-2.5">
+        <View className="mt-3 w-full rounded-xl bg-[#FAE9DF] p-3">
           <View className="flex-row items-center justify-center">
             {qrEntradaEscaneado && !mesaAsignada && (
               <Image
@@ -352,7 +326,7 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
             )}
             <Text className="text-center text-xs text-calabaza">
               {mesaAsignada
-                ? `Escaneá el código QR de la mesa #${mesaAsignada.numero} para ver el menú.`
+                ? `Mesa asignada: #${mesaAsignada.numero}. Por favor, escaneá su código QR para ver el menú.`
                 : qrEntradaEscaneado
                 ? "Esperando asignación de mesa..."
                 : "Escaneá el QR de la entrada para anunciar tu llegada."}
@@ -362,42 +336,42 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
 
         <View className="my-5 w-full border-t border-mostaza/20" />
 
-        {/* 1. Botón QR Entrada. Sigue visible pero deshabilitado cuando ya se
-            escaneó; desaparece al asignarse la mesa (2). */}
-        {!mesaAsignada ? (
+        {/* 1. Botón QR Entrada */}
+        {!qrEntradaEscaneado ? (
           <TouchableOpacity
             onPress={() => abrirEscaner("entrada")}
-            disabled={qrEntradaEscaneado}
-            accessibilityState={{ disabled: qrEntradaEscaneado }}
-            className={`w-[90%] items-center justify-center rounded-2xl py-3.5 ${
-              qrEntradaEscaneado ? "bg-stone-500/80" : "bg-mostaza active:bg-mostaza/80"
-            }`}
+            className="w-full flex-row item-center justify-center rounded-2xl bg-mostaza py-3.5 active:bg-mostaza/80"
           >
             <Image
-              source={
-                qrEntradaEscaneado
-                  ? require("../../assets/images/camera-g.png")
-                  : require("../../assets/images/camera-v.png")
-              }
-              className="mt-6 h-24 w-24"
+              source={require("../../assets/images/camera-v.png")}
+              className="mr-2 h-5 w-5"
               resizeMode="contain"
+              style={{ transform: [{ translateY: -3 }] }}
             />
-            <Text style={{ fontFamily: "LaOriental" }} className={`mt-3 mb-4 text-base  ${qrEntradaEscaneado ? "text-stone-300" : "text-vino"}`}>
+            <Text style={{ fontFamily: "LaOriental" }} className="text-sm text-vino">
               Escanear QR
             </Text>
           </TouchableOpacity>
-        ) : (
-          /* 2. Botón QR Mesa (Se activa si el Metre le asignó mesa) */
+        ) : /*Capaz que lo saco*/ (
+          <View className="w-full items-center rounded-2xl bg-emerald-950/60 p-3 border border-emerald-500/40">
+            <Text className="text-emerald-400 font-bold text-center text-xs">
+              ✓ Ingreso confirmado en puerta
+            </Text>
+          </View>
+        )}
+
+        {/* 2. Botón QR Mesa (Se activa si el Metre le asignó mesa) */}
+        {mesaAsignada && (
           <TouchableOpacity
             onPress={() => abrirEscaner("mesa")}
-            className="mt-3 w-[90%] items-center justify-center rounded-2xl bg-emerald-600 py-3.5 shadow-md active:bg-emerald-700"
+            className="mt-3 w-full flex-row items-center justify-center rounded-2xl bg-emerald-600 py-3.5 shadow-md active:bg-emerald-700"
           >
             <Image
               source={require("../../assets/images/table-w.png")}
-              className="h-24 w-24"
+              className="mr-2 h-6 w-6"
               resizeMode="contain"
             />
-            <Text style={{ fontFamily: "LaOriental" }} className="mt-3 text-center text-sm uppercase text-white">
+            <Text style={{ fontFamily: "LaOriental" }} className="text-sm uppercase text-white">
               Escanear QR en la Mesa #{mesaAsignada.numero}
             </Text>
           </TouchableOpacity>
@@ -406,21 +380,21 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
         {/* 3. Encuestas previas */}
         <TouchableOpacity
           onPress={() => setModalEncuestas(true)}
-          className="mt-4 w-[90%] items-center justify-center rounded-2xl border border-mostaza/60 bg-vino py-3"
+          className="mt-5 w-full flex-row items-center justify-center rounded-2xl border border-mostaza/60 bg-vino py-3"
         >
           <Image
-            source={require("../../assets/images/rating-y.png")}
-            className="h-12 w-12"
-            resizeMode="contain"
-          />
-          <Text style={{ fontFamily: "LaOriental" }} className="mt-2 text-sm text-mostaza">
+              source={require("../../assets/images/rating-y.png")}
+              className="mr-2 h-5 w-5"
+              resizeMode="contain"
+              style={{ transform: [{ translateY: -2 }] }}
+            />
+          <Text style={{ fontFamily: "LaOriental" }} className="text-sm text-mostaza">
             Ver reseñas
           </Text>
         </TouchableOpacity>
 
       </View>
       </ChineseFrame>
-      </ScrollView>
 
       {/* MODAL INFORMATIVO PERSONALIZADO (Reemplazo de Alert) */}
       <FeedbackModal
@@ -446,13 +420,9 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
 
       <CompanySpinner visible={saliendo} mensaje="Saliendo del local..." />
 
-      <CompanySpinner visible={cargandoIngreso} mensaje="Anunciando tu llegada..." />
-
-      {/* MODAL CÁMARA. Montado solo al abrirlo: en Android cada Modal crea una
-          ventana nativa aunque visible={false}. */}
-      {escaneandoQR && (
-      <Modal visible animationType="slide">
-        <View className="absolute inset-0 bg-black">
+      {/* MODAL CÁMARA */}
+      <Modal visible={escaneandoQR} animationType="slide">
+        <View className="flex-1 bg-black">
           <CameraView
             style={{ flex: 1 }}
             facing="back"
@@ -467,12 +437,10 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
           </TouchableOpacity>
         </View>
       </Modal>
-      )}
 
       {/* MODAL TURNO CANCELADO POR EL METRE */}
-      {modalCancelado && (
-      <Modal visible transparent animationType="fade">
-        <View className="absolute inset-0 items-center justify-center bg-black/80 px-6">
+      <Modal visible={modalCancelado} transparent animationType="fade">
+        <View className="flex-1 items-center justify-center bg-black/80 px-6">
           <View className="w-full max-w-sm rounded-3xl border border-terracota/60 bg-vino p-6 shadow-2xl">
             <Image
               source={require("../../assets/images/reject-y.png")}
@@ -518,30 +486,25 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
           </View>
         </View>
       </Modal>
-      )}
 
       {/* MODAL RESULTADOS ENCUESTAS */}
-      {modalEncuestas && (
-      <Modal visible transparent animationType="fade">
-        <View className="absolute inset-0 items-center justify-center bg-black/75 px-6">
+      <Modal visible={modalEncuestas} transparent animationType="fade">
+        <View className="flex-1 items-center justify-center bg-black/75 px-6">
           <View className="w-full max-w-sm rounded-2xl bg-vino p-5 border border-mostaza">
-            <Text style={{ fontFamily: "LaOriental" }} className="text-xl text-mostaza text-center mb-3">
+            <Text style={{ fontFamily: "LaOriental" }} className="text-lg text-mostaza text-center mb-3">
               Resultados de Encuestas
             </Text>
-            <View className="mb-4 flex-row items-center">
-              <Image source={require("../../assets/images/food-y.png")} className="mr-3 h-6 w-6" resizeMode="contain" />
-              <Text className="text-s text-amber-100">Sabor de la comida: </Text>
-              <Text style={{ fontFamily: "LaOriental" }} className="text-s text-mostaza">4.8 / 5</Text>
+            <View className="mb-2 flex-row items-center">
+              <Image source={require("../../assets/images/food-y.png")} className="mr-1 h-4 w-4" resizeMode="contain" />
+              <Text className="text-sm text-amber-100">Sabor de la comida: 4.8 / 5</Text>
+            </View>
+            <View className="mb-2 flex-row items-center">
+              <Image source={require("../../assets/images/serving-y.png")} className="mr-1 h-4 w-4" resizeMode="contain" />
+              <Text className="text-sm text-amber-100">Calidad de atención: 4.6 / 5</Text>
             </View>
             <View className="mb-4 flex-row items-center">
-              <Image source={require("../../assets/images/serving-y.png")} className="mr-3 h-6 w-6" resizeMode="contain" />
-              <Text className="text-s text-amber-100">Calidad de atención: </Text>
-              <Text style={{ fontFamily: "LaOriental" }} className="text-s text-mostaza">4.6 / 5</Text>
-            </View>
-            <View className="mb-6 flex-row items-center">
-              <Image source={require("../../assets/images/table-y.png")} className="mr-3 h-6 w-6" resizeMode="contain" />
-              <Text className="text-s text-amber-100">Comodidad del salón: </Text>
-              <Text style={{ fontFamily: "LaOriental" }} className="text-s text-mostaza">4.9 / 5</Text>
+              <Image source={require("../../assets/images/table-y.png")} className="mr-1 h-4 w-4" resizeMode="contain" />
+              <Text className="text-sm text-amber-100">Comodidad del salón: 4.9 / 5</Text>
             </View>
 
             <TouchableOpacity
@@ -553,7 +516,6 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
           </View>
         </View>
       </Modal>
-      )}
       </View>
     </View>
   );
