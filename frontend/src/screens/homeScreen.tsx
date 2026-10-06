@@ -203,8 +203,8 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
 
           {/* 2. COCINERO / CANTINERO */}
           {esProducto && (
-            <View className="gap-y-4">
-              <Text className="mb-1 text-xs font-bold text-vino uppercase">Gestión de Carta</Text>
+            <View className="flex-1 gap-y-4 pb-2">
+              <Text className="text-xs font-bold text-vino uppercase">Gestión de Carta</Text>
 
               {/* Botón 1: Alta */}
               <TouchableOpacity
@@ -224,15 +224,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                   >
                     {perfil === "cocinero" ? "Alta de Comida" : "Alta de Bebida"}
                   </Text>
-                  <Text style={{ fontSize: texto(11, 0.035), fontWeight: "600" }} className="text-amber-100">
-                    {perfil === "cocinero" ? "Agregar un plato a la carta" : "Agregar una bebida a la carta"}
-                  </Text>
                 </View>
-                <Image
-                  source={require("../../assets/images/right-arrow-y.png")}
-                  style={{ height: px(28, 0.08), width: px(28, 0.08) }}
-                  resizeMode="contain"
-                />
               </TouchableOpacity>
 
               {/* Botón 2: Ver Carta */}
@@ -253,15 +245,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                   >
                     Ver Carta
                   </Text>
-                  <Text style={{ fontSize: texto(11, 0.035), fontWeight: "600" }} className="text-amber-100">
-                    Consultar y dar de baja productos
-                  </Text>
                 </View>
-                <Image
-                  source={require("../../assets/images/right-arrow-y.png")}
-                  style={{ height: px(28, 0.08), width: px(28, 0.08) }}
-                  resizeMode="contain"
-                />
               </TouchableOpacity>
             </View>
           )}
@@ -374,7 +358,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
 
           {/* 4. METRE */}
           {perfil === "metre" && (
-            <View className="flex-1 gap-y-4 pb-2">
+            <View className="flex-1 gap-y-2 pb-2">
               <Text className="mb-1 text-xs font-bold text-vino uppercase">Operación del Salón</Text>
 
               {/* Botón 1: Gestión de Mesas y Espera */}
@@ -404,11 +388,11 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
               >
                 <Image
                   source={require("../../assets/images/audit-y.png")}
-                  style={{ height: px(56, 0.13), width: px(56, 0.13), marginBottom: px(12, 0.03) }}
+                  style={{ height: px(100, 0.2), width: px(100, 0.2), marginBottom: px(12, 0.03) }}
                   resizeMode="contain"
                 />
                 <Text
-                  style={{ fontFamily: "LaOriental", fontSize: texto(14, 0.045) }}
+                  style={{ fontFamily: "LaOriental", fontSize: texto(20, 0.1) }}
                   className="text-center uppercase tracking-wider text-mostaza"
                 >
                   Registrar Cliente
@@ -419,7 +403,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
 
           {/* 5. MOZO */}
           {perfil === "mozo" && (
-            <View className="flex-1 gap-y-4 pb-2">
+            <View className="flex-1 gap-y-2 pb-2">
               <Text className="text-xs font-bold text-vino uppercase">Operación de Salón</Text>
 
               <TouchableOpacity
