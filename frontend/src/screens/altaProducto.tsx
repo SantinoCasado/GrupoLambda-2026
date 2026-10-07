@@ -499,7 +499,7 @@ export default function AltaProductoScreen({ categoria, onSuccess }: Props) {
               </View>
               <TouchableOpacity
                 onPress={irSiguiente}
-                className="w-full flex-column gap-2 items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] mt-1 py-3 active:bg-[#f5dccb]"
+                className="w-full h-[60%] flex-column gap-2 items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] mt-1 py-3 active:bg-[#f5dccb]"
               >
                 <Image
                   source={require("../../assets/images/camera-cal.png")}
@@ -524,31 +524,31 @@ export default function AltaProductoScreen({ categoria, onSuccess }: Props) {
             nestedScrollEnabled
             contentContainerStyle={{ paddingBottom: 40 }}
           >
-            {/* Fotografías */}
-            <View className="mx-4 mt-6 rounded-2xl border border-mostaza bg-[#FFF8EA] p-4">
-              <Text className="mb-2 text-s font-bold text-vino">
+            <Text className="mb-2 ml-3 text-s font-bold text-vino">
                 Fotografías (3 obligatorias) *
-              </Text>
-              <Text className="mb-3 text-[11px] text-stone-400">
+            </Text>
+            <Text className="mb-3 ml-3 text-xs text-stone-500  w-[70%] ">
                 Toca cada contenedor para tomar una foto con la cámara o elegir
                 de la galería.
-              </Text>
+            </Text>
 
+            {/* Fotografías */}
+            <View className="mx-4 rounded-2xl border border-mostaza bg-[#FFF8EA] p-4">
               {errors.fotos && (
                 <Text className="mb-2 text-xs font-medium text-rose-400">
                   {errors.fotos}
                 </Text>
               )}
 
-              <View className="flex-col">
+              <View className="w-full items-center justify-center">
                 {/* Foto #1 - Principal */}
-                <View className="mb-3 w-2/3 items-center self-center">
+                <View className="mb-3 w-full items-center self-center">
                   <Text className="mb-1 text-[11px] font-semibold text-terracota">
                     Foto #1
                   </Text>
                   <TouchableOpacity
                     onPress={() => abrirSelectorFoto(0)}
-                    className={`aspect-[4/3] w-[90%] items-center justify-center overflow-hidden rounded-xl border ${
+                    className={`w-full aspect-[16/9] items-center justify-center overflow-hidden rounded-xl border ${
                       fotos[0]
                         ? "border-solid border-amber-600/50"
                         : "border-dashed border-amber-600/50"
@@ -572,28 +572,18 @@ export default function AltaProductoScreen({ categoria, onSuccess }: Props) {
                       </View>
                     )}
                   </TouchableOpacity>
-                  {fotos[0] && (
-                    <TouchableOpacity
-                      onPress={() => abrirSelectorFoto(0)}
-                      className="mt-2 self-center rounded-lg border border-calabaza bg-[#FBE9DF] px-3 py-1 active:bg-[#f5dccb]"
-                    >
-                      <Text className="text-[11px] font-bold text-calabaza">
-                        Cambiar
-                      </Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
 
                 {/* Fotos #2 y #3 */}
-                <View className="flex-row justify-between">
+                <View className="w-full flex-row gap-3">
                   {[1, 2].map((index) => (
-                    <View key={index} className="w-[42%] items-center">
-                      <Text className="mb-1 text-[11px] font-semibold text-terracota">
+                    <View key={index} className="flex-1 min-w-0 items-center">
+                      <Text className="text-[11px] font-semibold text-terracota">
                         Foto #{index + 1}
                       </Text>
                       <TouchableOpacity
                         onPress={() => abrirSelectorFoto(index)}
-                        className={`aspect-square w-full items-center justify-center overflow-hidden rounded-xl border ${
+                        className={`w-full aspect-[3/2] items-center justify-center overflow-hidden rounded-xl border ${
                           fotos[index]
                             ? "border-solid border-amber-600/50"
                             : "border-dashed border-amber-600/50"
@@ -617,19 +607,20 @@ export default function AltaProductoScreen({ categoria, onSuccess }: Props) {
                           </View>
                         )}
                       </TouchableOpacity>
-                      {fotos[index] && (
-                        <TouchableOpacity
-                          onPress={() => abrirSelectorFoto(index)}
-                          className="mt-2 self-center rounded-lg border border-calabaza bg-[#FBE9DF] px-3 py-1 active:bg-[#f5dccb]"
-                        >
-                          <Text className="text-[11px] font-bold text-calabaza">
-                            Cambiar
-                          </Text>
-                        </TouchableOpacity>
-                      )}
                     </View>
                   ))}
                 </View>
+              </View>
+            </View>
+            
+            <View className="mx-6 mt-4 items-center">
+              <View className="flex-row items-center justify-center gap-2 py-1 mb-3">
+                {[0, 1].map((i) => (
+                  <View
+                    key={i}
+                    className={`h-2 w-2 rotate-45 ${currentStep === i ? "bg-vino" : "bg-mostaza/30"}`}
+                  />
+                ))}
               </View>
             </View>
 
@@ -637,7 +628,7 @@ export default function AltaProductoScreen({ categoria, onSuccess }: Props) {
             <TouchableOpacity
               onPress={handleSubmit}
               disabled={isLoading}
-              className="mt-6 flex-row items-center justify-center rounded-2xl border border-amber-400/40 bg-vino py-3 active:bg-terracota"
+              className="flex-row items-center justify-center rounded-2xl border border-amber-400/40 bg-vino py-3 active:bg-terracota"
             >
               <Image
                 source={require("../../assets/images/sello.png")}
@@ -658,27 +649,7 @@ export default function AltaProductoScreen({ categoria, onSuccess }: Props) {
             </TouchableOpacity>
 
             {/* Paginación + Volver */}
-            <View className="mx-6 mt-4 items-center">
-              <View className="flex-row items-center justify-center gap-2 py-1 mb-3">
-                {[0, 1].map((i) => (
-                  <View
-                    key={i}
-                    className={`h-2 w-2 rotate-45 ${currentStep === i ? "bg-vino" : "bg-mostaza/30"}`}
-                  />
-                ))}
-              </View>
-              <TouchableOpacity
-                onPress={irVolver}
-                className="w-full flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
-              >
-                <Text
-                  style={{ fontFamily: "LaOriental" }}
-                  className="text-s text-calabaza"
-                >
-                  Volver
-                </Text>
-              </TouchableOpacity>
-            </View>
+            
           </ScrollView>
         </View>
       </ScrollView>
