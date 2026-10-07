@@ -843,8 +843,8 @@ function AppInterna() {
             <Text className="text-xs font-black text-mostaza uppercase">
               {usuarioActual.nombres} {usuarioActual.apellidos}
             </Text>
-            <Text className="text-[10px] font-bold text-amber-200 uppercase">
-              {usuarioActual.tituloVisual}
+            <Text className="text-[10px] font-bold text-amber-200">
+              {usuarioActual.tituloVisual == "Cliente_registrado" ? "CLIENTE" : usuarioActual.tituloVisual == "Cliente_anonimo" ? "INVITADO" : usuarioActual.tituloVisual}
             </Text>
           </View>
         </View>
@@ -855,7 +855,7 @@ function AppInterna() {
             className="rounded-xl border border-mostaza bg-mostaza/30 px-3 py-1.5 active:bg-mostaza/60"
           >
             <Image
-              source={require("./assets/images/left-arrow-y.png")}
+              source={require("./assets/images/home-y.png")}
               className="h-6 w-6 mr-0.5"
               resizeMode="contain"
               accessible

@@ -151,11 +151,14 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos, onEditarCo
                   ⏱ ~{pedido?.estimated_delivery_time || 15} minutos
                 </Text>
               </View>
-              <Image
-                source={require("../../assets/images/food-y.png")}
-                className="h-9 w-9 mr-2"
-                resizeMode="contain"
-              />
+              {onIrAJuegos && !estaCancelado && (
+                <TouchableOpacity
+                  onPress={onIrAJuegos}
+                  className="items-center rounded-2xl border-2 border-caramelo bg-calabaza p-4 active:bg-terracota"
+                >
+                  <Image source={require("../../assets/images/joystick-w.png")} className="h-8 w-8" resizeMode="contain" />
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         )}
@@ -258,23 +261,7 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos, onEditarCo
         </View>
 
         {/* Acceso a Juegos mientras espera */}
-        {onIrAJuegos && !estaCancelado && (
-          <TouchableOpacity
-            onPress={onIrAJuegos}
-            className="mb-6 flex-row items-center rounded-2xl border-2 border-mostaza bg-calabaza p-4 shadow-md active:bg-vino"
-          >
-            <Image source={require("../../assets/images/joystick-w.png")} className="h-8 w-8 mr-3" resizeMode="contain" />
-            <View className="flex-1">
-              <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase text-white">
-                Jugos
-              </Text>
-              <Text className="text-xs text-amber-100">
-                Jugá mientras esperás y ganá descuentos.
-              </Text>
-            </View>
-            <Image source={require("../../assets/images/right-arrow-w.png")} className="h-6 w-6" resizeMode="contain" />
-          </TouchableOpacity>
-        )}
+        
       </ScrollView>
     </View>
   );
