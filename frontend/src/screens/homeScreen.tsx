@@ -15,7 +15,9 @@ export type HomeDestino =
   | "carta"
   | "carrito"
   | "comandas"
-  | "chat_mesas";
+  | "chat_mesas"
+  | "estadisticas"
+  | "preparacion";
 
 const PERFILES_EMPLEADO = [
   { id: "cocinero", label: "Cocinero", imagen: require("../../assets/images/chef-y.png") },
@@ -85,10 +87,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
     <>
       <View className="flex-1">
         <StatusBar style="light" />
-
-        {/* Saludo */}
         <View className="px-6 pt-5">
-          
           <Image
             source={require("../../assets/images/logo-name.png")}
             className="h-20 w-auto self-center"
@@ -205,48 +204,68 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
           {esProducto && (
             <View className="flex-1 gap-y-4 pb-2">
               <Text className="text-xs font-bold text-vino uppercase">Gestión de Carta</Text>
-
-              {/* Botón 1: Alta */}
+              
               <TouchableOpacity
-                onPress={() => navegar("producto")}
-                className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota"
-                style={{ padding: px(16, 0.06) }}
+                onPress={() => navegar("preparacion")}
+                className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza bg-vino px-6 active:bg-terracota"
+                style={{ minHeight: px(180, 0.35) }}
               >
                 <Image
-                  source={require("../../assets/images/employeeRegistration-y.png")}
-                  style={{ height: px(32, 0.09), width: px(32, 0.09), marginRight: px(12, 0.045) }}
+                  source={require("../../assets/images/serving-y.png")}
+                  style={{ height: px(128, 0.38), width: px(128, 0.38), marginBottom: px(12, 0.03) }}
                   resizeMode="contain"
                 />
-                <View className="flex-1">
-                  <Text
-                    style={{ fontFamily: "LaOriental", fontSize: texto(16, 0.05) }}
-                    className="uppercase tracking-wider text-mostaza"
-                  >
-                    {perfil === "cocinero" ? "Alta de Comida" : "Alta de Bebida"}
-                  </Text>
-                </View>
+                <Text
+                  style={{ fontFamily: "LaOriental", fontSize: texto(30, 0.08) }}
+                  className="text-center uppercase tracking-wider text-mostaza"
+                >
+                  Comandas
+                </Text>
               </TouchableOpacity>
 
-              {/* Botón 2: Ver Carta */}
-              <TouchableOpacity
-                onPress={() => navegar("carta", perfil === "cocinero" ? "comida" : "bebida")}
-                className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota"
-                style={{ padding: px(16, 0.06) }}
-              >
-                <Image
-                  source={perfil === "cocinero" ? require("../../assets/images/food-y.png") : require("../../assets/images/martini-glass-y.png")}
-                  style={{ height: px(28, 0.08), width: px(28, 0.08), marginRight: px(12, 0.045) }}
-                  resizeMode="contain"
-                />
-                <View className="flex-1">
-                  <Text
-                    style={{ fontFamily: "LaOriental", fontSize: texto(16, 0.05) }}
-                    className="uppercase tracking-wider text-mostaza"
-                  >
-                    Ver Carta
-                  </Text>
-                </View>
-              </TouchableOpacity>
+              <View className="mb-5 flex-row gap-2">
+                {/* Botón 1: Alta */}
+                <TouchableOpacity
+                  onPress={() => navegar("producto")}
+                  className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota"
+                  style={{ minHeight: px(115, 0.35), padding: px(12, 0.05) }}
+                >
+                  <Image
+                    source={require("../../assets/images/employeeRegistration-y.png")}
+                    style={{ height: px(60, 0.55), width: px(60, 0.55) }}
+                    resizeMode="contain"
+                  />
+                  <View className="flex-1">
+                    <Text
+                      style={{ fontFamily: "LaOriental", fontSize: texto(15, 0.04) }}
+                      className="mt-2 text-center uppercase tracking-wide text-mostaza"
+                    >
+                      {perfil === "cocinero" ? "Alta de Comida" : "Alta de Bebida"}
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                {/* Botón 2: Ver Carta */}
+                <TouchableOpacity
+                  onPress={() => navegar("carta", perfil === "cocinero" ? "comida" : "bebida")}
+                  className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota"
+                  style={{ minHeight: px(115, 0.35), padding: px(12, 0.05) }}
+                >
+                  <Image
+                    source={perfil === "cocinero" ? require("../../assets/images/food-y.png") : require("../../assets/images/martini-glass-y.png")}
+                    style={{ height: px(60, 0.55), width: px(60, 0.55) }}
+                    resizeMode="contain"
+                  />
+                  <View className="flex-1">
+                    <Text
+                      style={{ fontFamily: "LaOriental", fontSize: texto(15, 0.04) }}
+                      className="mt-2 text-center uppercase tracking-wide text-mostaza"
+                    >
+                      Ver Carta
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
             </View>
           )}
 
