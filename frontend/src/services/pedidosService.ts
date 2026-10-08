@@ -140,6 +140,20 @@ export const marcarItemListoApi = async (itemId: string): Promise<void> => {
   }
 };
 
+export const eliminarPedidoApi = async (pedidoId: string): Promise<void> => {
+  const res = await fetch(`${API_BASE_URL}/pedidos/${pedidoId}`, {
+    method: "DELETE",
+    headers: await headersConToken({ "Content-Type": "application/json" }),
+  });
+
+  if (res.ok) return;
+
+  if (res.status === 404) return;
+
+  const errorData = await res.json().catch(() => ({}));
+  throw new Error(errorData.error || `HTTP ${res.status} al eliminar el pedido`);
+};
+
 export interface TicketsPedido {
   id: string;
   created_at: string;

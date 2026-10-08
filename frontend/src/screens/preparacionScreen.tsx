@@ -5,18 +5,20 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  Alert,
   Image,
   Vibration,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { supabase } from "../config/supabase";
 import { ChineseFrame } from "../components/ChineseFrame";
+import { ConfirmModal } from "../components/ConfirmModal";
+import { FeedbackModal } from "../components/FeedbackModal";
 import {
   obtenerTicketsCocinaApi,
   obtenerTicketsBarApi,
   obtenerMetadatosProductosApi,
   marcarItemListoApi,
+  eliminarPedidoApi,
   obtenerEstadoPedidoApi,
   ProductoMetadatos,
   TicketsPedido,
@@ -45,6 +47,14 @@ export default function PreparacionScreen({ rol }: Props) {
   const [espera, setEspera] = useState<Record<string, TicketsPedido>>({});
   const [completos, setCompletos] = useState<TicketsPedido[]>([]);
   const [marcandoId, setMarcandoId] = useState<string | null>(null);
+  const [confirmandoEliminar, setConfirmandoEliminar] = useState<TicketsPedido | null>(null);
+  const [eliminandoId, setEliminandoId] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{
+    visible: boolean;
+    tipo: "exito" | "error" | "informacion";
+    titulo: string;
+    mensaje: string;
+  }>({ visible: false, tipo: "exito", titulo: "", mensaje: "" });
   const scrollRef = useRef<ScrollView>(null);
 
   const completosVisibles = completos.filter(
@@ -176,9 +186,47 @@ export default function PreparacionScreen({ rol }: Props) {
         delete copia[ticket.id];
         return copia;
       });
-      Alert.alert("Error", err?.message || "No se pudo marcar el ticket como listo.");
+      setFeedback({
+        visible: true,
+        tipo: "error",
+        titulo: "Error",
+        mensaje: err?.message || "No se pudo marcar el ticket como listo.",
+      });
     } finally {
       setMarcandoId(null);
+    }
+  };
+
+  const solicitarEliminar = (ticket: TicketsPedido) => {
+    setConfirmandoEliminar(ticket);
+  };
+
+  const ejecutarEliminar = async () => {
+    const ticket = confirmandoEliminar;
+    if (!ticket) return;
+    setEliminandoId(ticket.id);
+    try {
+      await eliminarPedidoApi(ticket.id);
+      setCompletos((prev) => prev.filter((t) => t.id !== ticket.id));
+      setConfirmandoEliminar(null);
+      setFeedback({
+        visible: true,
+        tipo: "exito",
+        titulo: "Pedido eliminado",
+        mensaje: `El pedido de la Mesa #${
+          ticket.restaurant_tables?.table_number ?? "S/N"
+        } se eliminó de la base de datos.`,
+      });
+    } catch (err: any) {
+      setConfirmandoEliminar(null);
+      setFeedback({
+        visible: true,
+        tipo: "error",
+        titulo: "No se pudo eliminar",
+        mensaje: err?.message || "Ocurrió un error al eliminar el pedido.",
+      });
+    } finally {
+      setEliminandoId(null);
     }
   };
 
@@ -384,8 +432,11 @@ export default function PreparacionScreen({ rol }: Props) {
                   <View className="mt-auto pt-3">
                   {completo ? (
                     <TouchableOpacity
-                      onPress={() => {}}
-                      className="mt-3 w-full rounded-2xl border-2 border-terracota bg-terracota/10 py-2.5 active:bg-terracota/20"
+                      onPress={() => solicitarEliminar(ticket)}
+                      disabled={confirmandoEliminar !== null || eliminandoId !== null}
+                      className={`mt-3 w-full rounded-2xl border-2 border-terracota bg-terracota/10 py-2.5 active:bg-terracota/20 ${
+                        confirmandoEliminar !== null || eliminandoId !== null ? "opacity-50" : ""
+                      }`}
                     >
                       <Text
                         style={{ fontFamily: "LaOriental" }}
@@ -451,6 +502,34 @@ export default function PreparacionScreen({ rol }: Props) {
           </ScrollView>
         )}
         </View>
+
+        <ConfirmModal
+          visible={confirmandoEliminar !== null}
+          titulo="Eliminar Pedido (Test)"
+          mensaje={
+            <>
+              ¿Eliminar el pedido de la{" "}
+              <Text className="font-bold text-mostaza">
+                Mesa #{confirmandoEliminar?.restaurant_tables?.table_number}
+              </Text>{" "}
+              de la base de datos? Esta acción no se puede deshacer.
+            </>
+          }
+          textoConfirmar="Eliminar"
+          textoCancelar="Cancelar"
+          tipo="peligro"
+          cargando={eliminandoId !== null}
+          onConfirm={ejecutarEliminar}
+          onCancel={() => setConfirmandoEliminar(null)}
+        />
+
+        <FeedbackModal
+          visible={feedback.visible}
+          tipo={feedback.tipo}
+          titulo={feedback.titulo}
+          mensaje={feedback.mensaje}
+          onClose={() => setFeedback((prev) => ({ ...prev, visible: false }))}
+        />
       </View>
     </View>
   );
