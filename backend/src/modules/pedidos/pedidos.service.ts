@@ -532,7 +532,7 @@ export const modificarPedidoRechazado = async (
 export const marcarItemComoListoService = async(itemId: string) => {
   const { data: itemActual, error: errorBusqueda } = await supabase
     .from('order_items')
-    .update({ status: 'ready' })
+    .update({ item_status: 'ready' })
     .eq('id', itemId)
     .select('order_id')
     .single();
@@ -546,7 +546,7 @@ export const marcarItemComoListoService = async(itemId: string) => {
     // Verificar si todos los ítems del pedido están listos
     const { data: todosLosItems, error: errorCheck } = await supabase
       .from('order_items')
-      .select('status')
+      .select('item_status')
       .eq('order_id', orderId);
 
     if (errorCheck || !todosLosItems) {
@@ -554,7 +554,7 @@ export const marcarItemComoListoService = async(itemId: string) => {
     }
 
     // Comprueba si hay alguno que NO este listo
-    const faltaAlgo = todosLosItems.some((item: any) => item.status !== 'ready');
+    const faltaAlgo = todosLosItems.some((item: any) => item.item_status !== 'ready');
 
     // Si todavía falta cocinar o preparar algo, devuelve que el ítem se actualizó pero el pedido sigue en curso
     if (faltaAlgo) {
