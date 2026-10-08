@@ -132,7 +132,7 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
               "¡Mesa Asignada!",
               `El metre te asignó la Mesa #${num}. Por favor, escaneá el QR ubicado en tu mesa para ver el menú.`,
               "exito",
-              require("../../assets/images/food-y.png")
+              require("../../assets/images/food-w.png")
             );
           }
         }
@@ -482,19 +482,13 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
                 Turno Cancelado
               </Text>
               <Text className="mt-2 text-center text-xs text-amber-100/90 leading-relaxed">
-                Te han quitado de la lista de espera. Si considerás que fue un error o deseás ingresar nuevamente, puedes anunciarte otra vez.
+                Te sacaron de la lista de espera. Si considerás que fue un error o deseás ingresar nuevamente, puedes anunciarte otra vez.
               </Text>
 
               <TouchableOpacity
                 onPress={reanunciarse}
-                className="mt-6 rounded-xl bg-mostaza py-3 shadow"
+                className="mt-6 items-center rounded-xl bg-mostaza py-3 shadow"
               >
-                <Image
-                source={require("../../assets/images/employeeRegistration-v.png")}
-                className="mr-2 h-5 w-5"
-                resizeMode="contain"
-                style={{ transform: [{ translateY: -3 }] }}
-              />
                 <Text style={{ fontFamily: "LaOriental" }} className="text-center text-sm uppercase text-vino">
                   Reanunciarse
                 </Text>

@@ -316,7 +316,7 @@ export function LoginScreen({
       </Modal>
       )}
 
-      <CompanySpinner visible={cargando} mensaje="Autenticando credenciales..." />
+      <CompanySpinner visible={cargando} mensaje="Iniciando sesión..." />
 
       <FeedbackModal
         visible={modalFeedback.visible}
