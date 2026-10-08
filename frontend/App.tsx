@@ -845,7 +845,7 @@ function AppInterna() {
             <Text className="text-xs font-black text-mostaza uppercase">
               {usuarioActual.nombres} {usuarioActual.apellidos}
             </Text>
-            <Text className="text-[10px] font-bold text-amber-200">
+            <Text className="text-[10px] uppercase font-bold text-amber-200">
               {usuarioActual.tituloVisual == "Cliente_registrado" ? "CLIENTE" : usuarioActual.tituloVisual == "Cliente_anonimo" ? "INVITADO" : usuarioActual.tituloVisual}
             </Text>
           </View>
