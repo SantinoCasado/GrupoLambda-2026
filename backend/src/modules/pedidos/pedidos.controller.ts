@@ -14,6 +14,7 @@ import {
 } from './pedidos.service';
 import { crearPedidoSchema, confirmarPedidoSchema } from './schema/pedidos.schema';
 import { AuthRequest } from '../../middleware/auth.middleware'
+import { supabase } from '../../config/supabase';
 
 export const crearPedido = async (req: Request, res: Response) => {
   const validacion = crearPedidoSchema.safeParse(req.body);
@@ -251,5 +252,36 @@ export const cobrarPedido = async (req: Request, res: Response): Promise<Respons
         });
     } catch (error: any) {
         return res.status(400).json({ error: error.message });
+    }
+};
+
+
+// ===========================================
+// FUNCION EXCLUSIVA PARA TESTS: BORRAR TODO EL PEDIDO
+// ===========================================
+export const eliminarPedido = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        const { data, error } = await supabase
+            .from('orders')
+            .delete()
+            .eq('id', id)
+            .select();
+
+        if (error) {
+            return res.status(400).json({ error: error.message });
+        }
+
+        if (!data || data.length === 0) {
+            return res.status(404).json({ message: 'Pedido no encontrado.' });
+        }
+
+        return res.status(200).json({ 
+            message: `Pedido ${id} eliminado con éxito de la base de datos (Test).`,
+            pedido_eliminado: data[0]
+        });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
     }
 };

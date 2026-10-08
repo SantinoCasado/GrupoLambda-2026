@@ -79,14 +79,14 @@ Las capturas están agrupadas por rol para recorrer los flujos disponibles en ca
 | Paso / pantalla                           | Captura                                                                                    |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------ |
 | Dashboard                                 | ![Dashboard del dueño](./assets/mapeo/dueño/dueño_dashboard.jpeg)                          |
-| Gestión de mesas                          | ![Dashboard de mesas del dueño](./assets/mapeo/dueño/dueño_dashboard_mesas.jpeg)           |
 | Selección de perfil para alta de empleado | ![Selección de perfil de empleado](./assets/mapeo/dueño/dueño_altaEmpleado_seleccion.jpeg) |
 | Alta de empleado, paso 1                  | ![Alta de empleado paso 1](./assets/mapeo/dueño/dueño_altaEmpleado_1.jpeg)                 |
 | Alta de empleado, paso 2                  | ![Alta de empleado paso 2](./assets/mapeo/dueño/dueño_altaEmpleado_2.jpeg)                 |
 | Alta de mesa, paso 1                      | ![Alta de mesa paso 1](./assets/mapeo/dueño/dueño_altaMesas_1.jpeg)                        |
 | Alta de mesa, paso 2                      | ![Alta de mesa paso 2](./assets/mapeo/dueño/dueño_altaMesas_2.jpeg)                        |
+| Alta de mesa exitosa                      | ![Alta de mesa exitosa](./assets/mapeo/dueño/dueño_altaMesa_exito.jpeg)                    |
+| Gestión de mesas                          | ![Dashboard de mesas del dueño](./assets/mapeo/dueño/dueño_dashboard_mesas.jpeg)           |
 | Aprobación de clientes                    | ![Aprobación de clientes](./assets/mapeo/dueño/dueño_aprobacionCliente.jpeg)               |
-| Asignación de mesa exitosa                | ![Asignación de mesa exitosa](./assets/mapeo/dueño/dueño_asignarMesa_exito.jpeg)           |
 
 <a id="walkthrough-supervisor"></a>
 
@@ -95,14 +95,14 @@ Las capturas están agrupadas por rol para recorrer los flujos disponibles en ca
 | Paso / pantalla                           | Captura                                                                                                |
 | ----------------------------------------- | ------------------------------------------------------------------------------------------------------ |
 | Dashboard                                 | ![Dashboard del supervisor](./assets/mapeo/supervisor/supervisor_dashboard.jpeg)                       |
-| Gestión de mesas y QR                     | ![Gestión de mesas del supervisor](./assets/mapeo/supervisor/supervisor_dashboardMesas.jpeg)           |
-| Error de validación de mesa duplicada     | ![Validación de mesa duplicada](./assets/mapeo/supervisor/supervisor_mesas_validator.jpeg)             |
 | Selección de perfil para alta de empleado | ![Selección del perfil de empleado](./assets/mapeo/supervisor/supervisor_altaEmpleado_seleccion.jpeg)  |
 | Alta de empleado, paso 1                  | ![Alta de empleado del supervisor, paso 1](./assets/mapeo/supervisor/supervisor_altaEmpleado_1.jpeg)   |
 | Alta de empleado, paso 2                  | ![Alta de empleado del supervisor, paso 2](./assets/mapeo/supervisor/supervisor_altaEmpleado_2.jpeg)   |
+| Gestión de mesas y QR                     | ![Gestión de mesas del supervisor](./assets/mapeo/supervisor/supervisor_dashboardMesas.jpeg)           |
 | Alta de mesa, paso 1                      | ![Alta de mesa del supervisor, paso 1](./assets/mapeo/supervisor/supervisor_altaMesa_1.jpeg)           |
 | Alta de mesa, paso 2                      | ![Alta de mesa del supervisor, paso 2](./assets/mapeo/supervisor/supervisor_altaMesa_2.jpeg)           |
 | Confirmación de alta de mesa              | ![Confirmación de alta de mesa](./assets/mapeo/supervisor/supervisor_altaMesa_confirmacion.jpeg)       |
+| Error de validación de mesa duplicada     | ![Validación de mesa duplicada](./assets/mapeo/supervisor/supervisor_mesas_validator.jpeg)             |
 | Aprobación de clientes                    | ![Aprobación de clientes por supervisor](./assets/mapeo/supervisor/supervisor_aprobacionClientes.jpeg) |
 
 <a id="walkthrough-metre"></a>
@@ -117,8 +117,6 @@ Las capturas están agrupadas por rol para recorrer los flujos disponibles en ca
 | Selección de mesa para asignación       | ![Selección de mesa para asignar al cliente](./assets/mapeo/metre/metre_asignarMesa_seleccionar.jpeg) |
 | Confirmación de asignación              | ![Confirmación de mesa asignada](./assets/mapeo/metre/metre_asignarMesa_confirmacion.jpeg)            |
 | Registro asistido de cliente            | ![Registro de cliente por el metre](./assets/mapeo/metre/metre_registroCliente.jpeg)                  |
-
-Pendiente de agregar: eliminación de un cliente de la cola y liberación de mesa al finalizar la estadía.
 
 <a id="walkthrough-mozo"></a>
 
