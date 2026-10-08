@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Alert,
   Image,
   Vibration,
 } from "react-native";
@@ -15,6 +16,8 @@ import {
   obtenerTicketsCocinaApi,
   obtenerTicketsBarApi,
   obtenerMetadatosProductosApi,
+  marcarItemListoApi,
+  obtenerEstadoPedidoApi,
   ProductoMetadatos,
   TicketsPedido,
 } from "../services/pedidosService";
@@ -39,7 +42,15 @@ export default function PreparacionScreen({ rol }: Props) {
   const [ahora, setAhora] = useState(Date.now());
   const [pagina, setPagina] = useState(0);
   const [altoPagina, setAltoPagina] = useState(0);
+  const [espera, setEspera] = useState<Record<string, TicketsPedido>>({});
+  const [completos, setCompletos] = useState<TicketsPedido[]>([]);
+  const [marcandoId, setMarcandoId] = useState<string | null>(null);
   const scrollRef = useRef<ScrollView>(null);
+
+  const completosVisibles = completos.filter(
+    (c) => !tickets.some((t) => t.id === c.id)
+  );
+  const totalPaginas = tickets.length + completosVisibles.length;
 
   const avisadosRef = useRef<Set<string>>(new Set());
 
@@ -86,10 +97,10 @@ export default function PreparacionScreen({ rol }: Props) {
   }, [tickets]);
 
   useEffect(() => {
-    if (tickets.length > 0 && pagina >= tickets.length) {
-      setPagina(tickets.length - 1);
+    if (totalPaginas > 0 && pagina >= totalPaginas) {
+      setPagina(totalPaginas - 1);
     }
-  }, [tickets.length, pagina]);
+  }, [totalPaginas, pagina]);
 
   const hayActivos = Object.values(temporizadores).some(
     (t) => t.inicio + t.duracionSeg * 1000 > ahora
@@ -136,6 +147,74 @@ export default function PreparacionScreen({ rol }: Props) {
       },
     }));
   };
+
+  const marcarListo = async (ticket: TicketsPedido) => {
+    setEspera((prev) => ({ ...prev, [ticket.id]: ticket }));
+    setMarcandoId(ticket.id);
+    try {
+      for (const it of ticket.order_items || []) {
+        await marcarItemListoApi(it.id);
+      }
+      const pedido = await obtenerEstadoPedidoApi(ticket.id);
+      if (pedido.status === "ready" || pedido.status === "delivered") {
+        setEspera((prev) => {
+          const copia = { ...prev };
+          const snap = copia[ticket.id];
+          delete copia[ticket.id];
+          if (snap) {
+            setCompletos((c) =>
+              c.some((t) => t.id === snap.id) ? c : [...c, snap]
+            );
+          }
+          return copia;
+        });
+        Vibration.vibrate([0, 60]);
+      }
+    } catch (err: any) {
+      setEspera((prev) => {
+        const copia = { ...prev };
+        delete copia[ticket.id];
+        return copia;
+      });
+      Alert.alert("Error", err?.message || "No se pudo marcar el ticket como listo.");
+    } finally {
+      setMarcandoId(null);
+    }
+  };
+
+  useEffect(() => {
+    const idsEspera = Object.keys(espera);
+    if (idsEspera.length === 0) return;
+    const idsEnLista = new Set(tickets.map((t) => t.id));
+    const faltantes = idsEspera.filter((id) => !idsEnLista.has(id));
+    if (faltantes.length === 0) return;
+
+    for (const id of faltantes) {
+      const snap = espera[id];
+      if (!snap) continue;
+      obtenerEstadoPedidoApi(id)
+        .then((pedido) => {
+          if (pedido.status === "ready" || pedido.status === "delivered") {
+            setEspera((prev) => {
+              const copia = { ...prev };
+              delete copia[id];
+              return copia;
+            });
+            setCompletos((prev) =>
+              prev.some((t) => t.id === id) ? prev : [...prev, snap]
+            );
+            Vibration.vibrate([0, 60]);
+          } else if (pedido.status === "cancelled" || pedido.status === "received") {
+            setEspera((prev) => {
+              const copia = { ...prev };
+              delete copia[id];
+              return copia;
+            });
+          }
+        })
+        .catch(() => {});
+    }
+  }, [tickets, espera]);
 
   const restanteSeg = (t: Temporizador): number =>
     Math.max(0, Math.ceil((t.inicio + t.duracionSeg * 1000 - ahora) / 1000));
@@ -189,7 +268,7 @@ export default function PreparacionScreen({ rol }: Props) {
             <ActivityIndicator size="large" color="#8B1A1A" />
             <Text className="mt-3 text-xs font-bold text-vino">Cargando tickets...</Text>
           </View>
-        ) : tickets.length === 0 ? (
+        ) : totalPaginas === 0 ? (
           <View className="mt-6 items-center justify-center bg-transparent p-8">
             <Image
               source={require("../../assets/images/yoga-y.png")}
@@ -224,10 +303,12 @@ export default function PreparacionScreen({ rol }: Props) {
               );
             }}
           >
-            {tickets.map((ticket) => {
+            {tickets.concat(completosVisibles).map((ticket) => {
+              const completo = completosVisibles.some((c) => c.id === ticket.id);
+              const enEspera = !completo && !!espera[ticket.id];
               const numMesa = ticket.restaurant_tables?.table_number ?? "S/N";
               const items = ticket.order_items || [];
-              const temporizador = temporizadores[ticket.id];
+              const temporizador = completo ? undefined : temporizadores[ticket.id];
               const restante = temporizador ? restanteSeg(temporizador) : 0;
               const terminado = temporizador ? restante <= 0 : false;
 
@@ -251,10 +332,19 @@ export default function PreparacionScreen({ rol }: Props) {
                       <Text className="mt-0.5 text-sm font-semibold text-caramelo">
                         ⏱ ~{minutosPreparacion(ticket)} min
                       </Text>
+                      {completo ? (
+                        <Text className="mt-0.5 text-xs font-bold text-emerald-700">
+                          ✓ Pedido completo
+                        </Text>
+                      ) : null}
                     </View>
                   </View>
 
-                  <View className="mt-2 border-b border-calabaza border-dashed pb-3">
+                  <View
+                    className={`mt-2 border-b border-calabaza border-dashed pb-3 ${
+                      completo ? "opacity-60" : ""
+                    }`}
+                  >
                     {items.map((it) => {
                       const foto = fotoProducto(it.products?.id);
                       return (
@@ -292,7 +382,31 @@ export default function PreparacionScreen({ rol }: Props) {
                   </View>
 
                   <View className="mt-auto pt-3">
-                  {!temporizador ? (
+                  {completo ? (
+                    <TouchableOpacity
+                      onPress={() => {}}
+                      className="mt-3 w-full rounded-2xl border-2 border-terracota bg-terracota/10 py-2.5 active:bg-terracota/20"
+                    >
+                      <Text
+                        style={{ fontFamily: "LaOriental" }}
+                        className="text-center text-sm uppercase tracking-wide text-terracota"
+                      >
+                        Delete
+                      </Text>
+                    </TouchableOpacity>
+                  ) : enEspera ? (
+                    <View className="mt-3 w-full items-center rounded-2xl border-2 border-caramelo bg-caramelo/10 px-4 py-3">
+                      <View className="flex-row items-center">
+                        <ActivityIndicator size="small" color="#8B1A1A" />
+                        <Text className="ml-2 text-sm font-bold text-caramelo">
+                          Esperando la otra parte...
+                        </Text>
+                      </View>
+                      <Text className="mt-1 text-center text-[10px] font-semibold text-stone-500">
+                        Se habilitará cuando la otra área termine su parte del pedido.
+                      </Text>
+                    </View>
+                  ) : !temporizador ? (
                     <TouchableOpacity
                       onPress={() => empezarPreparar(ticket)}
                       className="mt-3 w-full rounded-2xl border-2 border-vino bg-mostaza py-2.5 active:bg-mostaza/80"
@@ -306,14 +420,17 @@ export default function PreparacionScreen({ rol }: Props) {
                     </TouchableOpacity>
                   ) : terminado ? (
                     <TouchableOpacity
-                      onPress={() => {}}
-                      className="mt-3 w-full rounded-2xl bg-emerald-600 py-2.5 active:bg-emerald-700"
+                      onPress={() => marcarListo(ticket)}
+                      disabled={marcandoId !== null}
+                      className={`mt-3 w-full rounded-2xl bg-emerald-600 py-2.5 active:bg-emerald-700 ${
+                        marcandoId !== null ? "opacity-50" : ""
+                      }`}
                     >
                       <Text
                         style={{ fontFamily: "LaOriental" }}
                         className="text-center text-sm uppercase tracking-wide text-white"
                       >
-                        Listo!
+                        {marcandoId === ticket.id ? "Marcando..." : "Listo!"}
                       </Text>
                     </TouchableOpacity>
                   ) : (

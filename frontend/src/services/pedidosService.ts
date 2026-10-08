@@ -128,6 +128,18 @@ export const obtenerEstadoPedidoApi = async (pedidoId: string): Promise<Pedido> 
   return data as Pedido;
 };
 
+export const marcarItemListoApi = async (itemId: string): Promise<void> => {
+  const res = await fetch(`${API_BASE_URL}/pedidos/items/${itemId}/listo`, {
+    method: "PATCH",
+    headers: await headersConToken({ "Content-Type": "application/json" }),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `HTTP ${res.status} al marcar ítem listo`);
+  }
+};
+
 export interface TicketsPedido {
   id: string;
   created_at: string;
