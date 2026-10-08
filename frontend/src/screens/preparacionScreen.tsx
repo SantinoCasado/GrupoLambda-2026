@@ -37,6 +37,9 @@ export default function PreparacionScreen({ rol }: Props) {
   const [metadatos, setMetadatos] = useState<Record<string, ProductoMetadatos>>({});
   const [temporizadores, setTemporizadores] = useState<Record<string, Temporizador>>({});
   const [ahora, setAhora] = useState(Date.now());
+  const [pagina, setPagina] = useState(0);
+  const [altoPagina, setAltoPagina] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
 
   const avisadosRef = useRef<Set<string>>(new Set());
 
@@ -81,6 +84,12 @@ export default function PreparacionScreen({ rol }: Props) {
       return Object.fromEntries(entradas);
     });
   }, [tickets]);
+
+  useEffect(() => {
+    if (tickets.length > 0 && pagina >= tickets.length) {
+      setPagina(tickets.length - 1);
+    }
+  }, [tickets.length, pagina]);
 
   const hayActivos = Object.values(temporizadores).some(
     (t) => t.inicio + t.duracionSeg * 1000 > ahora
@@ -171,6 +180,10 @@ export default function PreparacionScreen({ rol }: Props) {
           Tickets de {titulo}
         </Text>
 
+        <View
+          className="flex-1"
+          onLayout={(e) => setAltoPagina(Math.round(e.nativeEvent.layout.height))}
+        >
         {cargando ? (
           <View className="items-center justify-center py-20">
             <ActivityIndicator size="large" color="#8B1A1A" />
@@ -199,10 +212,17 @@ export default function PreparacionScreen({ rol }: Props) {
               <Text className="text-xs font-bold text-calabaza">Actualizar Tickets</Text>
             </TouchableOpacity>
           </View>
-        ) : (
+        ) : !altoPagina ? null : (
           <ScrollView
+            ref={scrollRef}
+            pagingEnabled
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 24 }}
+            style={{ flex: 1 }}
+            onMomentumScrollEnd={(e) => {
+              setPagina(
+                Math.round(e.nativeEvent.contentOffset.y / (altoPagina || 1))
+              );
+            }}
           >
             {tickets.map((ticket) => {
               const numMesa = ticket.restaurant_tables?.table_number ?? "S/N";
@@ -212,19 +232,12 @@ export default function PreparacionScreen({ rol }: Props) {
               const terminado = temporizador ? restante <= 0 : false;
 
               return (
-                <View
-                  key={ticket.id}
-                  className="mb-4 rounded-2xl border-2 border-caramelo bg-[#FFFDF9] p-4"
-                >
+                <View key={ticket.id} style={{ height: altoPagina }} className="py-2">
+                <View className="flex-1 rounded-2xl border-2 border-caramelo bg-[#FFFDF9] p-4">
                   <View className="mb-2 flex-row items-center justify-between">
-                    <View className="flex-row items-center">
-                      <View className="mr-2 h-2.5 w-2.5 rounded-full bg-amber-500" />
-                      <Text className="text-[11px] font-bold uppercase tracking-wide text-amber-800">
-                        Ticket en {titulo}
-                      </Text>
-                    </View>
+                    <Text className="text-2xl text-vino" style={{ fontFamily: "LaOriental" }}>Mesa #{numMesa}</Text>
                     <View className="items-end">
-                      <Text className="text-[10px] font-semibold text-stone-500">
+                      <Text className="text-sm font-semibold text-stone-500">
                         {ticket.created_at
                           ? `${new Date(ticket.created_at).toLocaleDateString([], {
                               day: "2-digit",
@@ -235,27 +248,25 @@ export default function PreparacionScreen({ rol }: Props) {
                             })}`
                           : ""}
                       </Text>
-                      <Text className="mt-0.5 text-[10px] font-semibold text-caramelo">
+                      <Text className="mt-0.5 text-sm font-semibold text-caramelo">
                         ⏱ ~{minutosPreparacion(ticket)} min
                       </Text>
                     </View>
                   </View>
 
-                  <Text className="text-xl text-vino" style={{ fontFamily: "LaOriental" }}>Mesa #{numMesa}</Text>
-
-                  <View className="mt-2">
+                  <View className="mt-2 border-b border-calabaza border-dashed pb-3">
                     {items.map((it) => {
                       const foto = fotoProducto(it.products?.id);
                       return (
                         <View key={it.id} className="mt-1.5 flex-row items-center">
-                          
+                          <View className="h-2.5 w-2.5 rounded-full bg-calabaza mb-2" />
                           <Text
                             className="ml-3 text-2xl text-calabaza"
                             numberOfLines={1}
                             ellipsizeMode="tail"
                             style={{ fontFamily: "LaOriental" }}
                           >
-                            - {it.quantity}x 
+                            {it.quantity}x 
                           </Text>
                           {foto ? (
                             <Image
@@ -280,6 +291,7 @@ export default function PreparacionScreen({ rol }: Props) {
                     })}
                   </View>
 
+                  <View className="mt-auto pt-3">
                   {!temporizador ? (
                     <TouchableOpacity
                       onPress={() => empezarPreparar(ticket)}
@@ -314,11 +326,14 @@ export default function PreparacionScreen({ rol }: Props) {
                       </Text>
                     </View>
                   )}
+                  </View>
+                </View>
                 </View>
               );
             })}
           </ScrollView>
         )}
+        </View>
       </View>
     </View>
   );
