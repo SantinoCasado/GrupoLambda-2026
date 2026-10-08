@@ -10,7 +10,8 @@ import {
     listarPedidosBar, 
     listarPedidosCocina,
     cobrarPedido,
-    solicitarCuenta
+    solicitarCuenta, 
+    eliminarPedido
 } from './pedidos.controller';
 import { verificarAutenticacion } from '../../middleware/auth.middleware';
 import { requerirRol } from '../../middleware/auth.middleware';
@@ -62,5 +63,11 @@ router.patch('/:id/solicitar-cuenta', verificarAutenticacion, solicitarCuenta);
 
 // La ruta que para que el mozo cobre (Paso 2)
 router.post('/cobrar', verificarAutenticacion, cobrarPedido);
+
+// ===================================================
+// FUNCION EXCLUSIVA PARA TESTS: BORRAR TODO EL PEDIDO
+// ===================================================
+router.delete('/:id', eliminarPedido);
+
 
 export default router;
