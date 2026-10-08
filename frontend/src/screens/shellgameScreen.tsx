@@ -452,7 +452,15 @@ export function ShellGameScreen({ onVolver }: Props) {
               <Animated.View
                 style={{
                   flex: 1,
-                  transform: [{ translateY: yVasos[vaso] }, { rotate: rotVasos[vaso] }],
+                  transform: [
+                    { translateY: yVasos[vaso] },
+                    {
+                      rotate: rotVasos[vaso].interpolate({
+                        inputRange: [0, TILT],
+                        outputRange: ["0deg", `${TILT}deg`],
+                      }),
+                    },
+                  ],
                 }}
               >
                 <Image
