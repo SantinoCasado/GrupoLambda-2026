@@ -28,6 +28,7 @@ import { RegistroAnonimoScreen } from "./src/screens/registroAnonimoScreen";
 import { EsperaMesaScreen } from "./src/screens/esperaMesaScreen";
 import { ChatMozoScreen as ChatScreen } from "./src/screens/chatScreen";
 import { ComandasScreen } from "./src/screens/comandasScreen";
+import PreparacionScreen from "./src/screens/preparacionScreen";
 import { ChatMesasScreen } from "./src/screens/chatMesasScreen";
 import { MetreScreen } from "./src/screens/metreScreen";
 import { EstadoPedidoScreen } from "./src/screens/estadoPedidoScreen";
@@ -55,6 +56,7 @@ type VistaPrivada =
   | "registro_metre"
   | "metre"
   | "comandas"
+  | "preparacion"
   | "chat_mesas"
   | "chat_mozo"
   | "carta"
@@ -798,7 +800,7 @@ function AppInterna() {
   const accesoValido =
     vistaPrivada === "empleados" || vistaPrivada === "mesas" || vistaPrivada === "clientes"
       ? esAdmin
-      : vistaPrivada === "producto"
+      : vistaPrivada === "producto" || vistaPrivada === "preparacion"
       ? esProducto
       : vistaPrivada === "tickets"
       ? usuarioActual.perfil === "cocinero" || usuarioActual.perfil === "cantinero"
@@ -875,6 +877,11 @@ function AppInterna() {
         {vistaPrivada === "producto" && (
           <AltaProductoScreen
             categoria={usuarioActual.perfil === "cocinero" ? "comida" : "bebida"}
+          />
+        )}
+        {vistaPrivada === "preparacion" && (
+          <PreparacionScreen
+            rol={usuarioActual.perfil === "cantinero" ? "cantinero" : "cocinero"}
           />
         )}
         {vistaPrivada === "metre" && (
