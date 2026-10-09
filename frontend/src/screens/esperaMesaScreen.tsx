@@ -371,7 +371,7 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
                   </Text>
                 </View>
               </TouchableOpacity>
-            ) : /*Capaz que lo saco*/ (
+            ) : !mesaAsignada ? (
               <View className="w-full gap-2 items-center rounded-2xl bg-emerald-950/60 p-3 border border-emerald-500/40" style={{ minHeight: px(135, 0.35), padding: px(12, 0.05) }}>
                 <Text className="text-emerald-400 font-bold text-center text-[60px]">
                   ✓
@@ -380,27 +380,25 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
                   Ingreso confirmado en puerta
                 </Text>
               </View>
-            )}
-
-            {/* 2. Botón QR Mesa (Se activa si el Metre le asignó mesa) */}
-            {mesaAsignada && (
-              <TouchableOpacity
+            ) : (<TouchableOpacity
                 onPress={() => abrirEscaner("mesa")}
                 className="mt-3 w-full flex-1 items-center justify-center rounded-2xl bg-emerald-600 py-3.5 shadow-md active:bg-emerald-700"
                 style={{ minHeight: px(125, 0.35), padding: px(12, 0.05) }}
               >
                 <Image
                   source={require("../../assets/images/table-w.png")}
-                  className="h-24 w-24"
+                  className="h-20 w-20"
                   resizeMode="contain"
                 />
                 <View className="flex-1">
-                  <Text style={{ fontFamily: "LaOriental" }} className="text-xl uppercase text-white">
+                  <Text style={{ fontFamily: "LaOriental" }} className="text-xl text-center uppercase text-white">
                     Escanear QR en la Mesa #{mesaAsignada.numero}
                   </Text>
                 </View>
-              </TouchableOpacity>
-            )}
+              </TouchableOpacity>)}
+
+            {/* 2. Botón QR Mesa (Se activa si el Metre le asignó mesa) */}
+            
 
             {/* 3. Encuestas previas */}
             <TouchableOpacity

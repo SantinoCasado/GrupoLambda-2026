@@ -293,10 +293,8 @@ export function LoginScreen({
                 >
                   <Text className="text-xl mr-2">{acceso.icono}</Text>
                   <View className="flex-1">
-                    <Text className="text-xs font-black text-mostaza">{acceso.tituloVisual}</Text>
-                    <Text className="text-[10px] text-amber-100" numberOfLines={1}>
-                      {acceso.email}
-                    </Text>
+                    <Text className="text-xs font-black text-mostaza uppercase text-center">{acceso.tituloVisual}</Text>
+                    
                   </View>
                 </TouchableOpacity>
               ))}
