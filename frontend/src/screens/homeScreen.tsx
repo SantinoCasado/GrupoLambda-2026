@@ -16,6 +16,7 @@ export type HomeDestino =
   | "carrito"
   | "comandas"
   | "chat_mesas"
+  | "pedidos_listos"
   | "estadisticas"
   | "preparacion";
 
@@ -443,6 +444,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                 </Text>
               </TouchableOpacity>
 
+              {/* Chat Mesas */}
               <TouchableOpacity
                 onPress={() => navegar("chat_mesas")}
                 className="items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota shadow-md"
@@ -458,6 +460,24 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                   className="text-center uppercase tracking-wider text-mostaza"
                 >
                   Chat Mesas
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => navegar("pedidos_listos")}
+                className="items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota shadow-md"
+                style={{ flexGrow: 2, flexShrink: 1, flexBasis: 0, padding: px(12, 0.05) }}
+              >
+                <Image
+                  source={require("../../assets/images/dish-y.png")}
+                  style={{ height: px(96, 0.2), width: px(96, 0.2), marginBottom: px(4, 0.02) }}
+                  resizeMode="contain"
+                />
+                <Text
+                  style={{ fontFamily: "LaOriental", fontSize: texto(20, 0.06) }}
+                  className="text-center uppercase tracking-wider text-mostaza"
+                >
+                  Pedidos Listos
                 </Text>
               </TouchableOpacity>
             </View>

@@ -11,15 +11,12 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { supabase } from "../config/supabase";
 import { ChineseFrame } from "../components/ChineseFrame";
-import { ConfirmModal } from "../components/ConfirmModal";
 import { FeedbackModal } from "../components/FeedbackModal";
 import {
   obtenerTicketsCocinaApi,
   obtenerTicketsBarApi,
   obtenerMetadatosProductosApi,
   marcarItemListoApi,
-  eliminarPedidoApi,
-  obtenerEstadoPedidoApi,
   ProductoMetadatos,
   TicketsPedido,
 } from "../services/pedidosService";
@@ -44,11 +41,8 @@ export default function PreparacionScreen({ rol }: Props) {
   const [ahora, setAhora] = useState(Date.now());
   const [pagina, setPagina] = useState(0);
   const [altoPagina, setAltoPagina] = useState(0);
-  const [espera, setEspera] = useState<Record<string, TicketsPedido>>({});
-  const [completos, setCompletos] = useState<TicketsPedido[]>([]);
+  const [espera, setEspera] = useState<Record<string, true>>({});
   const [marcandoId, setMarcandoId] = useState<string | null>(null);
-  const [confirmandoEliminar, setConfirmandoEliminar] = useState<TicketsPedido | null>(null);
-  const [eliminandoId, setEliminandoId] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{
     visible: boolean;
     tipo: "exito" | "error" | "informacion";
@@ -56,11 +50,6 @@ export default function PreparacionScreen({ rol }: Props) {
     mensaje: string;
   }>({ visible: false, tipo: "exito", titulo: "", mensaje: "" });
   const scrollRef = useRef<ScrollView>(null);
-
-  const completosVisibles = completos.filter(
-    (c) => !tickets.some((t) => t.id === c.id)
-  );
-  const totalPaginas = tickets.length + completosVisibles.length;
 
   const avisadosRef = useRef<Set<string>>(new Set());
 
@@ -107,10 +96,21 @@ export default function PreparacionScreen({ rol }: Props) {
   }, [tickets]);
 
   useEffect(() => {
-    if (totalPaginas > 0 && pagina >= totalPaginas) {
-      setPagina(totalPaginas - 1);
+    if (tickets.length > 0 && pagina >= tickets.length) {
+      setPagina(tickets.length - 1);
     }
-  }, [totalPaginas, pagina]);
+  }, [tickets.length, pagina]);
+
+  useEffect(() => {
+    setEspera((prev) => {
+      const ids = new Set(tickets.map((t) => t.id));
+      const claves = Object.keys(prev).filter((id) => ids.has(id));
+      if (claves.length === Object.keys(prev).length) return prev;
+      const copia: Record<string, true> = {};
+      for (const id of claves) copia[id] = true;
+      return copia;
+    });
+  }, [tickets]);
 
   const hayActivos = Object.values(temporizadores).some(
     (t) => t.inicio + t.duracionSeg * 1000 > ahora
@@ -159,33 +159,13 @@ export default function PreparacionScreen({ rol }: Props) {
   };
 
   const marcarListo = async (ticket: TicketsPedido) => {
-    setEspera((prev) => ({ ...prev, [ticket.id]: ticket }));
     setMarcandoId(ticket.id);
     try {
       for (const it of ticket.order_items || []) {
         await marcarItemListoApi(it.id);
       }
-      const pedido = await obtenerEstadoPedidoApi(ticket.id);
-      if (pedido.status === "ready" || pedido.status === "delivered") {
-        setEspera((prev) => {
-          const copia = { ...prev };
-          const snap = copia[ticket.id];
-          delete copia[ticket.id];
-          if (snap) {
-            setCompletos((c) =>
-              c.some((t) => t.id === snap.id) ? c : [...c, snap]
-            );
-          }
-          return copia;
-        });
-        Vibration.vibrate([0, 60]);
-      }
+      setEspera((prev) => ({ ...prev, [ticket.id]: true }));
     } catch (err: any) {
-      setEspera((prev) => {
-        const copia = { ...prev };
-        delete copia[ticket.id];
-        return copia;
-      });
       setFeedback({
         visible: true,
         tipo: "error",
@@ -196,73 +176,6 @@ export default function PreparacionScreen({ rol }: Props) {
       setMarcandoId(null);
     }
   };
-
-  const solicitarEliminar = (ticket: TicketsPedido) => {
-    setConfirmandoEliminar(ticket);
-  };
-
-  const ejecutarEliminar = async () => {
-    const ticket = confirmandoEliminar;
-    if (!ticket) return;
-    setEliminandoId(ticket.id);
-    try {
-      await eliminarPedidoApi(ticket.id);
-      setCompletos((prev) => prev.filter((t) => t.id !== ticket.id));
-      setConfirmandoEliminar(null);
-      setFeedback({
-        visible: true,
-        tipo: "exito",
-        titulo: "Pedido eliminado",
-        mensaje: `El pedido de la Mesa #${
-          ticket.restaurant_tables?.table_number ?? "S/N"
-        } se eliminó de la base de datos.`,
-      });
-    } catch (err: any) {
-      setConfirmandoEliminar(null);
-      setFeedback({
-        visible: true,
-        tipo: "error",
-        titulo: "No se pudo eliminar",
-        mensaje: err?.message || "Ocurrió un error al eliminar el pedido.",
-      });
-    } finally {
-      setEliminandoId(null);
-    }
-  };
-
-  useEffect(() => {
-    const idsEspera = Object.keys(espera);
-    if (idsEspera.length === 0) return;
-    const idsEnLista = new Set(tickets.map((t) => t.id));
-    const faltantes = idsEspera.filter((id) => !idsEnLista.has(id));
-    if (faltantes.length === 0) return;
-
-    for (const id of faltantes) {
-      const snap = espera[id];
-      if (!snap) continue;
-      obtenerEstadoPedidoApi(id)
-        .then((pedido) => {
-          if (pedido.status === "ready" || pedido.status === "delivered") {
-            setEspera((prev) => {
-              const copia = { ...prev };
-              delete copia[id];
-              return copia;
-            });
-            setCompletos((prev) =>
-              prev.some((t) => t.id === id) ? prev : [...prev, snap]
-            );
-            Vibration.vibrate([0, 60]);
-          } else if (pedido.status === "cancelled" || pedido.status === "received") {
-            setEspera((prev) => {
-              const copia = { ...prev };
-              delete copia[id];
-              return copia;
-            });
-          }
-        })
-        .catch(() => {});
-    }
-  }, [tickets, espera]);
 
   const restanteSeg = (t: Temporizador): number =>
     Math.max(0, Math.ceil((t.inicio + t.duracionSeg * 1000 - ahora) / 1000));
@@ -316,7 +229,7 @@ export default function PreparacionScreen({ rol }: Props) {
             <ActivityIndicator size="large" color="#8B1A1A" />
             <Text className="mt-3 text-xs font-bold text-vino">Cargando tickets...</Text>
           </View>
-        ) : totalPaginas === 0 ? (
+        ) : tickets.length === 0 ? (
           <View className="mt-6 items-center justify-center bg-transparent p-8">
             <Image
               source={require("../../assets/images/yoga-y.png")}
@@ -351,12 +264,11 @@ export default function PreparacionScreen({ rol }: Props) {
               );
             }}
           >
-            {tickets.concat(completosVisibles).map((ticket) => {
-              const completo = completosVisibles.some((c) => c.id === ticket.id);
-              const enEspera = !completo && !!espera[ticket.id];
+            {tickets.map((ticket) => {
+              const enEspera = !!espera[ticket.id];
               const numMesa = ticket.restaurant_tables?.table_number ?? "S/N";
               const items = ticket.order_items || [];
-              const temporizador = completo ? undefined : temporizadores[ticket.id];
+              const temporizador = temporizadores[ticket.id];
               const restante = temporizador ? restanteSeg(temporizador) : 0;
               const terminado = temporizador ? restante <= 0 : false;
 
@@ -380,19 +292,10 @@ export default function PreparacionScreen({ rol }: Props) {
                       <Text className="mt-0.5 text-sm font-semibold text-caramelo">
                         ⏱ ~{minutosPreparacion(ticket)} min
                       </Text>
-                      {completo ? (
-                        <Text className="mt-0.5 text-xs font-bold text-emerald-700">
-                          ✓ Pedido completo
-                        </Text>
-                      ) : null}
                     </View>
                   </View>
 
-                  <View
-                    className={`mt-2 border-b border-calabaza border-dashed pb-3 ${
-                      completo ? "opacity-60" : ""
-                    }`}
-                  >
+                  <View className="mt-2 border-b border-calabaza border-dashed pb-3">
                     {items.map((it) => {
                       const foto = fotoProducto(it.products?.id);
                       return (
@@ -430,22 +333,7 @@ export default function PreparacionScreen({ rol }: Props) {
                   </View>
 
                   <View className="mt-auto pt-3">
-                  {completo ? (
-                    <TouchableOpacity
-                      onPress={() => solicitarEliminar(ticket)}
-                      disabled={confirmandoEliminar !== null || eliminandoId !== null}
-                      className={`mt-3 w-full rounded-2xl border-2 border-terracota bg-terracota/10 py-2.5 active:bg-terracota/20 ${
-                        confirmandoEliminar !== null || eliminandoId !== null ? "opacity-50" : ""
-                      }`}
-                    >
-                      <Text
-                        style={{ fontFamily: "LaOriental" }}
-                        className="text-center text-sm uppercase tracking-wide text-terracota"
-                      >
-                        Delete
-                      </Text>
-                    </TouchableOpacity>
-                  ) : enEspera ? (
+                  {enEspera ? (
                     <View className="mt-3 w-full items-center rounded-2xl border-2 border-caramelo bg-caramelo/10 px-4 py-3">
                       <View className="flex-row items-center">
                         <ActivityIndicator size="small" color="#8B1A1A" />
@@ -502,26 +390,6 @@ export default function PreparacionScreen({ rol }: Props) {
           </ScrollView>
         )}
         </View>
-
-        <ConfirmModal
-          visible={confirmandoEliminar !== null}
-          titulo="Eliminar Pedido (Test)"
-          mensaje={
-            <>
-              ¿Eliminar el pedido de la{" "}
-              <Text className="font-bold text-mostaza">
-                Mesa #{confirmandoEliminar?.restaurant_tables?.table_number}
-              </Text>{" "}
-              de la base de datos? Esta acción no se puede deshacer.
-            </>
-          }
-          textoConfirmar="Eliminar"
-          textoCancelar="Cancelar"
-          tipo="peligro"
-          cargando={eliminandoId !== null}
-          onConfirm={ejecutarEliminar}
-          onCancel={() => setConfirmandoEliminar(null)}
-        />
 
         <FeedbackModal
           visible={feedback.visible}

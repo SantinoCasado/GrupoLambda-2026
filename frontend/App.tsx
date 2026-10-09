@@ -30,6 +30,7 @@ import { ChatMozoScreen as ChatScreen } from "./src/screens/chatScreen";
 import { ComandasScreen } from "./src/screens/comandasScreen";
 import PreparacionScreen from "./src/screens/preparacionScreen";
 import { ChatMesasScreen } from "./src/screens/chatMesasScreen";
+import PedidosListosScreen from "./src/screens/pedidosListosScreen";
 import { MetreScreen } from "./src/screens/metreScreen";
 import { EstadoPedidoScreen } from "./src/screens/estadoPedidoScreen";
 import { JuegosHomeScreen } from "./src/screens/juegosHome";
@@ -58,6 +59,7 @@ type VistaPrivada =
   | "comandas"
   | "preparacion"
   | "chat_mesas"
+  | "pedidos_listos"
   | "chat_mozo"
   | "carta"
   | "carrito"
@@ -806,7 +808,7 @@ function AppInterna() {
       ? usuarioActual.perfil === "cocinero" || usuarioActual.perfil === "cantinero"
       : vistaPrivada === "registro_metre" || vistaPrivada === "metre"
       ? usuarioActual.perfil === "metre" || esAdmin
-      : vistaPrivada === "comandas" || vistaPrivada === "chat_mesas"
+      : vistaPrivada === "comandas" || vistaPrivada === "chat_mesas" || vistaPrivada === "pedidos_listos"
       ? usuarioActual.perfil === "mozo" || esAdmin
       : vistaPrivada === "carta"
       ? esProducto || esCliente
@@ -973,6 +975,11 @@ function AppInterna() {
         {/* Comandas del Mozo */}
         {vistaPrivada === "comandas" && (
           <ComandasScreen usuarioActual={usuarioActual} />
+        )}
+
+        {/* Pedidos listos del Mozo */}
+        {vistaPrivada === "pedidos_listos" && (
+          <PedidosListosScreen />
         )}
 
         {/* Tickets de Cocina / Bar */}
