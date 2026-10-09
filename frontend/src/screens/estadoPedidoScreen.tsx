@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
@@ -18,10 +19,10 @@ interface Props {
 }
 
 const ETAPAS = [
-  { clave: "pending", titulo: "Recibido", icono: "📝", descripcion: "Esperando confirmación del mozo" },
-  { clave: "in_preparation", titulo: "En Cocina", icono: "👨‍🍳", descripcion: "Preparando tus platos y bebidas" },
-  { clave: "ready", titulo: "Listo", icono: "✨", descripcion: "Tu pedido está listo para ser servido" },
-  { clave: "delivered", titulo: "Servido", icono: "🍽️", descripcion: "¡A disfrutar tu comida!" },
+  { clave: "pending", titulo: "Recibido", iconoActivo: require("../../assets/images/audit-y.png"), iconoPendiente: require("../../assets/images/audit-g.png"), descripcion: "Esperando confirmación del mozo" },
+  { clave: "in_preparation", titulo: "En Cocina", iconoActivo: require("../../assets/images/chef-y.png"), iconoPendiente: require("../../assets/images/chef-g.png"), descripcion: "Preparando tus platos y bebidas" },
+  { clave: "ready", titulo: "Listo", iconoActivo: require("../../assets/images/serving-y.png"), iconoPendiente: require("../../assets/images/serving-g.png"), descripcion: "Tu pedido está listo para ser servido" },
+  { clave: "delivered", titulo: "Servido", iconoActivo: require("../../assets/images/dish-y.png"), iconoPendiente: require("../../assets/images/dish-g.png"), descripcion: "¡A disfrutar tu comida!" },
 ];
 
 export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos, onEditarComanda }: Props) {
@@ -126,21 +127,16 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos, onEditarCo
   return (
     <View className="flex-1 bg-amber-50 px-4 pt-2">
       {/* Header */}
-      <View className="mb-4 flex-row items-center justify-between border-b border-mostaza/30 pb-3">
-        <TouchableOpacity onPress={onVolver} className="px-2 py-1">
-          <Text className="font-bold text-vino">← Volver</Text>
-        </TouchableOpacity>
+      <View className="mb-4 flex-row items-center justify-center border-b border-mostaza/30 pb-3">
 
-        <View className="items-center">
+        <View className="items-center w-full justify-center items-center flex-col">
           <Text style={{ fontFamily: "LaOriental" }} className="text-xl uppercase text-vino">
             Mesa #{numMesa}
           </Text>
-          <Text className="text-[10px] font-bold text-stone-500">
-            Seguimiento en Vivo
+          <Text className="text-xs font-bold text-stone-500">
+            Seguimiento del pedido
           </Text>
         </View>
-
-        <View className="w-12" />
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -149,17 +145,21 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos, onEditarCo
             <View className="flex-row items-center justify-between">
               <View>
                 <Text className="text-xs text-amber-200/80 uppercase font-semibold">
-                  Tiempo estimado de cocina
+                  Tiempo estimado de preparación
                 </Text>
                 <Text className="text-2xl font-black text-mostaza">
                   ⏱ ~{pedido?.estimated_delivery_time || 15} minutos
                 </Text>
               </View>
-              <Text className="text-4xl">🍲</Text>
+              {onIrAJuegos && !estaCancelado && (
+                <TouchableOpacity
+                  onPress={onIrAJuegos}
+                  className="items-center rounded-2xl border-2 border-caramelo bg-calabaza p-4 active:bg-terracota"
+                >
+                  <Image source={require("../../assets/images/joystick-w.png")} className="h-8 w-8" resizeMode="contain" />
+                </TouchableOpacity>
+              )}
             </View>
-            <Text className="mt-2 text-xs text-amber-100/70">
-              El tiempo corre desde que el mozo confirmó la comanda.
-            </Text>
           </View>
         )}
 
@@ -210,7 +210,13 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos, onEditarCo
                         : "border-stone-300 bg-stone-100"
                     }`}
                   >
-                    <Text className="text-sm">{completado && !activo ? "✓" : etapa.icono}</Text>
+                    {completado && !activo ? (
+                      <Text className="text-sm">✓</Text>
+                    ) : activo ? (
+                      <Image source={etapa.iconoActivo} className="h-5 w-5" resizeMode="contain" />
+                    ) : (
+                      <Image source={etapa.iconoPendiente} className="h-5 w-5" resizeMode="contain" />
+                    )}
                   </View>
 
                   <View className="ml-3 flex-1">
@@ -247,7 +253,7 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos, onEditarCo
           ))}
 
           <View className="mt-3 flex-row justify-between pt-2 border-t border-mostaza/20">
-            <Text className="text-sm font-bold text-stone-800">Total Abonado / A Pagar:</Text>
+            <Text className="text-sm font-bold text-vino">TOTAL</Text>
             <Text className="text-lg font-black text-calabaza">
               ${Number(pedido?.total_amount || 0).toLocaleString("es-AR")}
             </Text>
@@ -255,23 +261,7 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos, onEditarCo
         </View>
 
         {/* Acceso a Juegos mientras espera */}
-        {onIrAJuegos && !estaCancelado && (
-          <TouchableOpacity
-            onPress={onIrAJuegos}
-            className="mb-6 flex-row items-center rounded-2xl border-2 border-mostaza bg-calabaza p-4 shadow-md active:bg-vino"
-          >
-            <Text className="text-3xl mr-3">🎮</Text>
-            <View className="flex-1">
-              <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase text-white font-bold">
-                Jugar en la Mesa
-              </Text>
-              <Text className="text-xs text-amber-100">
-                Jugá mientras esperás la comida y ganá descuentos en tu cuenta.
-              </Text>
-            </View>
-            <Text className="text-lg font-bold text-mostaza">→</Text>
-          </TouchableOpacity>
-        )}
+        
       </ScrollView>
     </View>
   );

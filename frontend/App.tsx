@@ -28,9 +28,15 @@ import { RegistroAnonimoScreen } from "./src/screens/registroAnonimoScreen";
 import { EsperaMesaScreen } from "./src/screens/esperaMesaScreen";
 import { ChatMozoScreen as ChatScreen } from "./src/screens/chatScreen";
 import { ComandasScreen } from "./src/screens/comandasScreen";
+import PreparacionScreen from "./src/screens/preparacionScreen";
 import { ChatMesasScreen } from "./src/screens/chatMesasScreen";
+import PedidosListosScreen from "./src/screens/pedidosListosScreen";
 import { MetreScreen } from "./src/screens/metreScreen";
 import { EstadoPedidoScreen } from "./src/screens/estadoPedidoScreen";
+import { JuegosHomeScreen } from "./src/screens/juegosHome";
+import { MemotestScreen } from "./src/screens/memotestScreen";
+import { PuzzleScreen } from "./src/screens/puzzleScreen";
+import { ShellGameScreen } from "./src/screens/shellgameScreen";
 import { TicketsScreen } from "./src/screens/ticketsScreen";
 
 const NO_PHOTO = require("./assets/images/no-photo.jpg");
@@ -51,11 +57,17 @@ type VistaPrivada =
   | "registro_metre"
   | "metre"
   | "comandas"
+  | "preparacion"
   | "chat_mesas"
+  | "pedidos_listos"
   | "chat_mozo"
   | "carta"
   | "carrito"
   | "estado_pedido"
+  | "juegos"
+  | "memotest"
+  | "puzzle"
+  | "bolita"
   | "tickets";
 
 export default function App() {
@@ -466,24 +478,41 @@ function AppInterna() {
       const clienteId = usuarioActual?.id || clienteAnonimo?.user_id || clienteAnonimo?.id;
 
       if (clienteId) {
-        // 1. Busca si tenía entrada en waiting_list (por si tiene mesa asignada)
-        const { data: espera } = await supabase
+        // 1. Trae TODAS sus entradas. Antes usaba .maybeSingle(): con dos
+        //    filas duplicadas PostgREST devuelve error (PGRST116) y `data`
+        //    quedaba en null, así que los pasos 2 y 3 no se ejecutaban y cada
+        //    cierre de sesión dejaba la mesa ocupada y la fila en la lista.
+        const { data: esperas, error: errorEspera } = await supabase
           .from("waiting_list")
           .select("id, assigned_table_id")
-          .eq("user_id", clienteId)
-          .maybeSingle();
+          .eq("user_id", clienteId);
 
-        // 2. Si tenía mesa asignada, la libera a 'free'
-        if (espera?.assigned_table_id) {
+        if (errorEspera) {
+          console.warn(
+            "⚠️ No se pudieron leer las entradas de lista de espera:",
+            errorEspera.message
+          );
+        }
+
+        const mesaIds = Array.from(
+          new Set(
+            (esperas ?? [])
+              .map((entrada) => entrada.assigned_table_id)
+              .filter((id): id is string => Boolean(id))
+          )
+        );
+
+        // 2. Libera todas las mesas que tuviera asignadas
+        for (const mesaId of mesaIds) {
           await supabase
             .from("restaurant_tables")
             .update({ availability: "free" })
-            .eq("id", espera.assigned_table_id);
+            .eq("id", mesaId);
         }
 
-        // 3. Borra la entrada de la lista de espera
-        if (espera?.id) {
-          await supabase.from("waiting_list").delete().eq("id", espera.id);
+        // 3. Borra todas sus entradas de la lista de espera
+        if (esperas && esperas.length > 0) {
+          await supabase.from("waiting_list").delete().eq("user_id", clienteId);
         }
 
         // 4. Si era anónimo, limpia el usuario temporal y su foto
@@ -637,32 +666,14 @@ function AppInterna() {
             }
 
             if (usuario.perfil === "cliente_registrado") {
-              // 1. Consulta si ya tiene mesa activa en waiting_list
-              const { data: espera } = await supabase
-                .from("waiting_list")
-                .select("assigned_table_id, status")
-                .eq("user_id", usuario.id)
-                .maybeSingle();
+              // El cliente registrado siempre arranca por la puerta: escanear el
+              // QR de entrada, esperar que el metre le asigne una mesa y recién
+              // ahí escanear el QR de la mesa para llegar al home.
+              setNumeroMesaCliente(null);
+              setIdMesaCliente(null);
+              setEnEsperaRegistrado(true);
 
-              if (
-                espera?.assigned_table_id &&
-                (espera.status === "assigned" || espera.status === "seated")
-              ) {
-                const { data: mesaData } = await supabase
-                  .from("restaurant_tables")
-                  .select("id, table_number")
-                  .eq("id", espera.assigned_table_id)
-                  .maybeSingle();
-
-                setIdMesaCliente(mesaData?.id ?? espera.assigned_table_id);
-                setNumeroMesaCliente(mesaData?.table_number ?? 1);
-                setEnEsperaRegistrado(false);
-              } else {
-                setNumeroMesaCliente(null);
-                setEnEsperaRegistrado(true);
-              }
-
-              // 2. Consulta si tiene comanda activa en preparación
+              // Consulta si tiene comanda activa en preparación
               const { data: pedidoEnCurso } = await supabase
                 .from("orders")
                 .select("id")
@@ -717,6 +728,19 @@ function AppInterna() {
               .maybeSingle();
             if (mesaData?.id) setIdMesaCliente(mesaData.id);
             setEnEsperaRegistrado(false);
+
+            // Consulta si tiene comanda activa en preparación, igual que el login normal.
+            // Sin esto el footer del home muestra "Mi Pedido" aunque haya pedido en curso.
+            const { data: pedidoEnCurso } = await supabase
+              .from("orders")
+              .select("id")
+              .eq("client_id", usuarioActual.id)
+              .in("status", ["pending", "in_preparation", "ready"])
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            setIdPedidoActivo(pedidoEnCurso?.id ?? null);
             setVistaPrivada("home");
           }}
         />
@@ -730,12 +754,6 @@ function AppInterna() {
     usuarioActual.perfil === "cocinero" || usuarioActual.perfil === "cantinero";
   const esCliente =
     usuarioActual.perfil === "cliente_registrado" || usuarioActual.perfil === "cliente_anonimo";
-  // Personal jerárquico: ve la vista de administración de la carta (dar de baja productos).
-  const esStaffCarta =
-    usuarioActual.perfil === "dueño" ||
-    usuarioActual.perfil === "supervisor" ||
-    usuarioActual.perfil === "metre" ||
-    usuarioActual.perfil === "mozo";
 
   // 3. Vista Home
   if (vistaPrivada === "home") {
@@ -784,17 +802,17 @@ function AppInterna() {
   const accesoValido =
     vistaPrivada === "empleados" || vistaPrivada === "mesas" || vistaPrivada === "clientes"
       ? esAdmin
-      : vistaPrivada === "producto"
+      : vistaPrivada === "producto" || vistaPrivada === "preparacion"
       ? esProducto
       : vistaPrivada === "tickets"
       ? usuarioActual.perfil === "cocinero" || usuarioActual.perfil === "cantinero"
       : vistaPrivada === "registro_metre" || vistaPrivada === "metre"
       ? usuarioActual.perfil === "metre" || esAdmin
-      : vistaPrivada === "comandas" || vistaPrivada === "chat_mesas"
+      : vistaPrivada === "comandas" || vistaPrivada === "chat_mesas" || vistaPrivada === "pedidos_listos"
       ? usuarioActual.perfil === "mozo" || esAdmin
       : vistaPrivada === "carta"
-      ? esProducto || esCliente || esStaffCarta
-      : vistaPrivada === "carrito" || vistaPrivada === "estado_pedido"
+      ? esProducto || esCliente
+      : vistaPrivada === "carrito" || vistaPrivada === "estado_pedido" || vistaPrivada === "juegos" || vistaPrivada === "bolita" || vistaPrivada === "puzzle"
       ? esCliente
       : true;
 
@@ -829,8 +847,8 @@ function AppInterna() {
             <Text className="text-xs font-black text-mostaza uppercase">
               {usuarioActual.nombres} {usuarioActual.apellidos}
             </Text>
-            <Text className="text-[10px] font-bold text-amber-200 uppercase">
-              {usuarioActual.tituloVisual}
+            <Text className="text-[10px] uppercase font-bold text-amber-200">
+              {usuarioActual.tituloVisual == "Cliente_registrado" ? "CLIENTE" : usuarioActual.tituloVisual == "Cliente_anonimo" ? "INVITADO" : usuarioActual.tituloVisual}
             </Text>
           </View>
         </View>
@@ -841,7 +859,7 @@ function AppInterna() {
             className="rounded-xl border border-mostaza bg-mostaza/30 px-3 py-1.5 active:bg-mostaza/60"
           >
             <Image
-              source={require("./assets/images/left-arrow-y.png")}
+              source={require("./assets/images/home-y.png")}
               className="h-6 w-6 mr-0.5"
               resizeMode="contain"
               accessible
@@ -861,6 +879,11 @@ function AppInterna() {
         {vistaPrivada === "producto" && (
           <AltaProductoScreen
             categoria={usuarioActual.perfil === "cocinero" ? "comida" : "bebida"}
+          />
+        )}
+        {vistaPrivada === "preparacion" && (
+          <PreparacionScreen
+            rol={usuarioActual.perfil === "cantinero" ? "cantinero" : "cocinero"}
           />
         )}
         {vistaPrivada === "metre" && (
@@ -914,9 +937,7 @@ function AppInterna() {
           <EstadoPedidoScreen
             pedidoId={idPedidoActivo || ""}
             onVolver={volverAlInicio}
-            onIrAJuegos={() => {
-              // Navegación a juegos de la mesa
-            }}
+            onIrAJuegos={() => setVistaPrivada("juegos")}
             onEditarComanda={(motivo) => {
               if (!idPedidoActivo) return;
               setIdPedidoEnEdicion(idPedidoActivo);
@@ -926,9 +947,39 @@ function AppInterna() {
           />
         )}
 
+        {/* Juegos de la Mesa */}
+        {vistaPrivada === "juegos" && (
+          <JuegosHomeScreen
+            onVolver={() => setVistaPrivada("estado_pedido")}
+            onIrAMemotest={() => setVistaPrivada("memotest")}
+            onIrAPuzzle={() => setVistaPrivada("puzzle")}
+            onIrABolita={() => setVistaPrivada("bolita")}
+          />
+        )}
+
+        {/* Memotest */}
+        {vistaPrivada === "memotest" && (
+          <MemotestScreen onVolver={() => setVistaPrivada("juegos")} />
+        )}
+
+        {/* Puzzle de ordenar fichas */}
+        {vistaPrivada === "puzzle" && (
+          <PuzzleScreen onVolver={() => setVistaPrivada("juegos")} />
+        )}
+
+        {/* Juego de la bolita */}
+        {vistaPrivada === "bolita" && (
+          <ShellGameScreen onVolver={() => setVistaPrivada("juegos")} />
+        )}
+
         {/* Comandas del Mozo */}
         {vistaPrivada === "comandas" && (
           <ComandasScreen usuarioActual={usuarioActual} />
+        )}
+
+        {/* Pedidos listos del Mozo */}
+        {vistaPrivada === "pedidos_listos" && (
+          <PedidosListosScreen />
         )}
 
         {/* Tickets de Cocina / Bar */}

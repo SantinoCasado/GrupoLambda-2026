@@ -163,7 +163,7 @@ export function RegistroAnonimoScreen({ onVolver, onRegistroExitoso }: Props) {
         className="absolute right-4 z-20 rounded-xl border border-mostaza bg-vino px-3 py-1.5 active:bg-terracota"
         style={{ top: insets.top + 8 }}
       >
-        <Image source={require("../../assets/images/left-arrow-y.png")} className="h-5 w-5" resizeMode="contain" />
+        <Image source={require("../../assets/images/left-arrow-y.png")} className="h-7 w-7" resizeMode="contain" />
       </TouchableOpacity>
 
       {/* Cabecera */}
@@ -171,17 +171,17 @@ export function RegistroAnonimoScreen({ onVolver, onRegistroExitoso }: Props) {
         <View className="mb-4">
           <Image
             source={require("../../assets/images/logo-name.png")}
-            className="h-16 w-auto self-center"
+            className="h-20 w-auto self-center"
             resizeMode="contain"
           />
           <Image
             source={require("../../assets/images/separator.png")}
-            className="my-2 h-5 w-full"
+            className="my-2 h-7 w-full"
             resizeMode="contain"
           />
           <ChineseFrame className="mt-2 bg-vino">
             <View className="items-center rounded-xl bg-mostaza/15 px-5 py-5">
-              <Text style={{ fontFamily: "LaOriental" }} className="text-2xl text-mostaza uppercase text-center w-full"
+              <Text style={{ fontFamily: "LaOriental" }} className="text-xl text-mostaza uppercase text-center w-full"
 >
                 Ingresar como Invitado
               </Text>
@@ -210,7 +210,7 @@ export function RegistroAnonimoScreen({ onVolver, onRegistroExitoso }: Props) {
                 }}
                 placeholder="Ej: Valen"
                 placeholderTextColor="#a37e1f"
-                className={`rounded-xl border px-4 py-3 text-stone-700 ${
+                className={`rounded-xl border bg-[#FFF8EA] pl-4 py-3 text-stone-700 ${
                   errors.nombre ? "border-terracota" : "border-mostaza"
                 }`}
               />
@@ -221,12 +221,11 @@ export function RegistroAnonimoScreen({ onVolver, onRegistroExitoso }: Props) {
           </View>
 
           {/* Foto de Identificación */}
-          <View className="mx-6 mt-5">
-            <Text className="mb-2 text-s font-bold text-vino">
+            <Text className="my-4 mb-2 ml-6 text-s font-bold text-vino">
               Foto *
             </Text>
 
-            <View className="rounded-2xl border border-mostaza p-4">
+            <View className="w-[88%] h-62 bg-[#FFF8EA] self-center rounded-2xl border border-mostaza p-4 mb-6">
               {fotoUri ? (
               <View className="items-center">
                 <Image
@@ -243,7 +242,7 @@ export function RegistroAnonimoScreen({ onVolver, onRegistroExitoso }: Props) {
             ) : (
               <TouchableOpacity
                 onPress={abrirCamara}
-                className={`h-36 items-center justify-center rounded-xl border border-dashed ${
+                className={`h-[100%] items-center justify-center rounded-xl border border-dashed ${
                   errors.fotoUri ? "border-terracota" : "border-amber-600/50"
                 }`}
               >
@@ -258,12 +257,11 @@ export function RegistroAnonimoScreen({ onVolver, onRegistroExitoso }: Props) {
             {errors.fotoUri && (
               <Text className="mt-1 text-xs font-medium text-rose-400">{errors.fotoUri}</Text>
             )}
-          </View>
 
           {/* Botón de Envío */}
           <TouchableOpacity
             onPress={manejarToqueIngresar}
-            className="mt-6 flex-row items-center justify-center rounded-2xl border border-amber-400/40 bg-vino py-3 active:bg-terracota"
+            className="flex-row items-center justify-center rounded-2xl border border-amber-400/40 bg-vino py-3 active:bg-terracota"
           >
             <Image
               source={require("../../assets/images/sello.png")}

@@ -79,7 +79,7 @@ export const ACCESOS_RAPIDOS: AccesoRapido[] = [
     id: "acceso_cliente",
     tituloVisual: "Cliente Registrado",
     icono: "👤",
-    email: "expo@go.com",
+    email: "nvarga@restaurant.com",
     clave: "123456",
   },
 ];

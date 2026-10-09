@@ -13,9 +13,9 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "foregroundImage": "./assets/logo.png",
+        "backgroundImage": "./assets/background-y.png",
+        "monochromeImage": "./assets/logo.png"
       },
       "predictiveBackGestureEnabled": false,
       "googleServicesFile": "./google-services.json",
@@ -37,11 +37,12 @@
       [
         "expo-notifications",
         {
-          "icon": "./assets/notification-icon.png",
+          "icon": "./assets/icon2.png",
           "color": "#780116",
           "defaultChannel": "default"
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "extra": {
       "eas": {

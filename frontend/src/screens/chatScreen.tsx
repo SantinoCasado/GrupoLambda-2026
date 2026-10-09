@@ -158,9 +158,6 @@ export function ChatMozoScreen({
     >
       {/* Header estilo WhatsApp con temática Oriental */}
       <View className="flex-row items-center justify-between border-b border-mostaza/30 bg-vino px-4 py-3 shadow-md">
-        <TouchableOpacity onPress={onVolver} className="py-1 pr-3">
-          <Text className="text-sm font-bold text-amber-100">← Volver</Text>
-        </TouchableOpacity>
 
         <View className="items-center flex-1">
           <Text
@@ -172,10 +169,6 @@ export function ChatMozoScreen({
           <Text className="text-[11px] font-bold text-emerald-300">
             Mesa #{numeroMesa} • En Vivo
           </Text>
-        </View>
-
-        <View className="w-12 items-end">
-          <Text className="text-2xl">🛎️</Text>
         </View>
       </View>
 
@@ -224,7 +217,7 @@ export function ChatMozoScreen({
           onChangeText={setTexto}
           placeholder="Escribir consulta al mozo..."
           placeholderTextColor="#a8a29e"
-          className="flex-1 rounded-2xl border border-stone-300 bg-stone-50 px-4 py-2.5 text-sm text-stone-800"
+          className="flex-1 rounded-2xl border border-stone-300 bg-stone-50 px-4 py-2.5 text-s text-stone-800"
           multiline
           maxLength={300}
         />
@@ -233,7 +226,7 @@ export function ChatMozoScreen({
           onPress={handleEnviar}
           disabled={!texto.trim() || enviando}
           className={`ml-2 h-11 w-11 items-center justify-center rounded-2xl ${
-            !texto.trim() || enviando ? "bg-stone-300" : "bg-vino active:bg-terracota"
+            !texto.trim() || enviando ? "border border-stone-300 bg-white" : "bg-vino active:bg-terracota"
           }`}
         >
           {enviando ? (

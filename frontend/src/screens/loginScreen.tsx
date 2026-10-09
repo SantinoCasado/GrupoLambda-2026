@@ -141,6 +141,23 @@ export function LoginScreen({
   return (
       <SafeAreaView className="flex-1">
 
+      <View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          top: insets.top - 8,
+          right: -12,
+          width: 132,
+          height: 165,
+        }}
+      >
+        <Image
+          source={require("../../assets/images/background-tree.png")}
+          style={{ width: "100%", height: "100%" }}
+          resizeMode="contain"
+        />
+      </View>
+
       <ScrollView className="flex-1 px-5 pt-20" contentContainerStyle={{ paddingBottom: 50 }}>
         {/* Encabezado */}
         <View className="mb-5 items-center">
@@ -164,7 +181,7 @@ export function LoginScreen({
           </Text>
         <View className="gap-y-4 p-5">
           <View>  
-            <Text className="mb-1 text-s font-bold text-vino">Correo Electrónico *</Text>
+            <Text className="mb-1 text-s font-bold text-vino">Correo Electrónico</Text>
             <TextInput
               value={email}
               onChangeText={(v) => { setEmail(v); clearFieldError("email", v); }}
@@ -172,7 +189,7 @@ export function LoginScreen({
               autoCapitalize="none"
               placeholder="ejemplo@restaurante.com"
               placeholderTextColor="#a37e1f"
-              className={`rounded-2xl border px-4 py-3 text-stone-700 ${
+              className={`rounded-2xl border px-4 py-3 text-stone-700 bg-[#FFF8EA] pl-3 ${
                 errors.email ? "border-terracota" : "border-mostaza"
               }`}
             />
@@ -180,14 +197,14 @@ export function LoginScreen({
           </View>
 
           <View>
-            <Text className="mb-1 text-s font-bold text-vino">Contraseña *</Text>
+            <Text className="mb-1 text-s font-bold text-vino">Contraseña</Text>
             <TextInput
               value={clave}
               onChangeText={(v) => { setClave(v); clearFieldError("clave", v); }}
               secureTextEntry
               placeholder="••••••••"
               placeholderTextColor="#a37e1f"
-              className={`rounded-xl border px-4 py-3 text-stone-700 ${
+              className={`rounded-xl border px-4 py-3 text-stone-700 bg-[#FFF8EA] pl-3 ${
                 errors.clave ? "border-terracota" : "border-mostaza"
               }`}
             />
@@ -249,8 +266,10 @@ export function LoginScreen({
         </View>
       </ScrollView>
 
-      {/* MODAL DE ACCESOS RÁPIDOS (tocar el logo 3 veces) */}
-      <Modal visible={modalAccesosVisible} transparent animationType="fade">
+      {/* MODAL DE ACCESOS RÁPIDOS (tocar el logo 3 veces). Montado solo al
+          abrirlo: en Android cada Modal crea una ventana nativa aunque visible={false}. */}
+      {modalAccesosVisible && (
+      <Modal visible transparent animationType="fade">
         <View className="flex-1 items-center justify-center bg-black/50 px-6">
           <ChineseFrame className="w-full max-w-sm bg-vino shadow-2xl p-3">
           <View className="px-2 pb-3 pt-5">
@@ -274,10 +293,8 @@ export function LoginScreen({
                 >
                   <Text className="text-xl mr-2">{acceso.icono}</Text>
                   <View className="flex-1">
-                    <Text className="text-xs font-black text-mostaza">{acceso.tituloVisual}</Text>
-                    <Text className="text-[10px] text-amber-100" numberOfLines={1}>
-                      {acceso.email}
-                    </Text>
+                    <Text className="text-xs font-black text-mostaza uppercase text-center">{acceso.tituloVisual}</Text>
+                    
                   </View>
                 </TouchableOpacity>
               ))}
@@ -295,8 +312,9 @@ export function LoginScreen({
             </ChineseFrame>
         </View>
       </Modal>
+      )}
 
-      <CompanySpinner visible={cargando} mensaje="Autenticando credenciales..." />
+      <CompanySpinner visible={cargando} mensaje="Iniciando sesión..." />
 
       <FeedbackModal
         visible={modalFeedback.visible}
