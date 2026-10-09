@@ -5,7 +5,6 @@ import { useCart, ItemCarrito } from "../context/carritoContext";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { CompanySpinner } from "../components/CompanySpinner";
 import { FeedbackModal } from "../components/FeedbackModal";
-import { TeamNames } from "../components/TeamNames";
 import { crearPedidoApi, modificarPedidoRechazadoApi, Pedido } from "../services/pedidosService";
 import { supabase } from "../config/supabase";
 
@@ -47,6 +46,7 @@ export function CarritoScreen({
   const [pedidoCreado, setPedidoCreado] = useState<Pedido | null>(null);
   const [confirmandoVaciar, setConfirmandoVaciar] = useState(false);
   const [vaciando, setVaciando] = useState(false);
+  const [itemAEliminar, setItemAEliminar] = useState<ItemCarrito | null>(null);
   const [modalFeedback, setModalFeedback] = useState<{
     visible: boolean;
     tipo: "exito" | "error" | "informacion";
@@ -245,6 +245,13 @@ export function CarritoScreen({
     setConfirmandoVaciar(false);
   };
 
+  const confirmarEliminarItem = () => {
+    if (itemAEliminar) eliminarDelCarrito(itemAEliminar.id);
+    setItemAEliminar(null);
+  };
+
+  const cancelarEliminarItem = () => setItemAEliminar(null);
+
   const renderItem = ({ item }: { item: ItemCarrito }) => {
     const fotoPrincipal = item.fotos && item.fotos.length > 0 ? item.fotos[0] : null;
 
@@ -279,10 +286,10 @@ export function CarritoScreen({
         {/* Controles: Botón quitar directo + Control [- cant +] */}
         <View className="items-end justify-between pl-2">
           <TouchableOpacity
-            onPress={() => eliminarDelCarrito(item.id)}
+            onPress={() => setItemAEliminar(item)}
             className="rounded-lg bg-terracota/20 px-2 py-0.5 mb-2 active:bg-terracota/40"
           >
-            <Text className="text-[10px] font-bold text-terracota">✕ Quitar</Text>
+            <Text className="text-[10px] font-bold text-terracota">✕</Text>
           </TouchableOpacity>
 
           <View className="flex-row items-center bg-stone-100 rounded-xl px-1 py-1 border border-stone-200">
@@ -314,8 +321,6 @@ export function CarritoScreen({
 
   return (
     <View className="flex-1 px-6 pt-4 bg-amber-50/40">
-      {/* Nombres del equipo */}
-      <TeamNames className="absolute right-4 z-10" style={{ top: 16 }} />
 
       {/* Cabecera */}
       <View className="mb-2">
@@ -356,11 +361,10 @@ export function CarritoScreen({
       )}
 
       {/* Encabezado */}
-      <View className="relative flex-row items-center justify-between mb-1 border-b border-mostaza/20 pb-5">
+      <View className="relative flex-row items-center justify-between mb-5 border-b border-mostaza/20 pb-5">
         <Text style={{ fontFamily: "LaOriental" }} className="absolute inset-x-0 z-10 text-center text-xl uppercase text-vino pointer-events-none pb-3">
-          {modoEdicion ? "Reenviar Comanda" : `Comanda Mesa #${numeroMesa}`}
+          {modoEdicion ? "Reenviar pedido" : `Pedido Mesa #${numeroMesa}`}
         </Text>
-        <Text className="text-sm font-bold text-vino">🛒</Text>
         {carrito.length > 0 ? (
           <TouchableOpacity onPress={() => setConfirmandoVaciar(true)} className="ml-auto h-8 items-center justify-center rounded-xl bg-terracota/10 px-3 active:bg-terracota/20 z-20">
             <Text className="text-terracota text-xs font-bold">Vaciar</Text>
@@ -399,13 +403,13 @@ export function CarritoScreen({
       {carrito.length > 0 && (
         <View className="border-t border-mostaza/30 pt-3 pb-4">
           <View className="flex-row justify-between items-center mb-1">
-            <Text className="text-xs font-medium text-stone-600">Tiempo de preparación estimado:</Text>
-            <Text className="text-xs font-bold text-vino">⏱ {tiempoEstimadoTotal} min</Text>
+            <Text className="text-sm font-medium text-stone-600">Tiempo de preparación estimado:</Text>
+            <Text className="text-sm font-bold text-vino">⏱ {tiempoEstimadoTotal} min</Text>
           </View>
 
           <View className="flex-row justify-between items-center mb-4">
-            <Text className="text-base font-bold text-stone-800">Total pedido:</Text>
-            <Text className="text-2xl font-black text-calabaza">${total.toLocaleString("es-AR")}</Text>
+            <Text className="text-xl font-bold text-stone-800">Total pedido:</Text>
+            <Text className="text-3xl font-black text-calabaza">${total.toLocaleString("es-AR")}</Text>
           </View>
 
           <TouchableOpacity
@@ -445,13 +449,13 @@ export function CarritoScreen({
               style={{ fontFamily: "LaOriental" }}
               className="text-xl uppercase text-mostaza text-center"
             >
-              Esperando al Mozo
+              Esperando confirmación
             </Text>
             <Text className="mt-2 text-center text-xs text-amber-100/90 leading-relaxed">
               Tu pedido para la <Text className="font-bold text-mostaza">Mesa #{numeroMesa}</Text> fue recibido.
             </Text>
             <Text className="mt-2 text-center text-[11px] text-amber-200/70">
-              El pedido no se enviará a cocina ni barra hasta que el mozo lo confirme.
+              El pedido necesita confirmación del mozo para comenzar a ser preparado.
             </Text>
           </View>
         </View>
@@ -471,6 +475,22 @@ export function CarritoScreen({
         cargando={vaciando}
         onConfirm={confirmarVaciar}
         onCancel={cancelarVaciar}
+      />
+
+      <ConfirmModal
+        visible={itemAEliminar !== null}
+        tipo="peligro"
+        titulo="¿Quitar producto?"
+        mensaje={
+          <>
+            ¿Deseas quitar{" "}
+            <Text className="font-bold text-mostaza">{itemAEliminar?.nombre}</Text> del carrito?
+          </>
+        }
+        textoConfirmar="Sí, quitar"
+        textoCancelar="Cancelar"
+        onConfirm={confirmarEliminarItem}
+        onCancel={cancelarEliminarItem}
       />
 
       <CompanySpinner visible={vaciando} mensaje="Vaciando carrito..." />

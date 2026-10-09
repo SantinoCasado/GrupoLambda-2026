@@ -1,4 +1,3 @@
-// src/services/pushNotificationsService.ts
 import * as Device from "expo-device";
 import Constants from "expo-constants";
 import { Platform } from "react-native";
@@ -68,9 +67,18 @@ export async function obtenerTokenPush(): Promise<string | null> {
 
 const ES_TOKEN_EXPO = /^ExponentPushToken\[[A-Za-z0-9_-]+\]$/;
 const ES_TOKEN_EXPO_LEGACY = /^ExpoPushToken\[[A-Za-z0-9_-]+\]$/;
+// Token nativo de Firebase Cloud Messaging (Android)
+const ES_TOKEN_FCM = /^[A-Za-z0-9_-]+:APA91[A-Za-z0-9_-]+$/;
 
 export function esTokenExpoValido(token?: string | null): boolean {
-  return !!token && (ES_TOKEN_EXPO.test(token) || ES_TOKEN_EXPO_LEGACY.test(token));
+  if (!token || typeof token !== "string") return false;
+  return (
+    ES_TOKEN_EXPO.test(token) ||
+    ES_TOKEN_EXPO_LEGACY.test(token) ||
+    ES_TOKEN_FCM.test(token) ||
+    token.includes(":APA91b") ||
+    token.length > 30
+  );
 }
 
 // Guarda el token en la columna push_token de la tabla users vía el backend

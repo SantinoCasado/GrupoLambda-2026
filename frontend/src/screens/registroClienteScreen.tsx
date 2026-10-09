@@ -18,7 +18,6 @@ import { validateClienteForm, validarPaso1Cliente, registrarCliente, ClienteForm
 import { obtenerTokenPush } from "../services/pushNotificationsService";
 import { FeedbackModal } from "../components/FeedbackModal";
 import { CompanySpinner } from "../components/CompanySpinner";
-import { TeamNames } from "../components/TeamNames";
 import { ChineseFrame } from "../components/ChineseFrame";
 
 interface Props {
@@ -44,6 +43,7 @@ export default function RegistroClienteScreen({
   const [dni, setDni] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmarPassword, setConfirmarPassword] = useState("");
   const [fotoUri, setFotoUri] = useState<string | null>(null);
 
   // Modales de Cámara y QR
@@ -93,6 +93,9 @@ export default function RegistroClienteScreen({
         break;
       case "password":
         valid = value.length >= 6;
+        break;
+      case "confirmarPassword":
+        valid = value.length > 0 && value === password;
         break;
       case "fotoUri":
         valid = !!value;
@@ -179,6 +182,7 @@ export default function RegistroClienteScreen({
       const cleaned = { ...prev };
       delete cleaned.email;
       delete cleaned.password;
+      delete cleaned.confirmarPassword;
       delete cleaned.fotoUri;
       return { ...cleaned, ...paso1Errors };
     });
@@ -216,6 +220,7 @@ export default function RegistroClienteScreen({
       dni,
       email,
       password,
+      confirmarPassword,
       fotoUri,
     });
 
@@ -292,23 +297,17 @@ export default function RegistroClienteScreen({
         </TouchableOpacity>
       )}
 
-      {/* Nombres del equipo */}
-      <TeamNames
-        className="absolute right-4 z-10"
-        style={{ top: modo === "metre" || usuarioLogueado ? 16 : insets.top + 60 }}
-      />
-
       {/* Cabecera */}
       <View className={`px-5 ${modo === "metre" || usuarioLogueado ? "pt-4" : "pt-28"}`}>
         <View className="mb-4">
           <Image
             source={require("../../assets/images/logo-name.png")}
-            className="h-16 w-auto self-center"
+            className="h-20 w-auto self-center"
             resizeMode="contain"
           />
           <Image
             source={require("../../assets/images/separator.png")}
-            className="my-2 h-5 w-full"
+            className="my-2 h-7 w-full"
             resizeMode="contain"
           />
           <ChineseFrame className="mt-2 bg-vino">
@@ -350,19 +349,37 @@ onMomentumScrollEnd={(e) => {
             nestedScrollEnabled
             contentContainerStyle={{ paddingBottom: 40 }}
           >
-            <TouchableOpacity
-              onPress={async () => {
-                if (!permission?.granted) await requestPermission();
-                ejecutarVibracion("toque");
-                setIsQrScannerOpen(true);
-              }}
-              className="mb-5 flex-row items-center justify-center rounded-2xl border border-vino bg-mostaza py-3.5 px-4 active:bg-[#f5dccb]"
-            >
-              <Image source={require("../../assets/images/dni3.png")} className="mr-5 h-7 w-7" />
-              <Text style={{ fontFamily: "LaOriental" }} className="uppercase text-vino">
-                Escanear Código de DNI
-              </Text>
-            </TouchableOpacity>
+            <View className="mx-6 mb-5">
+              <TouchableOpacity
+                onPress={async () => {
+                  if (!permission?.granted) await requestPermission();
+                  ejecutarVibracion("toque");
+                  setIsQrScannerOpen(true);
+                }}
+                className="w-full items-center justify-center rounded-2xl border border-vino bg-mostaza py-4 px-4 active:bg-[#f5dccb]"
+              >
+                <View className="mb-2 flex-row items-center justify-center gap-2">
+                  <Image
+                    source={require("../../assets/images/camera-e-v.png")}
+                    className="h-12 w-12"
+                    resizeMode="contain"
+                  />
+                  <Image
+                    source={require("../../assets/images/right-arrow-v.png")}
+                    className="h-5 w-5 mx-5"
+                    resizeMode="contain"
+                  />
+                  <Image
+                    source={require("../../assets/images/dni3.png")}
+                    className="h-12 w-12"
+                    resizeMode="contain"
+                  />
+                </View>
+                <Text style={{ fontFamily: "LaOriental" }} className="text-center uppercase text-vino">
+                  Escanear Código de DNI
+                </Text>
+              </TouchableOpacity>
+            </View>
 
             <View className="mx-6 gap-y-4">
               {/* Nombres */}
@@ -373,7 +390,7 @@ onMomentumScrollEnd={(e) => {
                   onChangeText={(v) => { setNombres(v); clearFieldError("nombres", v); }}
                   placeholder="Ingrese sus nombres"
                   placeholderTextColor="#a37e1f"
-                  className={`rounded-xl border px-4 py-3 text-stone-700 ${
+                  className={`rounded-xl border bg-[#FFF8EA] pl-4 py-3 text-stone-700 ${
                     errors.nombres ? "border-terracota" : "border-mostaza"
                   }`}
                 />
@@ -390,7 +407,7 @@ onMomentumScrollEnd={(e) => {
                   onChangeText={(v) => { setApellidos(v); clearFieldError("apellidos", v); }}
                   placeholder="Ingrese sus apellidos"
                   placeholderTextColor="#a37e1f"
-                  className={`rounded-xl border px-4 py-3 text-stone-700 ${
+                  className={`rounded-xl border bg-[#FFF8EA] pl-4 py-3 text-stone-700 ${
                     errors.apellidos ? "border-terracota" : "border-mostaza"
                   }`}
                 />
@@ -409,7 +426,7 @@ onMomentumScrollEnd={(e) => {
                   maxLength={8}
                   placeholder="Ej: 41234567"
                   placeholderTextColor="#a37e1f"
-                  className={`rounded-xl border px-4 py-3 text-stone-700 ${
+                  className={`rounded-xl border bg-[#FFF8EA] pl-4 py-3 text-stone-700 ${
                     errors.dni ? "border-terracota" : "border-mostaza"
                   }`}
                 />
@@ -431,10 +448,15 @@ onMomentumScrollEnd={(e) => {
               </View>
               <TouchableOpacity
                 onPress={handleSiguiente}
-                className="w-full flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
+                className="w-full flex-col items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
               >
+                <Image
+                  source={require("../../assets/images/supervisor-c.png")}
+                  className="mb-1 h-12 w-12"
+                  resizeMode="contain"
+                />
                 <Text style={{ fontFamily: "LaOriental" }} className="text-s text-calabaza">
-                  Siguiente
+                  Continuar Registro
                 </Text>
               </TouchableOpacity>
             </View>
@@ -459,7 +481,7 @@ onMomentumScrollEnd={(e) => {
                   autoCapitalize="none"
                   placeholder="ejemplo@correo.com"
                   placeholderTextColor="#a37e1f"
-                  className={`rounded-xl border px-4 py-3 text-stone-700 ${
+                  className={`rounded-xl border bg-[#FFF8EA] pl-4 py-3 text-stone-700 ${
                     errors.email ? "border-terracota" : "border-mostaza"
                   }`}
                 />
@@ -477,7 +499,7 @@ onMomentumScrollEnd={(e) => {
                   secureTextEntry
                   placeholder="Mínimo 6 caracteres"
                   placeholderTextColor="#a37e1f"
-                  className={`rounded-xl border px-4 py-3 text-stone-700 ${
+                  className={`rounded-xl border bg-[#FFF8EA] pl-4 py-3 text-stone-700 ${
                     errors.password ? "border-terracota" : "border-mostaza"
                   }`}
                 />
@@ -485,29 +507,39 @@ onMomentumScrollEnd={(e) => {
                   <Text className="mt-1 text-xs font-medium text-rose-400">{errors.password}</Text>
                 )}
               </View>
+
+              {/* Confirmar Contraseña */}
+              <View>
+                <Text className="mb-1 text-s font-bold text-vino">Confirmar Contraseña *</Text>
+                <TextInput
+                  value={confirmarPassword}
+                  onChangeText={(v) => { setConfirmarPassword(v); clearFieldError("confirmarPassword", v); }}
+                  secureTextEntry
+                  placeholder="Repita la contraseña"
+                  placeholderTextColor="#a37e1f"
+                  className={`rounded-xl border bg-[#FFF8EA] pl-4 py-3 text-stone-700 ${
+                    errors.confirmarPassword ? "border-terracota" : "border-mostaza"
+                  }`}
+                />
+                {errors.confirmarPassword && (
+                  <Text className="mt-1 text-xs font-medium text-rose-400">{errors.confirmarPassword}</Text>
+                )}
+              </View>
             </View>
 
-            {/* Fotografía Personal (Solo Cámara Física) */}
-            <View className="mx-4 mt-5 rounded-2xl border border-mostaza p-4">
-              <Text className="mb-2 text-s font-bold text-vino">
+                <Text className="mt-4 mb-2 ml-6 text-s font-bold text-vino">
                 Foto de perfil*
               </Text>
 
+            {/* Fotografía Personal (Solo Cámara Física) */}
+            <View className="relative w-[88%] h-36 bg-[#FFF8EA] self-center rounded-2xl border border-mostaza p-4">
+              
               {fotoUri ? (
-                <View className="items-center">
+                <View className="h-full items-center justify-center">
                   <Image
                     source={{ uri: fotoUri }}
-                    className="h-44 w-44 rounded-2xl border border-calabaza"
+                    className="h-24 w-24 rounded-2xl border border-calabaza"
                   />
-                  <TouchableOpacity
-                    onPress={() => {
-                      ejecutarVibracion("toque");
-                      setIsCameraOpen(true);
-                    }}
-                    className="mt-3 rounded-xl border-calabaza border bg-[#FBE9DF] px-5 py-2.5 active:bg-amber-700"
-                  >
-                    <Text className="text-xs font-bold text-calabaza">Tomar otra fotografía</Text>
-                  </TouchableOpacity>
                 </View>
               ) : (
                 <TouchableOpacity
@@ -516,11 +548,27 @@ onMomentumScrollEnd={(e) => {
                     ejecutarVibracion("toque");
                     setIsCameraOpen(true);
                   }}
-                  className="h-36 items-center justify-center rounded-xl border border-dashed border-amber-600/50"
+                  className="h-[100%] items-center justify-center rounded-xl border border-dashed border-amber-600/50"
                 >
                   <Image source={require("../../assets/images/camera.png")} className="mb-1 h-9 w-9" />
                   <Text className="text-xs font-bold text-terracota">Activar Cámara</Text>
                   <Text className="text-[10px] text-stone-400">Sin acceso a la galería de fotos</Text>
+                </TouchableOpacity>
+              )}
+
+              {fotoUri && (
+                <TouchableOpacity
+                  onPress={() => {
+                    ejecutarVibracion("toque");
+                    setIsCameraOpen(true);
+                  }}
+                  className="absolute right-2 top-2 h-8 w-8 items-center justify-center rounded-full border border-calabaza bg-[#FBE9DF] active:bg-[#f5dccb]"
+                >
+                  <Image
+                    source={require("../../assets/images/cross-c.png")}
+                    className="h-5 w-5"
+                    resizeMode="contain"
+                  />
                 </TouchableOpacity>
               )}
 
@@ -552,31 +600,6 @@ onMomentumScrollEnd={(e) => {
                 resizeMode="contain"
               />
             </TouchableOpacity>
-
-            {/* Volver al paso 0 */}
-            <View className="mx-6 mt-4 items-center">
-              <View className="flex-row items-center justify-center gap-2 py-1 mb-3">
-                {[0, 1].map((i) => (
-                  <View
-                    key={i}
-                    className={`h-2 w-2 rotate-45 ${
-                      currentStep === i ? "bg-vino" : "bg-mostaza/30"
-                    }`}
-                  />
-                ))}
-              </View>
-              <TouchableOpacity
-                onPress={() => {
-                  ejecutarVibracion("toque");
-                  scrollRef.current?.scrollTo({ x: 0, animated: true });
-                }}
-                className="w-full flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
-              >
-                <Text style={{ fontFamily: "LaOriental" }} className="text-s text-calabaza">
-                  Volver
-                </Text>
-              </TouchableOpacity>
-            </View>
           </ScrollView>
         </View>
       </ScrollView>

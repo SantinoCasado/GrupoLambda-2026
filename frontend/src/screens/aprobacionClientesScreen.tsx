@@ -20,7 +20,6 @@ import { FeedbackModal } from "../components/FeedbackModal";
 import { CompanySpinner } from "../components/CompanySpinner";
 import { ChineseFrame } from "../components/ChineseFrame";
 import { ConfirmModal } from "../components/ConfirmModal";
-import { TeamNames } from "../components/TeamNames";
 
 export default function AprobacionClientesScreen() {
   const [clientes, setClientes] = useState<ClientePendiente[]>([]);
@@ -159,9 +158,6 @@ export default function AprobacionClientesScreen() {
     <>
       <View className="flex-1">
         <StatusBar style="light" />
-
-        {/* Nombres del equipo */}
-        <TeamNames className="absolute right-4 z-10" style={{ top: 16 }} />
 
         {/* Cabecera idéntica a Alta Empleados */}
         <View className="px-5 pt-4">

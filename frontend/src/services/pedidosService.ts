@@ -128,6 +128,30 @@ export const obtenerEstadoPedidoApi = async (pedidoId: string): Promise<Pedido> 
   return data as Pedido;
 };
 
+export const marcarItemListoApi = async (itemId: string): Promise<void> => {
+  const res = await fetch(`${API_BASE_URL}/pedidos/items/${itemId}/listo`, {
+    method: "PATCH",
+    headers: await headersConToken({ "Content-Type": "application/json" }),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `HTTP ${res.status} al marcar ítem listo`);
+  }
+};
+
+export const marcarPedidoEntregadoApi = async (pedidoId: string): Promise<void> => {
+  const res = await fetch(`${API_BASE_URL}/pedidos/${pedidoId}/entregar`, {
+    method: "PATCH",
+    headers: await headersConToken({ "Content-Type": "application/json" }),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `HTTP ${res.status} al marcar el pedido como entregado`);
+  }
+};
+
 export interface TicketsPedido {
   id: string;
   created_at: string;
@@ -136,7 +160,15 @@ export interface TicketsPedido {
   order_items?: {
     id: string;
     quantity: number;
-    products?: { id: string; name: string; category: string } | null;
+    products?: {
+      id: string;
+      name: string;
+      category: string;
+      // Los endpoints /pedidos/cocina y /pedidos/bar todavía no los incluyen;
+      // se ignoran hasta que el backend los agregue al select.
+      prep_time?: number | string;
+      photos?: string[] | null;
+    } | null;
   }[];
 }
 
@@ -166,4 +198,34 @@ export const obtenerTicketsBarApi = async (): Promise<TicketsPedido[]> => {
 
   const json = await res.json();
   return (json.data || []) as TicketsPedido[];
+};
+
+export interface ProductoMetadatos {
+  prepTime: number;
+  fotos: string[];
+}
+
+/**
+ * Mapa id_de_producto -> tiempo de elaboración (minutos) y fotos.
+ * Fallback temporal: los endpoints de cocina/bar no devuelven
+ * products.prep_time ni products.photos, así que la pantalla de
+ * preparación los consulta directo de Supabase.
+ */
+export const obtenerMetadatosProductosApi = async (): Promise<
+  Record<string, ProductoMetadatos>
+> => {
+  const { data, error } = await supabase
+    .from("products")
+    .select("id, prep_time, photos");
+
+  if (error) throw new Error(error.message);
+
+  const mapa: Record<string, ProductoMetadatos> = {};
+  for (const fila of data || []) {
+    mapa[fila.id] = {
+      prepTime: Number((fila as any).prep_time) || 0,
+      fotos: Array.isArray((fila as any).photos) ? ((fila as any).photos as string[]) : [],
+    };
+  }
+  return mapa;
 };
