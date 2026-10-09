@@ -532,7 +532,7 @@ export const modificarPedidoRechazado = async (
 export const marcarItemComoListoService = async(itemId: string) => {
   const { data: itemActual, error: errorBusqueda } = await supabase
     .from('order_items')
-    .update({ status: 'ready' })
+    .update({ item_status: 'ready' })
     .eq('id', itemId)
     .select('order_id')
     .single();
@@ -546,7 +546,7 @@ export const marcarItemComoListoService = async(itemId: string) => {
     // Verificar si todos los ítems del pedido están listos
     const { data: todosLosItems, error: errorCheck } = await supabase
       .from('order_items')
-      .select('status')
+      .select('item_status')
       .eq('order_id', orderId);
 
     if (errorCheck || !todosLosItems) {
@@ -554,7 +554,7 @@ export const marcarItemComoListoService = async(itemId: string) => {
     }
 
     // Comprueba si hay alguno que NO este listo
-    const faltaAlgo = todosLosItems.some((item: any) => item.status !== 'ready');
+    const faltaAlgo = todosLosItems.some((item: any) => item.item_status !== 'ready');
 
     // Si todavía falta cocinar o preparar algo, devuelve que el ítem se actualizó pero el pedido sigue en curso
     if (faltaAlgo) {
@@ -644,4 +644,130 @@ export const confirmarRecepcionClienteService = async (idPedido: string) => {
     }
 
     return pedidoRecibido;
+};
+
+export const solicitarCuentaService = async (pedidoId: string) => {
+    // Actualiza el estado a 'bill_requested'
+    const { data: pedido, error } = await supabase
+        .from('orders')
+        .update({ status: 'bill_requested' })
+        .eq('id', pedidoId)
+        .select('*') 
+        .single();
+
+    if (error) {
+        throw new Error(`Error al solicitar la cuenta: ${error.message}`);
+    }
+
+    // aviso a los mozos que esa mesa quiere pagar
+    try {
+      const numeroMesa = (pedido.restaurant_tables as any)?.table_number || 'S/N';
+
+      // Buscamos los tokens de mozos, dueños y supervisores en una sola consulta con .in()
+      const { data: destinatarios, error: errorDestinatarios } = await supabase
+          .from('users')
+          .select('push_token')
+          .in('role', ['waiter', 'owner', 'supervisor'])
+          .not('push_token', 'is', null);
+
+      if (errorDestinatarios) {
+          console.error('⚠️ Error al buscar destinatarios para la push:', errorDestinatarios.message);
+      } else if (destinatarios && destinatarios.length > 0) {
+          for (const user of destinatarios) {
+              if (user.push_token) {
+                  await enviarPushNotification(
+                      user.push_token,
+                      '🛎️ Cuenta Solicitada',
+                      `La Mesa #${numeroMesa} solicitó la cuenta y el pago.`,
+                      { orderId: pedidoId, tipo: 'bill_requested', table_id: pedido.table_id }
+                  );
+              }
+          }
+      }
+  } catch (pushError) {
+      console.error('⚠️ Error al enviar las push de solicitud de cuenta:', pushError);
+  }
+
+    return pedido;
+};
+
+export const cobrarPedidoService = async (pedidoId: string, porcentajePropina: number) => {
+    if (porcentajePropina === undefined || porcentajePropina === null) {
+        throw new Error('Debe seleccionar un porcentaje de propina para generar la cuenta.');
+    }
+    // Obtener el pedido actual
+    const { data: pedido, error: errorPedido } = await supabase
+        .from('orders') // Ajustá al nombre de tu tabla
+        .select('*')
+        .eq('id', pedidoId)
+        .single();
+
+    if (errorPedido || !pedido) throw new Error('Pedido no encontrado.');
+    
+    if (pedido.status === 'paid') throw new Error('El pedido ya está cobrado.');
+    if (pedido.status === 'cancelled') throw new Error('No se puede cobrar un pedido cancelado.');
+
+    // Calculo de la propina y el total final
+    const subtotal = Number(pedido.total);
+    const descuentoJuego = pedido.game_discount || 0; // Si ganó el primer intento
+    const subtotalConDescuento = subtotal - descuentoJuego;
+
+    const montoPropina = subtotal * (porcentajePropina / 100);
+    const totalFinal = subtotal + montoPropina;
+
+    // Marca como pagado
+    const { error: errorUpdatePedido } = await supabase
+        .from('orders')
+        .update({ 
+            status: 'paid', 
+            tip_amount: montoPropina,
+            final_total: totalFinal 
+        })
+        .eq('id', pedidoId);
+
+    if (errorUpdatePedido) throw new Error(`Error al cobrar: ${errorUpdatePedido.message}`);
+
+    // Libera la mesa
+    await supabase
+        .from('restaurant_tables') 
+        .update({ status: 'free' })
+        .eq('id', pedido.table_id);
+
+    // Aviso del supervisor y duelo por Push que la mesa pagó y se liberó
+    try {
+      const numeroMesa = (pedido.restaurant_tables as any)?.table_number || 'S/N';
+
+      // Buscamos solo a los dueños y supervisores
+      const { data: administradores, error: errorAdmins } = await supabase
+          .from('users')
+          .select('push_token')
+          .in('role', ['owner', 'supervisor'])
+          .not('push_token', 'is', null);
+
+      if (errorAdmins) {
+          console.error('⚠️ Error al buscar administradores para la push:', errorAdmins.message);
+      } else if (administradores && administradores.length > 0) {
+          for (const admin of administradores) {
+              if (admin.push_token) {
+                  await enviarPushNotification(
+                      admin.push_token,
+                      '💳 Pago Confirmado y Mesa Liberada',
+                      `El mozo confirmó el pago de la Mesa #${numeroMesa}. Mesa liberada.`,
+                      { orderId: pedidoId, tipo: 'payment_confirmed', table_id: pedido.table_id }
+                  );
+              }
+          }
+      }
+  } catch (pushError) {
+      console.error('⚠️ Error al enviar las push de confirmación de pago:', pushError);
+  }
+
+    return {
+        items: pedido.items, // Pedidos realizados con precios unitarios
+        subtotal,
+        descuento_juego: descuentoJuego,
+        porcentaje_propina: porcentajePropina,
+        monto_propina: montoPropina,
+        total_a_abonar: totalFinal 
+    };
 };

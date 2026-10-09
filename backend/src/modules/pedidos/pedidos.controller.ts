@@ -1,7 +1,20 @@
 import { Request, Response } from 'express';
-import { guardarPedido, obtenerEstadoPedido, confirmarPedidoPorMozo, obtenerPedidosPendientesBar, obtenerPedidosPendientesCocina, modificarPedidoRechazado, marcarItemComoListoService, confirmarRecepcionClienteService, entregarPedidoMozoService } from './pedidos.service';
+import { 
+  guardarPedido, 
+  obtenerEstadoPedido, 
+  confirmarPedidoPorMozo, 
+  obtenerPedidosPendientesBar, 
+  obtenerPedidosPendientesCocina, 
+  modificarPedidoRechazado, 
+  marcarItemComoListoService, 
+  confirmarRecepcionClienteService, 
+  entregarPedidoMozoService,
+  cobrarPedidoService,
+  solicitarCuentaService 
+} from './pedidos.service';
 import { crearPedidoSchema, confirmarPedidoSchema } from './schema/pedidos.schema';
 import { AuthRequest } from '../../middleware/auth.middleware'
+import { supabase } from '../../config/supabase';
 
 export const crearPedido = async (req: Request, res: Response) => {
   const validacion = crearPedidoSchema.safeParse(req.body);
@@ -197,5 +210,78 @@ export const confirmarRecepcionPedido = async (req: Request, res: Response): Pro
         });
     } catch (error: any) {
         return res.status(400).json({ error: error.message });
+    }
+};
+
+export const solicitarCuenta = async (req: Request, res: Response): Promise<Response | void> => {
+    // Como es una acción sobre un recurso específico, el ID suele ir en la URL (req.params)
+    const id = req.params.id as string;
+
+    if (!id) {
+        return res.status(400).json({ error: 'Falta el ID del pedido.' });
+    }
+
+    try {
+        const pedidoActualizado = await solicitarCuentaService(id);
+        
+        return res.status(200).json({
+            success: true,
+            message: 'Cuenta solicitada correctamente. Un mozo se acercará en breve.',
+            data: pedidoActualizado
+        });
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message });
+    }
+};
+
+export const cobrarPedido = async (req: Request, res: Response): Promise<Response | void> => {
+    const { pedido_id, propina } = req.body;
+
+    if (!pedido_id) {
+        return res.status(400).json({ error: 'Falta el ID del pedido.' });
+    }
+
+    try {
+        const porcentaje = propina ? Number(propina) : 0; 
+        const ticket = await cobrarPedidoService(pedido_id, porcentaje);
+
+        return res.status(200).json({
+            success: true,
+            message: 'Cobro exitoso. Mesa liberada.',
+            data: ticket
+        });
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message });
+    }
+};
+
+
+// ===========================================
+// FUNCION EXCLUSIVA PARA TESTS: BORRAR TODO EL PEDIDO
+// ===========================================
+export const eliminarPedido = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        const { data, error } = await supabase
+            .from('orders')
+            .delete()
+            .eq('id', id)
+            .select();
+
+        if (error) {
+            return res.status(400).json({ error: error.message });
+        }
+
+        if (!data || data.length === 0) {
+            return res.status(404).json({ message: 'Pedido no encontrado.' });
+        }
+
+        return res.status(200).json({ 
+            message: `Pedido ${id} eliminado con éxito de la base de datos (Test).`,
+            pedido_eliminado: data[0]
+        });
+    } catch (error: any) {
+        return res.status(500).json({ error: error.message });
     }
 };

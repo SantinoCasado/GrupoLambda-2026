@@ -1,5 +1,18 @@
 import { Router } from 'express';
-import { crearPedido, verEstadoPedido, confirmarPedido, marcarItemListo, marcarPedidoComoEntregado, confirmarRecepcionPedido, modificarPedido, listarPedidosBar, listarPedidosCocina } from './pedidos.controller';
+import { 
+    crearPedido, 
+    verEstadoPedido, 
+    confirmarPedido, 
+    marcarItemListo,
+    marcarPedidoComoEntregado, 
+    confirmarRecepcionPedido, 
+    modificarPedido, 
+    listarPedidosBar, 
+    listarPedidosCocina,
+    cobrarPedido,
+    solicitarCuenta, 
+    eliminarPedido
+} from './pedidos.controller';
 import { verificarAutenticacion } from '../../middleware/auth.middleware';
 import { requerirRol } from '../../middleware/auth.middleware';
 
@@ -44,5 +57,17 @@ router.patch('/:id/recibir',
     requerirRol(['registered_client', 'anonymous_client']), 
     confirmarRecepcionPedido
 );
+
+// Ruta para que el cliente pida la cuenta (Paso 1)
+router.patch('/:id/solicitar-cuenta', verificarAutenticacion, solicitarCuenta);
+
+// La ruta que para que el mozo cobre (Paso 2)
+router.post('/cobrar', verificarAutenticacion, cobrarPedido);
+
+// ===================================================
+// FUNCION EXCLUSIVA PARA TESTS: BORRAR TODO EL PEDIDO
+// ===================================================
+router.delete('/:id', eliminarPedido);
+
 
 export default router;

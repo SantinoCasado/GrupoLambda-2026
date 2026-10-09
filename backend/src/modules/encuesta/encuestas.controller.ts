@@ -2,10 +2,10 @@ import { Request, Response } from 'express';
 import { guardarEncuestaService, obtenerEstadisticasService } from './encuestas.service';
 
 export const enviarEncuesta = async (req: Request, res: Response): Promise<Response | void> => {
-    const { order_id, calidad, amabilidad, limpieza, comentario } = req.body;
+    const { order_id, calidad, amabilidad, limpieza, comentario, user_id } = req.body;
 
-    if (!order_id) {
-        return res.status(400).json({ error: 'Falta el ID del pedido (order_id) para registrar la estadía.' });
+    if (!user_id || !order_id) {
+        return res.status(400).json({ error: 'Falta el ID del pedido (user_id o order_id) para registrar la estadía.' });
     }
 
     try {
