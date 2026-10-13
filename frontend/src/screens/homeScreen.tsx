@@ -433,7 +433,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
               >
                 <Image
                   source={require("../../assets/images/serving-y.png")}
-                  style={{ height: px(192, 0.38), width: px(192, 0.38), marginBottom: px(12, 0.03) }}
+                  style={{ height: px(150, 0.38), width: px(150, 0.38), marginBottom: px(12, 0.03) }}
                   resizeMode="contain"
                 />
                 <Text

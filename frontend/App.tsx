@@ -557,7 +557,7 @@ function AppInterna() {
   if (mostrarSplash) {
     return (
       <View style={{ flex: 1, backgroundColor: "#FFF6EC" }}>
-        <SplashScreen onFinish={() => setMostrarSplash(false)} duracionMinimaMs={1800} />
+        <SplashScreen onFinish={() => setMostrarSplash(false)} duracionMinimaMs={3600} />
       </View>
     );
   }
