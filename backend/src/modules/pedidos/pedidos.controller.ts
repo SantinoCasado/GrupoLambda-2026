@@ -214,7 +214,6 @@ export const confirmarRecepcionPedido = async (req: Request, res: Response): Pro
 };
 
 export const solicitarCuenta = async (req: Request, res: Response): Promise<Response | void> => {
-    // Como es una acción sobre un recurso específico, el ID suele ir en la URL (req.params)
     const id = req.params.id as string;
 
     if (!id) {
@@ -241,8 +240,13 @@ export const cobrarPedido = async (req: Request, res: Response): Promise<Respons
         return res.status(400).json({ error: 'Falta el ID del pedido.' });
     }
 
+    // Obliga a que manden propina (incluso si escanean el QR de 0%)
+    if (propina === undefined || propina === null) {
+        return res.status(400).json({ error: 'Falta escanear el QR de propina.' });
+    }
+
     try {
-        const porcentaje = propina ? Number(propina) : 0; 
+        const porcentaje = Number(propina); 
         const ticket = await cobrarPedidoService(pedido_id, porcentaje);
 
         return res.status(200).json({
