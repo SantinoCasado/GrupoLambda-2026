@@ -67,14 +67,14 @@ export const registrarJugadaService = async (datos: RegistrarJugadaDTO) => {
   }
 
   // 5. Si aplico el descuento, recalcular y actualizar total_amount en orders
-  let nuevoTotal = pedido.total_amount;
+  let montoDescuento = 0; // Calcular el monto exacto del descuento y guardarlo en 'discount_amount'
   if (porcentajeAplicable > 0) {
-    const factor = (100 - porcentajeAplicable) / 100;
-    nuevoTotal = Math.round(pedido.total_amount * factor);
+    // Calculamos cuánta plata física representa ese porcentaje
+    montoDescuento = Math.round(pedido.total_amount * (porcentajeAplicable / 100));
 
     const { error: updateOrderError } = await supabase
       .from('orders')
-      .update({ total_amount: nuevoTotal })
+      .update({ discount_amount: montoDescuento })
       .eq('id', order_id);
 
     if (updateOrderError) {
@@ -84,12 +84,12 @@ export const registrarJugadaService = async (datos: RegistrarJugadaDTO) => {
 
   return {
     jugada: nuevaJugada,
-    descuento_aplicado: porcentajeAplicable,
-    total_actualizado: nuevoTotal,
+    descuento_aplicado_porcentaje: porcentajeAplicable,
+    monto_descontado: montoDescuento,
     mensaje: yaTieneDescuento
       ? 'Jugada registrada. No se aplicó descuento porque ya cuenta con un beneficio previo.'
       : porcentajeAplicable > 0
-      ? `¡Felicitaciones! Ganaste un ${porcentajeAplicable}% de descuento.`
+      ? `¡Felicitaciones! Ganaste un ${porcentajeAplicable}% de descuento (Equivale a $${montoDescuento}).`
       : 'Jugada registrada sin descuento.',
   };
 };
