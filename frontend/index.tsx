@@ -1,5 +1,6 @@
 import { registerRootComponent } from 'expo';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { KeyboardProvider } from 'react-native-keyboard-controller';
 import { useFonts } from 'expo-font';
 
 import App from './App';
@@ -29,7 +30,9 @@ function Root() {
 
   return (
     <SafeAreaProvider>
-      <App />
+      <KeyboardProvider>
+        <App />
+      </KeyboardProvider>
     </SafeAreaProvider>
   );
 }

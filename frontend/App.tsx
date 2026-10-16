@@ -111,6 +111,9 @@ function AppInterna() {
   const [notifNuevoClientePendiente, setNotifNuevoClientePendiente] = useState(false);
   const [rolTickets, setRolTickets] = useState<"cocinero" | "cantinero">("cocinero");
   const [propinaSeleccionada, setPropinaSeleccionada] = useState<number>(0);
+  // Pantalla desde la que se abrió el chat del mozo, para que el botón
+  // "volver" del header regrese al origen real (carta, chat_mesas, etc.)
+  const [vistaOrigenChat, setVistaOrigenChat] = useState<VistaPrivada | null>(null);
 
   const [avisoNotif, setAvisoNotif] = useState<{
     visible: boolean;
@@ -196,6 +199,13 @@ function AppInterna() {
   const esPerfilPersonal = (perfil?: string) =>
     perfil === "mozo" || perfil === "metre" || perfil === "dueño" || perfil === "supervisor";
 
+  // Abre el chat y recuerda desde qué pantalla se llegó, para que el botón
+  // "volver" del header regrese de verdad al origen (carta, chat_mesas, etc.)
+  const abrirChatMozo = () => {
+    setVistaOrigenChat(vistaPrivada === "chat_mozo" ? null : vistaPrivada);
+    setVistaPrivada("chat_mozo");
+  };
+
   const abrirChatDeMesa = async (
     tableId: string,
     tableNumber: number | null,
@@ -244,7 +254,7 @@ function AppInterna() {
 
     setIdMesaCliente(tableId);
     setNumeroMesaCliente(numero ?? 1);
-    setVistaPrivada("chat_mozo");
+    abrirChatMozo();
     return true;
   };
 
@@ -896,7 +906,7 @@ function AppInterna() {
               }
             }}
             onIrAlCarrito={() => setVistaPrivada("carrito")}
-            onAbrirChatMozo={() => setVistaPrivada("chat_mozo")}
+            onAbrirChatMozo={abrirChatMozo}
           />
         )}
 
@@ -1045,7 +1055,7 @@ function AppInterna() {
             onAbrirChatMesa={(tableId, numMesa) => {
               setIdMesaCliente(tableId);
               setNumeroMesaCliente(numMesa);
-              setVistaPrivada("chat_mozo");
+              abrirChatMozo();
             }}
           />
         )}
@@ -1057,7 +1067,10 @@ function AppInterna() {
             numeroMesa={numeroMesaCliente || 1}
             usuarioActual={usuarioActual}
             onVolver={() =>
-              setVistaPrivada(esPerfilPersonal(usuarioActual.perfil) ? "chat_mesas" : "home")
+              setVistaPrivada(
+                vistaOrigenChat ??
+                  (esPerfilPersonal(usuarioActual.perfil) ? "chat_mesas" : "home")
+              )
             }
           />
         )}
