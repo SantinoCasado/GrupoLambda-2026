@@ -30,7 +30,7 @@ export const registrarJugadaService = async (datos: RegistrarJugadaDTO) => {
     throw new Error('Pedido no encontrado.');
   }
 
-  // 3. Verificar si el cliente ya tiene un descuento ganado en este pedido (no acumulativos)
+  // 3. Verificar si el cliente ya tiene un descuento ganado en este pedido
   const { data: descuentosPrevios, error: discError } = await supabase
     .from('game_discounts')
     .select('id')
