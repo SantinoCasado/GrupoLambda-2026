@@ -157,6 +157,13 @@ export function ChatMozoScreen({
         })
       : "";
 
+    const fecha = item.created_at
+      ? new Date(item.created_at).toLocaleDateString([], {
+          day: "2-digit",
+          month: "2-digit",
+        })
+      : "";
+
     return (
       <View
         className={`mb-2 max-w-[80%] rounded-2xl px-3.5 py-2.5 shadow-sm ${
@@ -166,25 +173,29 @@ export function ChatMozoScreen({
         }`}
       >
         {!esMio && (
-          <Text className="mb-0.5 text-[11px] font-bold text-vino">
+          <Text className="mb-0.5 text-sm font-bold text-vino">
             {esMozo ? `Mesa #${numeroMesa}` : "Mozo de Salón"}
           </Text>
         )}
 
         <Text
-          className={`text-sm ${
-            esMio ? "font-semibold text-stone-900" : "text-stone-800"
-          }`}
+        style={{
+          fontFamily: "sans-serif",
+          fontSize: 14,
+          color: esMio ? "#1c1917" : "#292524",
+          fontWeight: esMio ? "600" : "400",
+        }}
         >
           {item.message}
+          
         </Text>
-
+        
         <Text
           className={`mt-1 text-[10px] text-right ${
             esMio ? "text-stone-700" : "text-stone-400"
           }`}
         >
-          {hora}
+          {fecha} {hora}
         </Text>
       </View>
     );
@@ -215,11 +226,11 @@ export function ChatMozoScreen({
         <View className="items-center">
           <Text
             style={{ fontFamily: "LaOriental" }}
-            className="text-lg uppercase text-mostaza"
+            className="text-xl uppercase text-mostaza"
           >
             {esMozo ? "Consultas de la Mesa" : "Consulta al Mozo"}
           </Text>
-          <Text className="text-[11px] font-bold text-emerald-300">
+          <Text className="text-sm font-bold text-emerald-300">
             Mesa #{numeroMesa} • En Vivo
           </Text>
         </View>
@@ -276,7 +287,7 @@ export function ChatMozoScreen({
             onChangeText={setTexto}
             placeholder="Escribir consulta al mozo..."
             placeholderTextColor="#a8a29e"
-            className="flex-1 rounded-2xl border border-stone-300 bg-stone-50 px-4 py-2.5 text-s text-stone-800"
+            className="flex-1 rounded-2xl border border-stone-300 bg-stone-50 px-4 py-2.5 text-lg text-stone-800"
             multiline
             maxLength={300}
           />
@@ -284,14 +295,14 @@ export function ChatMozoScreen({
           <TouchableOpacity
             onPress={handleEnviar}
             disabled={!texto.trim() || enviando}
-            className={`ml-2 h-11 w-11 items-center justify-center rounded-2xl ${
+            className={`ml-2 h-12 w-12 items-center justify-center rounded-2xl ${
               !texto.trim() || enviando ? "border border-stone-300 bg-white" : "bg-vino active:bg-terracota"
             }`}
           >
             {enviando ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <Text className="text-lg text-mostaza">➤</Text>
+              <Text className="text-xl text-mostaza">➤</Text>
             )}
           </TouchableOpacity>
         </View>
