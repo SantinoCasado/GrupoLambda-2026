@@ -237,19 +237,36 @@ export function ShellGameScreen({ onVolver }: Props) {
       await levantar([vaso]);
       if (!montadoRef.current) return;
       await esperar(MS_ACIERTO);
+      if (!montadoRef.current) return;
+      await tapar();
+      if (!montadoRef.current) return;
+      setTerminado(true);
     } else {
       // Al fallar se levantan los dos: el elegido vacío y el de la bolita.
       Vibration.vibrate([0, 100, 50, 100]);
       await levantar([vaso, bolitaVasoRef.current]);
       if (!montadoRef.current) return;
       await esperar(MS_FALLO);
-    }
-    if (!montadoRef.current) return;
-    await tapar();
-    if (!montadoRef.current) return;
+      if (!montadoRef.current) return;
+      await tapar();
+      if (!montadoRef.current) return;
 
-    if (acierto) setTerminado(true);
-    else cambiarFase("elegir");
+      // Reshuffle: mueve la bolita a una nueva posición y mezcla los vasos
+      ordenRef.current = [0, 1, 2];
+      bolitaVasoRef.current = Math.floor(Math.random() * CANTIDAD_VASOS);
+      xVasos.forEach((v, i) => v.setValue(xDeSlot(i)));
+      yVasos.forEach((v) => v.setValue(0));
+      rotVasos.forEach((v) => v.setValue(0));
+      opBola.setValue(0);
+      escBola.setValue(0.6);
+      cambiarFase("mezclando");
+      await mezclar();
+      if (!montadoRef.current) return;
+      xBola.setValue(xBolaDe(ordenRef.current.indexOf(bolitaVasoRef.current)));
+      await esperar(MS_ESPERA);
+      if (!montadoRef.current) return;
+      cambiarFase("elegir");
+    }
   };
 
   const reiniciar = () => {
