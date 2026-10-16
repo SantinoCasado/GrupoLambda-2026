@@ -206,6 +206,39 @@ function AppInterna() {
     setVistaPrivada("chat_mozo");
   };
 
+  // Apertura del chat desde el badge "MESA #" del home del cliente. El chat
+  // necesita el id real de la mesa (tableId) para suscribirse a la tabla
+  // 'chats'; si no estuviera cargado, se lo busca por número de mesa y, si
+  // tampoco existe, se avisa en vez de abrir un chat roto.
+  const abrirChatMozoDesdeHome = async () => {
+    if (!idMesaCliente) {
+      let mesaId: string | null = null;
+
+      if (numeroMesaCliente) {
+        const { data: mesaData } = await supabase
+          .from("restaurant_tables")
+          .select("id")
+          .eq("table_number", numeroMesaCliente)
+          .maybeSingle();
+        mesaId = mesaData?.id ?? null;
+      }
+
+      if (mesaId) {
+        setIdMesaCliente(mesaId);
+      } else {
+        setAvisoNotif({
+          visible: true,
+          tipo: "informacion",
+          titulo: "Chat no disponible",
+          mensaje: "No se pudo identificar tu mesa para abrir el chat con el mozo.",
+        });
+        return;
+      }
+    }
+
+    abrirChatMozo();
+  };
+
   const abrirChatDeMesa = async (
     tableId: string,
     tableNumber: number | null,
@@ -764,7 +797,7 @@ function AppInterna() {
                 {usuarioActual.nombres} {usuarioActual.apellidos}
               </Text>
               <Text className="text-[10px] font-bold text-amber-200 uppercase">
-                {usuarioActual.tituloVisual}
+                {usuarioActual.tituloVisual ? usuarioActual.tituloVisual === "Cliente_registrado" ? "CLIENTE" : usuarioActual.tituloVisual === "Cliente_anonimo" ? "INVITADO" : usuarioActual.tituloVisual : ""}
               </Text>
             </View>
           </View>
@@ -786,6 +819,7 @@ function AppInterna() {
             onSolicitarMesa={() => setEnEsperaRegistrado(true)}
             pedidoActivoId={idPedidoEnEdicion ? null : idPedidoActivo}
             onVerEstadoPedido={() => setVistaPrivada("estado_pedido")}
+            onAbrirChatMozo={esCliente ? abrirChatMozoDesdeHome : undefined}
           />
         </View>
       </SafeAreaView>
@@ -822,6 +856,7 @@ function AppInterna() {
             onSolicitarMesa={() => setEnEsperaRegistrado(true)}
             pedidoActivoId={idPedidoActivo}
             onVerEstadoPedido={() => setVistaPrivada("estado_pedido")}
+            onAbrirChatMozo={esCliente ? abrirChatMozoDesdeHome : undefined}
           />
         </View>
       </SafeAreaView>
