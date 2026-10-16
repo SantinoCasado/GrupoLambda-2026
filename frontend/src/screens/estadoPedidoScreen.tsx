@@ -171,23 +171,27 @@ export function EstadoPedidoScreen({
   };
 
   return (
-    <View className="flex-1 bg-amber-50 px-4 pt-2">
+    <View className="flex-1 bg-[#FFF8F0]">
       {/* Header */}
-      <View className="mb-3 flex-row items-center justify-center border-b border-mostaza/30 pb-3">
+      <View className="my-3 flex-row items-center justify-center border-b border-mostaza/70 pb-3 px-4 pt-2">
         <View className="items-center w-full justify-center flex-col">
           <Text
             style={{ fontFamily: "LaOriental" }}
-            className="text-xl uppercase text-vino text-center w-full"
+            className="text-2xl uppercase text-vino text-center w-full"
           >
             Mesa #{numMesa}
           </Text>
-          <Text className="text-xs font-bold text-stone-500">
+          <Text className="text-sm font-bold text-stone-500">
             Seguimiento del pedido
           </Text>
         </View>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+      <ScrollView
+        className="flex-1 h-full"
+        showsVerticalScrollIndicator={false}
+        contentContainerClassName="flex-grow px-4"
+      >
         {/* Banner de Rechazo (si está rechazado) */}
         {estaRechazado ? (
           <View className="mb-4 rounded-2xl border-2 border-red-500 bg-red-950/80 p-4 shadow-md">
@@ -208,23 +212,21 @@ export function EstadoPedidoScreen({
           </View>
         ) : (
           /* Banner Normal de Tiempo Estimado */
-          <View className="mb-4 rounded-2xl border-2 border-mostaza bg-vino p-4 shadow-md">
+          <View className="mb-4 rounded-2xl border-2 border-mostaza bg-vino p-4">
             <View className="flex-row items-center justify-between">
-              <View>
-                <Text className="text-xs text-amber-200/80 uppercase font-semibold">
-                  {estaEntregado ? "¡Pedido servido!" : "Tiempo estimado"}
-                </Text>
-                <Text className="text-2xl font-black text-mostaza">
-                  {estaEntregado ? "¡En tu mesa!" : `⏱ ~${pedido?.estimated_delivery_time || 15} min`}
-                </Text>
-              </View>
+              <Text className="text-sm text-amber-200/80 uppercase font-semibold">
+                {estaEntregado ? "¡Pedido servido!" : "Tiempo estimado"}
+              </Text>
+              <Text className="text-3xl font-black text-mostaza">
+                {estaEntregado ? "¡En tu mesa!" : `⏱ ~${pedido?.estimated_delivery_time || 15} min`}
+              </Text>
             </View>
           </View>
         )}
 
         {/* Línea de Etapas / Progreso */}
-        <View className="mb-4 rounded-2xl border border-mostaza/30 bg-white p-4 shadow-sm">
-          <Text style={{ fontFamily: "LaOriental" }} className="mb-3 text-sm uppercase text-vino">
+        <View className="mb-4 rounded-2xl border border-mostaza/70 bg-amber-50 p-4 shadow-sm">
+          <Text style={{ fontFamily: "LaOriental" }} className="mb-3 text-xl uppercase text-vino">
             Estado de Preparación
           </Text>
 
@@ -236,7 +238,7 @@ export function EstadoPedidoScreen({
               return (
                 <View key={etapa.clave} className="flex-row items-center">
                   <View
-                    className={`h-8 w-8 items-center justify-center rounded-full border-2 ${
+                    className={`h-10 w-10 items-center justify-center rounded-full border-2 ${
                       activo
                         ? "border-mostaza bg-vino"
                         : completado
@@ -245,11 +247,11 @@ export function EstadoPedidoScreen({
                     }`}
                   >
                     {completado && !activo ? (
-                      <Text className="text-xs text-white font-bold">✓</Text>
+                      <Text className="text-lg text-white font-bold">✓</Text>
                     ) : (
                       <Image
                         source={activo ? etapa.iconoActivo : etapa.iconoPendiente}
-                        className="h-4 w-4"
+                        className="h-6 w-6"
                         resizeMode="contain"
                       />
                     )}
@@ -257,13 +259,13 @@ export function EstadoPedidoScreen({
 
                   <View className="ml-3 flex-1">
                     <Text
-                      className={`text-xs font-bold ${
+                      className={`text-s font-bold ${
                         activo ? "text-vino" : completado ? "text-emerald-700" : "text-stone-400"
                       }`}
                     >
                       {etapa.titulo}
                     </Text>
-                    <Text className="text-[10px] text-stone-500">{etapa.descripcion}</Text>
+                    <Text className="text-sm text-stone-500">{etapa.descripcion}</Text>
                   </View>
                 </View>
               );
@@ -271,26 +273,28 @@ export function EstadoPedidoScreen({
           </View>
         </View>
 
-        {/* Resumen de la Comanda */}
-        <View className="mb-2 rounded-2xl border border-mostaza/30 bg-white p-4 shadow-sm">
-          <Text style={{ fontFamily: "LaOriental" }} className="mb-2 text-sm uppercase text-vino">
+        {/* Resumen del pedido */}
+        <View style={{ height: 215 }} className="mb-2 rounded-2xl border border-mostaza/70 bg-amber-50 p-4 mt-auto">
+          <Text style={{ fontFamily: "LaOriental" }} className="mb-2 text-xl uppercase text-vino">
             Detalle del Pedido
           </Text>
 
-          {(pedido?.order_items || []).map((it: any) => (
-            <View key={it.id} className="flex-row justify-between border-b border-stone-100 py-1.5">
-              <Text className="text-xs font-semibold text-stone-800">
-                {it.quantity}x {it.products?.name}
-              </Text>
-              <Text className="text-xs font-bold text-calabaza">
-                ${Number(it.unit_price) * it.quantity}
-              </Text>
-            </View>
-          ))}
+          <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
+            {(pedido?.order_items || []).map((it: any) => (
+              <View key={it.id} className="flex-row justify-between border-b border-stone-200 py-1.5">
+                <Text className="text-sm font-semibold text-stone-800">
+                  {it.quantity}x {it.products?.name}
+                </Text>
+                <Text className="text-sm font-bold text-calabaza">
+                  ${Number(it.unit_price) * it.quantity}
+                </Text>
+              </View>
+            ))}
+          </ScrollView>
 
-          <View className="mt-2 flex-row justify-between pt-2 border-t border-mostaza/20">
-            <Text className="text-xs font-bold text-vino">TOTAL</Text>
-            <Text className="text-base font-black text-calabaza">
+          <View className="mt-2 flex-row justify-between pt-2 border-t border-mostaza/40">
+            <Text className="text-lg font-bold text-vino">TOTAL</Text>
+            <Text className="text-lg font-black text-calabaza">
               ${Number(pedido?.total_amount || 0).toLocaleString("es-AR")}
             </Text>
           </View>
@@ -298,7 +302,7 @@ export function EstadoPedidoScreen({
       </ScrollView>
 
       {/* BOTÓN AL PIE DE LA PÁGINA */}
-      <View className="py-3 border-t border-mostaza/20 bg-amber-50">
+      <View className="py-3 border-t border-mostaza/70 px-4">
         {estaRechazado ? (
           <TouchableOpacity
             onPress={manejarEditarComanda}
@@ -323,7 +327,7 @@ export function EstadoPedidoScreen({
           >
             <Text
               style={{ fontFamily: "LaOriental" }}
-              className={`text-center text-sm uppercase tracking-wider ${
+              className={`text-center text-lg uppercase tracking-wider ${
                 estaEntregado ? "text-white" : "text-stone-500"
               }`}
             >
