@@ -340,20 +340,12 @@ export function CarritoScreen({
         <View className="mb-3 rounded-2xl border-2 border-red-300 bg-red-50 p-3">
           <View className="flex-row items-center justify-between">
             <Text className="flex-1 text-xs font-black uppercase text-red-800">
-              Editando comanda rechazada
+              editar pedido rechazado
             </Text>
-            {onCerrarEdicion && (
-              <TouchableOpacity
-                onPress={onCerrarEdicion}
-                className="ml-2 rounded-lg bg-red-200/60 px-2 py-1 active:bg-red-200"
-              >
-                <Text className="text-[10px] font-bold text-red-800">Cancelar</Text>
-              </TouchableOpacity>
-            )}
           </View>
           {motivoRechazo && (
             <Text className="mt-1 text-[11px] text-red-700">
-              Motivo del mozo: {motivoRechazo}
+              Motivo del rechazo: {motivoRechazo}
             </Text>
           )}
         </View>

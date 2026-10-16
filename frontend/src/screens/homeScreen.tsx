@@ -276,7 +276,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
           {esCliente && (
             <View className="flex-1 gap-y-4">
               <View className="mb-1 flex-row items-center justify-between">
-                <Text className="text-xs font-bold text-vino uppercase">Atención en Salón</Text>
+                <Text className="text-sm font-bold text-vino uppercase">Atención en Salón</Text>
                 {numeroMesa ? (
                   onAbrirChatMozo ? (
                     <TouchableOpacity
@@ -288,15 +288,21 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                       accessibilityLabel={`Abrir chat con el mozo, mesa ${numeroMesa}`}
                       className="flex-row items-center rounded-lg border border-vino bg-mostaza px-2 py-1.5 active:bg-mostaza/70"
                     >
-                      <Text className="text-xs font-bold text-vino">MESA #{numeroMesa}</Text><Image
-                    source={require("../../assets/images/chat-v.png")}
-                    className="h-5 w-5 ml-2"
-                    resizeMode="contain"
-                  />
+                      <Text className="text-sm font-bold text-vino">MESA #{numeroMesa}</Text>
+                      <Image
+                        source={require("../../assets/images/chat-v.png")}
+                        className="h-5 w-5 ml-2"
+                        resizeMode="contain"
+                      />
                     </TouchableOpacity>
                   ) : (
-                    <View className="rounded-lg border border-vino bg-mostaza px-2 py-0.5">
+                    <View className="flex-row items-center rounded-lg border border-vino bg-mostaza px-2 py-1.5 active:bg-mostaza/70">
                       <Text className="text-xs font-bold text-vino">MESA #{numeroMesa}</Text>
+                      <Image
+                        source={require("../../assets/images/chat-v.png")}
+                        className="h-5 w-5 ml-2"
+                        resizeMode="contain"
+                      />
                     </View>
                   )
                 ) : null}

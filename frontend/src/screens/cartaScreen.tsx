@@ -333,7 +333,7 @@ export function CartaScreen({
   return (
     <View className="flex-1 bg-amber-50/40">
       {/* 1. Header con Mesa y Consulta al Mozo */}
-      <View className="flex-row items-center border-b border-mostaza/20 bg-vino px-5 py-3 shadow-md">
+      <View className="items-center border-b border-mostaza/20 bg-vino px-5 py-3 shadow-md">
 
         <View className="flex-1" />
 
@@ -343,18 +343,6 @@ export function CartaScreen({
           </Text>
         </View>
 
-        {/* Botón Consulta al Mozo (Punto 11) */}
-        <View className="flex-1 items-end">
-          {esCliente && onAbrirChatMozo ? (
-            <TouchableOpacity
-              onPress={onAbrirChatMozo}
-              className="flex-row items-center rounded-xl border border-mostaza/60 bg-calabaza/90 px-2.5 py-1.5 active:bg-calabaza"
-            >
-              <Text className="mr-1 text-sm">💬</Text>
-              <Text className="text-[10px] font-extrabold text-white uppercase">Mozo</Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
       </View>
 
       {/* 3. Contenido Principal — una tarjeta por página, scroll vertical tipo Reels */}
