@@ -2,8 +2,8 @@ import "./global.css";
 import React, { useState, useEffect, useRef } from "react";
 import { registrarPushToken } from "./src/services/pushNotificationClientService";
 import { View, Text, Image, TouchableOpacity, Vibration } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import type { Notification, NotificationResponse } from "expo-notifications";
+import { SafeAreaView} from "react-native-safe-area-context";
+import type {NotificationResponse } from "expo-notifications";
 import { UsuarioSeed } from "./src/data/usuariosPrecargados";
 import HomeScreen, { HomeDestino } from "./src/screens/homeScreen";
 import { AuthProvider } from "./src/context/AuthContext";
@@ -111,11 +111,7 @@ function AppInterna() {
   const [notifNuevoClientePendiente, setNotifNuevoClientePendiente] = useState(false);
   const [rolTickets, setRolTickets] = useState<"cocinero" | "cantinero">("cocinero");
   const [propinaSeleccionada, setPropinaSeleccionada] = useState<number>(0);
-  const [bannerNotif, setBannerNotif] = useState<{
-    titulo: string;
-    cuerpo: string;
-    datos: any;
-  } | null>(null);
+
   const [avisoNotif, setAvisoNotif] = useState<{
     visible: boolean;
     tipo: "exito" | "error" | "informacion";
@@ -136,8 +132,6 @@ function AppInterna() {
   const clienteAnonimoRef = useRef(clienteAnonimo);
   clienteAnonimoRef.current = clienteAnonimo;
 
-  // Timer del banner in-app de notificaciones (5 segundos)
-  const bannerTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const parsearDatosNotificacion = (crudo: any): any => {
     if (crudo && typeof crudo === "object") return crudo;
@@ -423,32 +417,7 @@ function AppInterna() {
     if (datos) navegarConDatos(datos);
   };
 
-  const manejarNotificacionRecibida = (notificacion: Notification) => {
-    const datos = parsearDatosNotificacion(notificacion?.request?.content?.data);
-    if (!datos) return;
-
-    setBannerNotif({
-      titulo: notificacion.request.content.title || "",
-      cuerpo: notificacion.request.content.body || "",
-      datos,
-    });
-
-    if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
-    bannerTimerRef.current = setTimeout(() => setBannerNotif(null), 5000);
-  };
-
-  const tocarBanner = () => {
-    const banner = bannerNotif;
-    if (!banner) return;
-    setBannerNotif(null);
-    if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
-    navegarConDatos(banner.datos);
-  };
-
-  const cerrarBanner = () => {
-    if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
-    setBannerNotif(null);
-  };
+  
 
   useEffect(() => {
     const Notifications = obtenerModuloNotificaciones();
@@ -473,15 +442,10 @@ function AppInterna() {
       manejarRespuestaNotificacion
     );
 
-    // Notificación recibida con la app en primer plano → banner in-app de 5 segundos
-    const suscripcionRecibida = Notifications.addNotificationReceivedListener(
-      manejarNotificacionRecibida
-    );
+
 
     return () => {
       suscripcionRespuesta.remove();
-      suscripcionRecibida.remove();
-      if (bannerTimerRef.current) clearTimeout(bannerTimerRef.current);
     };
   }, []);
 
@@ -1106,14 +1070,7 @@ function AppInterna() {
   return (
     <>
       {renderVista()}
-      {bannerNotif && (
-        <BannerNotificacion
-          titulo={bannerNotif.titulo}
-          cuerpo={bannerNotif.cuerpo}
-          onPress={tocarBanner}
-          onCerrar={cerrarBanner}
-        />
-      )}
+      
       <FeedbackModal
         visible={avisoNotif.visible}
         tipo={avisoNotif.tipo}
@@ -1125,54 +1082,3 @@ function AppInterna() {
   );
 }
 
-function BannerNotificacion({
-  titulo,
-  cuerpo,
-  onPress,
-  onCerrar,
-}: {
-  titulo: string;
-  cuerpo: string;
-  onPress: () => void;
-  onCerrar: () => void;
-}) {
-  const insets = useSafeAreaInsets();
-
-  return (
-    <View
-      className="absolute left-3 right-3 z-50 overflow-hidden rounded-2xl border-2 border-mostaza bg-vino shadow-2xl"
-      style={{ top: insets.top + 8 }}
-    >
-      <TouchableOpacity
-        onPress={onPress}
-        className="flex-1 flex-row items-start px-4 py-3 active:bg-terracota/50"
-      >
-        <View className="mr-3 mt-0.5 h-9 w-9 items-center justify-center rounded-full bg-mostaza/20">
-          <Text className="text-lg">🔔</Text>
-        </View>
-        <View className="flex-1 pr-6">
-          <Text
-            style={{ fontFamily: "LaOriental" }}
-            className="text-sm uppercase tracking-wide text-mostaza"
-            numberOfLines={1}
-          >
-            {titulo}
-          </Text>
-          <Text className="mt-0.5 text-xs text-amber-100/90" numberOfLines={2}>
-            {cuerpo}
-          </Text>
-          <Text className="mt-1 text-[10px] font-bold uppercase text-amber-200/70">
-            Tocá para ver →
-          </Text>
-        </View>
-      </TouchableOpacity>
-
-      <TouchableOpacity
-        onPress={onCerrar}
-        className="absolute right-2 top-2 h-7 w-7 items-center justify-center rounded-full bg-black/20"
-      >
-        <Text className="text-xs font-bold text-amber-200">✕</Text>
-      </TouchableOpacity>
-    </View>
-  );
-}

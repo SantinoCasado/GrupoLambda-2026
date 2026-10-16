@@ -412,15 +412,15 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
               <TouchableOpacity
                 onPress={() => abrirEscaner("entrada")}
                 className="w-full flex-1 items-center justify-center rounded-2xl bg-mostaza py-3.5 active:bg-mostaza/80"
-                style={{ minHeight: px(135, 0.35), padding: px(12, 0.05) }}
+                style={{ minHeight: px(220, 0.5), padding: px(12, 0.05) }}
               >
                 <Image
                   source={require("../../assets/images/camera-v.png")}
-                  className="h-28 w-28 mb-2"
+                  className="h-36 w-36 mb-2"
                   resizeMode="contain"
                 />
                 <View className="flex-2">
-                  <Text style={{ fontFamily: "LaOriental" }} className="text-2xl text-vino">
+                  <Text style={{ fontFamily: "LaOriental" }} className="text-3xl text-vino">
                     Escanear QR
                   </Text>
                 </View>
