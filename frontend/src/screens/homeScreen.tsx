@@ -454,70 +454,71 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
               >
                 <Image
                   source={require("../../assets/images/serving-y.png")}
-                  style={{ height: 80, width: 80, marginBottom: 6 }}
+                  style={{ height: 120, width: 120, marginBottom: 10 }}
                   resizeMode="contain"
                 />
                 <Text
-                  style={{ fontFamily: "LaOriental", fontSize: 22 }}
-                  className="text-center uppercase tracking-wider text-mostaza"
+                  style={{ fontFamily: "LaOriental" }}
+                  className="text-center text-3xl uppercase tracking-wider text-mostaza"
                 >
                   Comandas
-                </Text>
-              </TouchableOpacity>
-
-              {/* Chat Mesas */}
-              <TouchableOpacity
-                onPress={() => navegar("chat_mesas")}
-                className="flex-row items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota shadow-md mb-2.5 py-3 px-4"
-              >
-                <Image
-                  source={require("../../assets/images/table-y.png")}
-                  style={{ height: 36, width: 36, marginRight: 10 }}
-                  resizeMode="contain"
-                />
-                <Text
-                  style={{ fontFamily: "LaOriental", fontSize: 18 }}
-                  className="text-center uppercase tracking-wider text-mostaza"
-                >
-                  Chat Mesas
                 </Text>
               </TouchableOpacity>
 
               {/* Pedidos Listos */}
               <TouchableOpacity
                 onPress={() => navegar("pedidos_listos")}
-                className="flex-row items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota shadow-md mb-2.5 py-3 px-4"
+                className="items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota shadow-md mb-2.5 py-3 px-4"
               >
                 <Image
                   source={require("../../assets/images/dish-y.png")}
-                  style={{ height: 36, width: 36, marginRight: 10 }}
+                  style={{ height: 70, width: 70, marginRight: 10 }}
                   resizeMode="contain"
                 />
                 <Text
-                  style={{ fontFamily: "LaOriental", fontSize: 18 }}
-                  className="text-center uppercase tracking-wider text-mostaza"
+                  style={{ fontFamily: "LaOriental" }}
+                  className="text-center text-2xl uppercase tracking-wider text-mostaza"
                 >
                   Pedidos Listos
                 </Text>
               </TouchableOpacity>
 
-              {/* Transacciones (Cobros de Cuentas) */}
-              <TouchableOpacity
-                onPress={() => navegar("transacciones")}
-                className="flex-row items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota shadow-md mb-2.5 py-3 px-4"
-              >
-                <Image
-                  source={require("../../assets/images/dish-y.png")} // o el icono que prefieras
-                  style={{ height: 36, width: 36, marginRight: 10 }}
-                  resizeMode="contain"
-                />
-                <Text
-                  style={{ fontFamily: "LaOriental", fontSize: 18 }}
-                  className="text-center uppercase tracking-wider text-mostaza"
+              {/* Chat Mesas + Transacciones en una fila */}
+              <View className="flex-row gap-2">
+                <TouchableOpacity
+                  onPress={() => navegar("chat_mesas")}
+                  className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota shadow-md py-3 px-2"
                 >
-                  Transacciones
-                </Text>
-              </TouchableOpacity>
+                  <Image
+                    source={require("../../assets/images/table-y.png")}
+                    style={{ height: 40, width: 40, marginRight: 8 }}
+                    resizeMode="contain"
+                  />
+                  <Text
+                    style={{ fontFamily: "LaOriental", fontSize: 16 }}
+                    className="text-center uppercase tracking-wider text-mostaza"
+                  >
+                    Chat Mesas
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => navegar("transacciones")}
+                  className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota shadow-md py-3 px-2"
+                >
+                  <Image
+                    source={require("../../assets/images/money-y.png")}
+                    style={{ height: 40, width: 40, marginRight: 8 }}
+                    resizeMode="contain"
+                  />
+                  <Text
+                    style={{ fontFamily: "LaOriental", fontSize: 16 }}
+                    className="text-center uppercase text-s text-mostaza"
+                  >
+                    Cobrar mesas
+                  </Text>
+                </TouchableOpacity>
+              </View>
             </ScrollView>
           )}
 
