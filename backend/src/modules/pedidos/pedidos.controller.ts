@@ -10,7 +10,8 @@ import {
   confirmarRecepcionClienteService, 
   entregarPedidoMozoService,
   cobrarPedidoService,
-  solicitarCuentaService 
+  solicitarCuentaService,
+  obtenerResumenPreciosService
 } from './pedidos.service';
 import { crearPedidoSchema, confirmarPedidoSchema } from './schema/pedidos.schema';
 import { AuthRequest } from '../../middleware/auth.middleware'
@@ -259,6 +260,24 @@ export const cobrarPedido = async (req: Request, res: Response): Promise<Respons
     }
 };
 
+export const obtenerResumenPrecios = async (req: Request, res: Response) => {
+  try {
+      const { id } = req.params;
+
+        if (!id) {
+            return res.status(400).json({ error: 'Falta el ID del pedido.' });
+        }
+
+        const resumen = await obtenerResumenPreciosService(id as string);
+
+        return res.status(200).json({
+            success: true,
+            data: resumen
+        });
+    } catch (error: any) {
+        return res.status(400).json({ error: error.message });
+    }
+};
 
 // ===========================================
 // FUNCION EXCLUSIVA PARA TESTS: BORRAR TODO EL PEDIDO

@@ -772,3 +772,33 @@ export const cobrarPedidoService = async (pedidoId: string, porcentajePropina: n
         total_a_abonar: totalFinal 
     };
 };
+
+export const obtenerResumenPreciosService = async (pedidoId: string) => {
+    // Trae las columnas 
+    const { data: pedido, error } = await supabase
+        .from('orders')
+        .select('total_amount, discount_amount, tip_amount, final_total, status')
+        .eq('id', pedidoId)
+        .single();
+
+    if (error || !pedido) {
+        throw new Error('Pedido no encontrado.');
+    }
+
+    const precioBase = Number(pedido.total_amount || 0);
+    const descuento = Number(pedido.discount_amount || 0);
+    const propina = Number(pedido.tip_amount || 0);
+
+    const precioFinal = Number(pedido.final_total) > 0 
+        ? Number(pedido.final_total) 
+        : (precioBase - descuento + propina);
+
+    // JSON con la estructura exacta que pidieron
+    return {
+        precio_pedido: precioBase,
+        descuento: -descuento, 
+        propina: propina,
+        precio_final_pedido: precioFinal,
+        estado: pedido.status // 'pending', 'paid', etc.
+    };
+};
