@@ -447,7 +447,7 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
               <TouchableOpacity
                 onPress={() => abrirEscaner("mesa")}
                 className="mt-3 w-full flex-1 items-center justify-center rounded-2xl bg-emerald-600 py-3.5 shadow-md active:bg-emerald-700"
-                style={{ minHeight: px(125, 0.35), padding: px(12, 0.05) }}
+                style={{ minHeight: px(140, 0.35), padding: px(12, 0.05) }}
               >
                 <Image
                   source={require("../../assets/images/table-w.png")}
@@ -455,7 +455,7 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
                   resizeMode="contain"
                 />
                 <View className="flex-1 mt-1">
-                  <Text style={{ fontFamily: "LaOriental" }} className="text-base text-center uppercase text-white">
+                  <Text style={{ fontFamily: "LaOriental" }} className="text-xl text-center uppercase text-white">
                     Escanear QR en la Mesa #{mesaAsignada.numero}
                   </Text>
                 </View>

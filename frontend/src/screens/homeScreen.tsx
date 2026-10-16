@@ -287,7 +287,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                 /* ESTADO 1: SIN MESA ASIGNADA */
                 <TouchableOpacity
                   onPress={onSolicitarMesa}
-                  className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota shadow-md"
+                  className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota"
                   style={{ padding: px(16, 0.06) }}
                 >
                   <Image
@@ -314,7 +314,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                 </TouchableOpacity>
               ) : pedidoActivoId ? (
                 /* ESTADO 2A: CON MESA Y CON PEDIDO CONFIRMADO (Se ocultan las cartas) */
-                <View className="rounded-2xl border-2 border-mostaza/50 bg-vino/90 p-5 shadow-md">
+                <View className="rounded-2xl border-2 border-mostaza/50 bg-vino/90 p-5">
                   <View className="flex-row items-center mb-2">
                     <Text className="text-2xl mr-3">🍲</Text>
                     <Text
@@ -401,7 +401,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
               {/* Botón 1: Gestión de Mesas y Espera */}
               <TouchableOpacity
                 onPress={() => navegar("metre")}
-                className="items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota shadow-md"
+                className="items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota"
                 style={{ flexGrow: 3, flexShrink: 1, flexBasis: 0, padding: px(24, 0.07) }}
               >
                 <Image
@@ -420,7 +420,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
               {/* Botón 2: Registrar Cliente en Puerta */}
               <TouchableOpacity
                 onPress={() => navegar("registro_metre")}
-                className="items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota shadow-md"
+                className="items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota"
                 style={{ flexGrow: 2, flexShrink: 1, flexBasis: 0, padding: px(24, 0.07) }}
               >
                 <Image
@@ -450,7 +450,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
               {/* Botón Principal: Comandas */}
               <TouchableOpacity
                 onPress={() => navegar("comandas")}
-                className="items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota shadow-md mb-2.5 py-5"
+                className="items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota mb-2.5 py-5"
               >
                 <Image
                   source={require("../../assets/images/serving-y.png")}
@@ -468,11 +468,11 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
               {/* Pedidos Listos */}
               <TouchableOpacity
                 onPress={() => navegar("pedidos_listos")}
-                className="items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota shadow-md mb-2.5 py-3 px-4"
+                className="items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota mb-2.5 py-3 px-4"
               >
                 <Image
                   source={require("../../assets/images/dish-y.png")}
-                  style={{ height: 70, width: 70, marginRight: 10 }}
+                  style={{ height: 80, width: 80, marginRight: 10 }}
                   resizeMode="contain"
                 />
                 <Text
@@ -487,11 +487,11 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
               <View className="flex-row gap-2">
                 <TouchableOpacity
                   onPress={() => navegar("chat_mesas")}
-                  className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota shadow-md py-3 px-2"
+                  className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota py-3 px-2"
                 >
                   <Image
                     source={require("../../assets/images/table-y.png")}
-                    style={{ height: 40, width: 40, marginRight: 8 }}
+                    style={{ height: 55, width: 55, marginRight: 8, marginBottom: 8 }}
                     resizeMode="contain"
                   />
                   <Text
@@ -504,11 +504,11 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
 
                 <TouchableOpacity
                   onPress={() => navegar("transacciones")}
-                  className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota shadow-md py-3 px-2"
+                  className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota py-3 px-2"
                 >
                   <Image
                     source={require("../../assets/images/money-y.png")}
-                    style={{ height: 40, width: 40, marginRight: 8 }}
+                    style={{ height: 55, width: 55, marginRight: 8, marginBottom: 8 }}
                     resizeMode="contain"
                   />
                   <Text
@@ -547,7 +547,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
           {pedidoActivoId ? (
             <TouchableOpacity
               onPress={onVerEstadoPedido}
-              className="flex-row items-center rounded-2xl border-2 border-emerald-600 bg-emerald-700/90 p-4 shadow-md active:bg-emerald-800"
+              className="flex-row items-center rounded-2xl border-2 border-emerald-600 bg-emerald-700/90 p-4  active:bg-emerald-800"
             >
               <Image source={require("../../assets/images/cart-w.png")} className="h-8 w-8 mr-3" resizeMode="contain" />
               <View className="flex-1">
