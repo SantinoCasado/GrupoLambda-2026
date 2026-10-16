@@ -351,7 +351,7 @@ export function CartaScreen({
               className="flex-row items-center rounded-xl border border-mostaza/60 bg-calabaza/90 px-2.5 py-1.5 active:bg-calabaza"
             >
               <Text className="mr-1 text-sm">💬</Text>
-              <Text className="text-[11px] font-extrabold text-white uppercase">Mozo</Text>
+              <Text className="text-[10px] font-extrabold text-white uppercase">Mozo</Text>
             </TouchableOpacity>
           ) : null}
         </View>

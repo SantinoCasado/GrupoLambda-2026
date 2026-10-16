@@ -214,9 +214,7 @@ export default function PreparacionScreen({ rol }: Props) {
       </View>
 
       <View className="mt-4 flex-1 px-5">
-        <Text
-          className="mb-1 text-xs font-bold text-vino uppercase"
-        >
+        <Text className="mb-1 text-xs font-bold text-vino uppercase">
           Tickets de {titulo}
         </Text>
 
@@ -224,171 +222,194 @@ export default function PreparacionScreen({ rol }: Props) {
           className="flex-1"
           onLayout={(e) => setAltoPagina(Math.round(e.nativeEvent.layout.height))}
         >
-        {cargando ? (
-          <View className="items-center justify-center py-20">
-            <ActivityIndicator size="large" color="#8B1A1A" />
-            <Text className="mt-3 text-xs font-bold text-vino">Cargando tickets...</Text>
-          </View>
-        ) : tickets.length === 0 ? (
-          <View className="mt-6 items-center justify-center bg-transparent p-8">
-            <Image
-              source={require("../../assets/images/yoga-y.png")}
-              className="mb-3 h-12 w-12"
-              resizeMode="contain"
-            />
-            <Text
-              style={{ fontFamily: "LaOriental" }}
-              className="text-base uppercase text-vino text-center"
+          {cargando ? (
+            <View className="items-center justify-center py-20">
+              <ActivityIndicator size="large" color="#8B1A1A" />
+              <Text className="mt-3 text-xs font-bold text-vino">Cargando tickets...</Text>
+            </View>
+          ) : tickets.length === 0 ? (
+            <View className="mt-6 items-center justify-center bg-transparent p-8">
+              <Image
+                source={require("../../assets/images/yoga-y.png")}
+                className="mb-3 h-12 w-12"
+                resizeMode="contain"
+              />
+              <Text
+                style={{ fontFamily: "LaOriental" }}
+                className="text-base uppercase text-vino text-center"
+              >
+                No hay tickets pendientes
+              </Text>
+              <Text className="mt-1 text-center text-xs text-stone-600">
+                Cuando el mozo confirme una comanda, aparecerá aquí el ticket para preparar.
+              </Text>
+              <TouchableOpacity
+                onPress={cargarTickets}
+                className="mt-3 rounded-xl border border-calabaza bg-caramelo/10 px-4 py-2"
+              >
+                <Text className="text-xs font-bold text-calabaza">Actualizar Tickets</Text>
+              </TouchableOpacity>
+            </View>
+          ) : !altoPagina ? null : (
+            <ScrollView
+              ref={scrollRef}
+              pagingEnabled
+              showsVerticalScrollIndicator={false}
+              style={{ flex: 1 }}
+              onMomentumScrollEnd={(e) => {
+                setPagina(
+                  Math.round(e.nativeEvent.contentOffset.y / (altoPagina || 1))
+                );
+              }}
             >
-              No hay tickets pendientes
-            </Text>
-            <Text className="mt-1 text-center text-xs text-stone-600">
-              Cuando el mozo confirme una comanda, aparecerá aquí el ticket para preparar.
-            </Text>
-            <TouchableOpacity
-              onPress={cargarTickets}
-              className="mt-3 rounded-xl border border-calabaza bg-caramelo/10 px-4 py-2"
-            >
-              <Text className="text-xs font-bold text-calabaza">Actualizar Tickets</Text>
-            </TouchableOpacity>
-          </View>
-        ) : !altoPagina ? null : (
-          <ScrollView
-            ref={scrollRef}
-            pagingEnabled
-            showsVerticalScrollIndicator={false}
-            style={{ flex: 1 }}
-            onMomentumScrollEnd={(e) => {
-              setPagina(
-                Math.round(e.nativeEvent.contentOffset.y / (altoPagina || 1))
-              );
-            }}
-          >
-            {tickets.map((ticket) => {
-              const enEspera = !!espera[ticket.id];
-              const numMesa = ticket.restaurant_tables?.table_number ?? "S/N";
-              const items = ticket.order_items || [];
-              const temporizador = temporizadores[ticket.id];
-              const restante = temporizador ? restanteSeg(temporizador) : 0;
-              const terminado = temporizador ? restante <= 0 : false;
+              {tickets.map((ticket) => {
+                const enEspera = !!espera[ticket.id];
+                const numMesa = ticket.restaurant_tables?.table_number ?? "S/N";
+                const items = ticket.order_items || [];
+                const temporizador = temporizadores[ticket.id];
+                const restante = temporizador ? restanteSeg(temporizador) : 0;
+                const terminado = temporizador ? restante <= 0 : false;
 
-              return (
-                <View key={ticket.id} style={{ height: altoPagina }} className="py-2">
-                <View className="flex-1 rounded-2xl border-2 border-caramelo bg-[#FFFDF9] p-4">
-                  <View className="mb-2 flex-row items-center justify-between">
-                    <Text className="text-2xl text-vino" style={{ fontFamily: "LaOriental" }}>Mesa #{numMesa}</Text>
-                    <View className="items-end">
-                      <Text className="text-sm font-semibold text-stone-500">
-                        {ticket.created_at
-                          ? `${new Date(ticket.created_at).toLocaleDateString([], {
-                              day: "2-digit",
-                              month: "2-digit",
-                            })} ${new Date(ticket.created_at).toLocaleTimeString([], {
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}`
-                          : ""}
-                      </Text>
-                      <Text className="mt-0.5 text-sm font-semibold text-caramelo">
-                        ⏱ ~{minutosPreparacion(ticket)} min
-                      </Text>
-                    </View>
-                  </View>
-
-                  <View className="mt-2 border-b border-calabaza border-dashed pb-3">
-                    {items.map((it) => {
-                      const foto = fotoProducto(it.products?.id);
-                      return (
-                        <View key={it.id} className="mt-1.5 flex-row items-center">
-                          <View className="h-2.5 w-2.5 rounded-full bg-calabaza mb-2" />
-                          <Text
-                            className="ml-3 text-2xl text-calabaza"
-                            numberOfLines={1}
-                            ellipsizeMode="tail"
-                            style={{ fontFamily: "LaOriental" }}
-                          >
-                            {it.quantity}x 
+                return (
+                  <View key={ticket.id} style={{ height: altoPagina }} className="py-2">
+                    <View className="flex-1 rounded-2xl border-2 border-caramelo bg-[#FFFDF9] p-4">
+                      <View className="mb-2 flex-row items-center justify-between">
+                        <Text className="text-2xl text-vino" style={{ fontFamily: "LaOriental" }}>
+                          Mesa #{numMesa}
+                        </Text>
+                        <View className="items-end">
+                          <Text className="text-sm font-semibold text-stone-500">
+                            {ticket.created_at
+                              ? `${new Date(ticket.created_at).toLocaleDateString([], {
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                })} ${new Date(ticket.created_at).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}`
+                              : ""}
                           </Text>
-                          {foto ? (
-                            <Image
-                              source={{ uri: foto }}
-                              className="h-20 w-20 mx-4 rounded-lg border border-calabaza border-2 bg-stone-100"
-                              resizeMode="cover"
-                            />
-                          ) : (
-                            <View className="h-20 w-20  flex row items-center justify-center rounded-lg bg-stone-100">
-                              <Text className="text-base">{esBar ? "🍹" : "🍲"}</Text>
-                            </View>
-                          )}
-<Text
-                            className="min-w-0 flex-1 text-lg text-stone-700"
-                            numberOfLines={2}
-                            ellipsizeMode="tail"
-                          >
-                            {it.products?.name || "Producto"}
+                          <Text className="mt-0.5 text-sm font-semibold text-caramelo">
+                            ⏱ ~{minutosPreparacion(ticket)} min
                           </Text>
                         </View>
-                      );
-                    })}
-                  </View>
-
-                  <View className="mt-auto pt-3">
-                  {enEspera ? (
-                    <View className="mt-3 w-full items-center rounded-2xl border-2 border-caramelo bg-caramelo/10 px-4 py-3">
-                      <View className="flex-row items-center">
-                        <ActivityIndicator size="small" color="#8B1A1A" />
-                        <Text className="ml-2 text-sm font-bold text-caramelo">
-                          Esperando la otra parte...
-                        </Text>
                       </View>
-                      <Text className="mt-1 text-center text-[10px] font-semibold text-stone-500">
-                        Se habilitará cuando la otra área termine su parte del pedido.
-                      </Text>
+
+                      <View className="mt-2 border-b border-calabaza border-dashed pb-3">
+                        {items.map((it) => {
+                          const foto = fotoProducto(it.products?.id);
+                          return (
+                            <View key={it.id} className="mt-1.5 flex-row items-center">
+                              <View className="h-2.5 w-2.5 rounded-full bg-calabaza mb-2" />
+                              <Text
+                                className="ml-3 text-2xl text-calabaza"
+                                numberOfLines={1}
+                                ellipsizeMode="tail"
+                                style={{ fontFamily: "LaOriental" }}
+                              >
+                                {it.quantity}x
+                              </Text>
+                              {foto ? (
+                                <Image
+                                  source={{ uri: foto }}
+                                  className="h-20 w-20 mx-4 rounded-lg border-2 border-calabaza bg-stone-100"
+                                  resizeMode="cover"
+                                />
+                              ) : (
+                                <View className="h-20 w-20 flex-row items-center justify-center rounded-lg bg-stone-100 mx-4">
+                                  <Text className="text-base">{esBar ? "🍹" : "🍲"}</Text>
+                                </View>
+                              )}
+                              <Text
+                                className="min-w-0 flex-1 text-lg text-stone-700"
+                                numberOfLines={2}
+                                ellipsizeMode="tail"
+                              >
+                                {it.products?.name || "Producto"}
+                              </Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+
+                      <View className="mt-auto pt-3">
+                        {enEspera ? (
+                          <View className="mt-3 w-full items-center rounded-2xl border-2 border-caramelo bg-caramelo/10 px-4 py-3">
+                            <View className="flex-row items-center">
+                              <ActivityIndicator size="small" color="#8B1A1A" />
+                              <Text className="ml-2 text-sm font-bold text-caramelo">
+                                Esperando la otra parte...
+                              </Text>
+                            </View>
+                            <Text className="mt-1 text-center text-[10px] font-semibold text-stone-500">
+                              Se habilitará cuando la otra área termine su parte del pedido.
+                            </Text>
+                          </View>
+                        ) : !temporizador ? (
+                          /* 1. Estado inicial: Empezar preparación */
+                          <TouchableOpacity
+                            onPress={() => empezarPreparar(ticket)}
+                            className="mt-3 w-full rounded-2xl border-2 border-vino bg-mostaza py-2.5 active:bg-mostaza/80"
+                          >
+                            <Text
+                              style={{ fontFamily: "LaOriental" }}
+                              className="text-center text-sm uppercase tracking-wide text-vino"
+                            >
+                              Empezar a preparar
+                            </Text>
+                          </TouchableOpacity>
+                        ) : terminado ? (
+                          /* 2. Tiempo agotado: Botón verde completo */
+                          <TouchableOpacity
+                            onPress={() => marcarListo(ticket)}
+                            disabled={marcandoId !== null}
+                            className={`mt-3 w-full rounded-2xl bg-emerald-600 py-2.5 active:bg-emerald-700 ${
+                              marcandoId !== null ? "opacity-50" : ""
+                            }`}
+                          >
+                            <Text
+                              style={{ fontFamily: "LaOriental" }}
+                              className="text-center text-sm uppercase tracking-wide text-white"
+                            >
+                              {marcandoId === ticket.id ? "Marcando..." : "Listo!"}
+                            </Text>
+                          </TouchableOpacity>
+                        ) : (
+                          /* 3. Preparando (con cuenta regresiva) pero permitiendo marcar Listo antes */
+                          <TouchableOpacity
+                            onPress={() => marcarListo(ticket)}
+                            disabled={marcandoId !== null}
+                            activeOpacity={0.8}
+                            className={`mt-3 w-full rounded-2xl border-2 border-emerald-600 bg-emerald-50 py-2 px-3 flex-row items-center justify-between ${
+                              marcandoId !== null ? "opacity-50" : ""
+                            }`}
+                          >
+                            <View className="flex-row items-center">
+                              <Text className="text-base font-black text-emerald-800">
+                                ⏱ {formatoReloj(restante)}
+                              </Text>
+                              <Text className="ml-2 text-[11px] font-bold uppercase tracking-wide text-stone-500">
+                                Preparando...
+                              </Text>
+                            </View>
+
+                            <View className="rounded-xl bg-emerald-600 px-3 py-1">
+                              <Text
+                                style={{ fontFamily: "LaOriental" }}
+                                className="text-xs uppercase text-white tracking-wider"
+                              >
+                                {marcandoId === ticket.id ? "Marcando..." : "Listo"}
+                              </Text>
+                            </View>
+                          </TouchableOpacity>
+                        )}
+                      </View>
                     </View>
-                  ) : !temporizador ? (
-                    <TouchableOpacity
-                      onPress={() => empezarPreparar(ticket)}
-                      className="mt-3 w-full rounded-2xl border-2 border-vino bg-mostaza py-2.5 active:bg-mostaza/80"
-                    >
-                      <Text
-                        style={{ fontFamily: "LaOriental" }}
-                        className="text-center text-sm uppercase tracking-wide text-vino"
-                      >
-                        Empezar a preparar
-                      </Text>
-                    </TouchableOpacity>
-                  ) : terminado ? (
-                    <TouchableOpacity
-                      onPress={() => marcarListo(ticket)}
-                      disabled={marcandoId !== null}
-                      className={`mt-3 w-full rounded-2xl bg-emerald-600 py-2.5 active:bg-emerald-700 ${
-                        marcandoId !== null ? "opacity-50" : ""
-                      }`}
-                    >
-                      <Text
-                        style={{ fontFamily: "LaOriental" }}
-                        className="text-center text-sm uppercase tracking-wide text-white"
-                      >
-                        {marcandoId === ticket.id ? "Marcando..." : "Listo!"}
-                      </Text>
-                    </TouchableOpacity>
-                  ) : (
-                    <View className="mt-3 w-full items-center rounded-2xl border-2 border-calabaza bg-calabaza/10 py-2.5">
-                      <Text className="text-lg font-black text-calabaza">
-                        ⏱ {formatoReloj(restante)}
-                      </Text>
-                      <Text className="text-[10px] font-bold uppercase tracking-wide text-stone-500">
-                        Preparando...
-                      </Text>
-                    </View>
-                  )}
                   </View>
-                </View>
-                </View>
-              );
-            })}
-          </ScrollView>
-        )}
+                );
+              })}
+            </ScrollView>
+          )}
         </View>
 
         <FeedbackModal

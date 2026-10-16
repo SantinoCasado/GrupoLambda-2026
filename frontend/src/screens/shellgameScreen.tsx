@@ -85,10 +85,10 @@ const INSIGNIAS = {
 };
 
 const MENSAJES: Record<Fase, string> = {
-  reglas: "Tocá comenzar para jugar",
-  previo: "Mirá dónde está la bolita",
+  reglas: "Toque comenzar para jugar",
+  previo: "Mire dónde está la bolita",
   mezclando: "Mezclando…",
-  elegir: "Ahora tocá un vaso",
+  elegir: "Ahora toque un vaso",
   revelando: "Un momento…",
 };
 
@@ -288,9 +288,9 @@ export function ShellGameScreen({ onVolver }: Props) {
                 Cómo jugar
               </Text>
               <Text className="mb-6 text-center text-sm font-medium leading-5 text-amber-100">
-                Mirá bajo qué vaso está la bolita. Después los vasos se mezclan y tocá uno para
-                ver qué hay debajo. Si la encontrás en el primer intento, ganás un 25% de
-                descuento en tu pedido.
+                Mire bajo qué vaso está la bolita. Después de que los vasos se mezclen, toque uno para
+                ver qué hay debajo. Si la encuentra en el primer intento, ganará un 25% de
+                descuento en su pedido.
               </Text>
 
               <TouchableOpacity
@@ -323,8 +323,8 @@ export function ShellGameScreen({ onVolver }: Props) {
               </Text>
               <Text className="mb-6 text-center text-sm font-medium leading-5 text-amber-100">
                 {aciertoEnPrimerIntento
-                  ? "¡Ganaste un 25% de descuento en tu pedido!"
-                  : "El 25% de descuento era para el primer intento de la partida. Seguí jugando por diversión."}
+                  ? "¡Ganó un 25% de descuento en su pedido!"
+                  : "El 25% de descuento era para el primer intento de la partida. Siga jugando por diversión."}
               </Text>
 
               <View className="w-full flex-row gap-3">
@@ -377,10 +377,10 @@ export function ShellGameScreen({ onVolver }: Props) {
               </Text>
               <Text className="mt-1 text-xs font-semibold text-amber-100">
                 {premioGanado
-                  ? "¡Descuento asegurado! Ahora jugá por diversión."
+                  ? "¡Descuento asegurado! Ahora juegue por diversión."
                   : intentoDisponible
-                  ? "Encuentra la bola en el primer intento y gana un 25% de descuento"
-                  : "Ya usaste tu primer intento. Seguí jugando por diversión."}
+                  ? "Encuentre la bola en el primer intento y gane un 25% de descuento"
+                  : "Ya usó su primer intento. Siga jugando por diversión."}
               </Text>
 
               <View

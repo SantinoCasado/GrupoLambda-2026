@@ -11,6 +11,7 @@ import { CartProvider } from "./src/context/carritoContext";
 import { getSupabaseClient, supabase } from "./src/config/supabase";
 import { ClienteAnonimoSesion, eliminarClienteAnonimo } from "./src/services/clienteAnonimoService";
 import { obtenerModuloNotificaciones } from "./src/services/notificationsGateway";
+import { recuperarEstadoActivoCliente } from "./src/services/cuentaService";
 
 // Pantallas
 import AltaEmpleadoScreen from "./src/screens/altaEmpleadoScreen";
@@ -38,6 +39,12 @@ import { MemotestScreen } from "./src/screens/memotestScreen";
 import { PuzzleScreen } from "./src/screens/puzzleScreen";
 import { ShellGameScreen } from "./src/screens/shellgameScreen";
 import { TicketsScreen } from "./src/screens/ticketsScreen";
+import { PedidoRecibidoScreen } from "./src/screens/pedidoRecibidoScreen";
+import { EncuestaScreen } from "./src/screens/encuestaScreen";
+import { CuentaScreen } from "./src/screens/cuentaScreen";
+import { TransaccionesScreen } from "./src/screens/transaccionesScreen";
+import { EstadisticasScreen } from "./src/screens/estadisticasScreen";
+
 
 const NO_PHOTO = require("./assets/images/no-photo.jpg");
 
@@ -68,7 +75,12 @@ type VistaPrivada =
   | "memotest"
   | "puzzle"
   | "bolita"
-  | "tickets";
+  | "tickets"
+  | "pedido_recibido"
+  | "encuesta"
+  | "transacciones"
+  | "estadisticas"
+  | "cuenta";
 
 export default function App() {
   return (
@@ -92,11 +104,13 @@ function AppInterna() {
   const [enEsperaRegistrado, setEnEsperaRegistrado] = useState(false);
   const [idMesaCliente, setIdMesaCliente] = useState<string | null>(null);
   const [idPedidoActivo, setIdPedidoActivo] = useState<string | null>(null);
+  const [mesaCliente, setMesaCliente] = useState<string | number>("S/N");
   // Pedido rechazado que el cliente está corrigiendo en el carrito
   const [idPedidoEnEdicion, setIdPedidoEnEdicion] = useState<string | null>(null);
   const [motivoRechazoEdicion, setMotivoRechazoEdicion] = useState<string | null>(null);
   const [notifNuevoClientePendiente, setNotifNuevoClientePendiente] = useState(false);
   const [rolTickets, setRolTickets] = useState<"cocinero" | "cantinero">("cocinero");
+  const [propinaSeleccionada, setPropinaSeleccionada] = useState<number>(0);
   const [bannerNotif, setBannerNotif] = useState<{
     titulo: string;
     cuerpo: string;
@@ -478,51 +492,51 @@ function AppInterna() {
       const clienteId = usuarioActual?.id || clienteAnonimo?.user_id || clienteAnonimo?.id;
 
       if (clienteId) {
-        // 1. Trae TODAS sus entradas. Antes usaba .maybeSingle(): con dos
-        //    filas duplicadas PostgREST devuelve error (PGRST116) y `data`
-        //    quedaba en null, así que los pasos 2 y 3 no se ejecutaban y cada
-        //    cierre de sesión dejaba la mesa ocupada y la fila en la lista.
-        const { data: esperas, error: errorEspera } = await supabase
-          .from("waiting_list")
-          .select("id, assigned_table_id")
-          .eq("user_id", clienteId);
+        // 1. Verificamos si tiene un pedido activo que impida desalojarlo
+        const { data: pedidoActivo } = await supabase
+          .from("orders")
+          .select("id")
+          .eq("client_id", clienteId)
+          .not("status", "in", '("paid","cancelled")')
+          .limit(1)
+          .maybeSingle();
 
-        if (errorEspera) {
-          console.warn(
-            "⚠️ No se pudieron leer las entradas de lista de espera:",
-            errorEspera.message
+        // 2. SOLO si NO tiene pedido activo liberamos la mesa y la lista de espera
+        // (es decir, si solo estaba esperando o si ya pagó)
+        if (!pedidoActivo) {
+          const { data: esperas } = await supabase
+            .from("waiting_list")
+            .select("id, assigned_table_id")
+            .eq("user_id", clienteId);
+
+          const mesaIds = Array.from(
+            new Set(
+              (esperas ?? [])
+                .map((entrada) => entrada.assigned_table_id)
+                .filter((id): id is string => Boolean(id))
+            )
           );
-        }
 
-        const mesaIds = Array.from(
-          new Set(
-            (esperas ?? [])
-              .map((entrada) => entrada.assigned_table_id)
-              .filter((id): id is string => Boolean(id))
-          )
-        );
+          for (const mesaId of mesaIds) {
+            await supabase
+              .from("restaurant_tables")
+              .update({ availability: "free", status: "available", current_client_id: null })
+              .eq("id", mesaId);
+          }
 
-        // 2. Libera todas las mesas que tuviera asignadas
-        for (const mesaId of mesaIds) {
-          await supabase
-            .from("restaurant_tables")
-            .update({ availability: "free" })
-            .eq("id", mesaId);
-        }
+          if (esperas && esperas.length > 0) {
+            await supabase.from("waiting_list").delete().eq("user_id", clienteId);
+          }
 
-        // 3. Borra todas sus entradas de la lista de espera
-        if (esperas && esperas.length > 0) {
-          await supabase.from("waiting_list").delete().eq("user_id", clienteId);
-        }
-
-        // 4. Si era anónimo, limpia el usuario temporal y su foto
-        if (usuarioActual?.perfil === "cliente_anonimo" || clienteAnonimo) {
-          const foto = clienteAnonimo?.client_photo || usuarioActual?.foto;
-          await eliminarClienteAnonimo(clienteId, foto);
+          // Si era anónimo y ya no tiene nada pendiente, limpiamos el temporal
+          if (usuarioActual?.perfil === "cliente_anonimo" || clienteAnonimo) {
+            const foto = clienteAnonimo?.client_photo || usuarioActual?.foto;
+            await eliminarClienteAnonimo(clienteId, foto);
+          }
         }
       }
     } catch (err: any) {
-      console.warn("⚠️ Error durante la limpieza al cerrar sesión:", err.message);
+      console.warn("⚠️ Error durante el cierre de sesión:", err.message);
     } finally {
       getSupabaseClient()?.auth.signOut().catch((error: any) => {
         console.warn("Error al cerrar sesión en Supabase:", error.message);
@@ -531,7 +545,7 @@ function AppInterna() {
       setClienteAnonimo(null);
       setNumeroMesaCliente(null);
       setIdMesaCliente(null);
-      setIdPedidoActivo(null); // Limpieza al salir
+      setIdPedidoActivo(null);
       setIdPedidoEnEdicion(null);
       setMotivoRechazoEdicion(null);
       setVistaPrivada("home");
@@ -551,6 +565,12 @@ function AppInterna() {
 
   const volverAlInicio = () => {
     Vibration.vibrate([0, 40]);
+    // Si está editando una comanda rechazada, la casita lo lleva a la carta
+    // para que pueda seguir sumando o viendo platos sin bloquearse
+    if (idPedidoEnEdicion) {
+      setVistaPrivada("carta");
+      return;
+    }
     setVistaPrivada("home");
   };
 
@@ -640,21 +660,11 @@ function AppInterna() {
             setUsuarioActual(usuario);
             void registrarPushToken(usuario.id);
 
-            if (procesarPendienteListaEspera(usuario)) {
-              return;
-            }
-
-            if (procesarPendienteComanda(usuario)) {
-              return;
-            }
-
-            if (procesarPendientePedido(usuario)) {
-              return;
-            }
-
-            if (await procesarPendienteChat(usuario)) {
-              return;
-            }
+            // 1. Manejo de pendientes por notificaciones push (si las hubiera)
+            if (procesarPendienteListaEspera(usuario)) return;
+            if (procesarPendienteComanda(usuario)) return;
+            if (procesarPendientePedido(usuario)) return;
+            if (await procesarPendienteChat(usuario)) return;
 
             if (
               notifNuevoClientePendiente &&
@@ -665,32 +675,42 @@ function AppInterna() {
               return;
             }
 
-            if (usuario.perfil === "cliente_registrado") {
-              // El cliente registrado siempre arranca por la puerta: escanear el
-              // QR de entrada, esperar que el metre le asigne una mesa y recién
-              // ahí escanear el QR de la mesa para llegar al home.
-              setNumeroMesaCliente(null);
-              setIdMesaCliente(null);
-              setEnEsperaRegistrado(true);
+            // 2. RECUPERACIÓN DE SESIÓN ACTIVA (Si es cliente registrado o anónimo)
+            if (usuario.perfil === "cliente_registrado" || usuario.perfil === "cliente_anonimo") {
+              const estado = await recuperarEstadoActivoCliente(usuario.id);
 
-              // Consulta si tiene comanda activa en preparación
-              const { data: pedidoEnCurso } = await supabase
-                .from("orders")
-                .select("id")
-                .eq("client_id", usuario.id)
-                .in("status", ["pending", "in_preparation", "ready"])
-                .order("created_at", { ascending: false })
-                .limit(1)
-                .maybeSingle();
+              if (estado.pantallaDestino !== "inicio") {
+                // Restauramos los datos de la mesa y el pedido
+                if (estado.numeroMesa) {
+                  setNumeroMesaCliente(Number(estado.numeroMesa) || null);
+                  setMesaCliente(estado.numeroMesa);
+                }
+                if (estado.mesaId) {
+                  setIdMesaCliente(estado.mesaId);
+                }
+                if (estado.pedidoId) {
+                  setIdPedidoActivo(estado.pedidoId);
+                }
+                if (estado.propina !== undefined) {
+                  setPropinaSeleccionada(estado.propina);
+                }
 
-              if (pedidoEnCurso) {
-                setIdPedidoActivo(pedidoEnCurso.id);
-              } else {
-                setIdPedidoActivo(null);
+                // Desactivamos la puerta/espera porque ya tiene estadía activa
+                setEnEsperaRegistrado(false);
+
+                // Lo mandamos directo a la pantalla que le corresponde
+                setVistaPrivada(estado.pantallaDestino as any);
+                return;
               }
 
+              // Si no tiene mesa ni comanda activa previa, hace el flujo normal de puerta
+              setNumeroMesaCliente(null);
+              setIdMesaCliente(null);
+              setIdPedidoActivo(null);
+              setEnEsperaRegistrado(true);
               setVistaPrivada("home");
             } else {
+              // Empleados, mozos, metre, cocinero, etc.
               setVistaPrivada("home");
             }
           }}
@@ -790,7 +810,7 @@ function AppInterna() {
             onNavigate={irA}
             numeroMesa={numeroMesaCliente}
             onSolicitarMesa={() => setEnEsperaRegistrado(true)}
-            pedidoActivoId={idPedidoActivo}
+            pedidoActivoId={idPedidoEnEdicion ? null : idPedidoActivo}
             onVerEstadoPedido={() => setVistaPrivada("estado_pedido")}
           />
         </View>
@@ -800,7 +820,7 @@ function AppInterna() {
 
   // 4. Validación de Acceso a Vistas Privadas
   const accesoValido =
-    vistaPrivada === "empleados" || vistaPrivada === "mesas" || vistaPrivada === "clientes"
+    vistaPrivada === "empleados" || vistaPrivada === "mesas" || vistaPrivada === "clientes" || vistaPrivada === "estadisticas"
       ? esAdmin
       : vistaPrivada === "producto" || vistaPrivada === "preparacion"
       ? esProducto
@@ -808,7 +828,7 @@ function AppInterna() {
       ? usuarioActual.perfil === "cocinero" || usuarioActual.perfil === "cantinero"
       : vistaPrivada === "registro_metre" || vistaPrivada === "metre"
       ? usuarioActual.perfil === "metre" || esAdmin
-      : vistaPrivada === "comandas" || vistaPrivada === "chat_mesas" || vistaPrivada === "pedidos_listos"
+      : vistaPrivada === "comandas" || vistaPrivada === "chat_mesas" || vistaPrivada === "pedidos_listos" || vistaPrivada === "transacciones"
       ? usuarioActual.perfil === "mozo" || esAdmin
       : vistaPrivada === "carta"
       ? esProducto || esCliente
@@ -904,7 +924,13 @@ function AppInterna() {
             tipo={tipoCartaSeleccionada}
             rolUsuario={usuarioActual.perfil}
             numeroMesa={numeroMesaCliente ?? undefined}
-            onVolver={volverAlInicio}
+            onVolver={() => {
+              if (idPedidoEnEdicion) {
+                setVistaPrivada("carrito");
+              } else {
+                volverAlInicio();
+              }
+            }}
             onIrAlCarrito={() => setVistaPrivada("carrito")}
             onAbrirChatMozo={() => setVistaPrivada("chat_mozo")}
           />
@@ -932,17 +958,68 @@ function AppInterna() {
           />
         )}
 
+
         {/* Seguimiento de Estado del Pedido */}
         {vistaPrivada === "estado_pedido" && (
           <EstadoPedidoScreen
             pedidoId={idPedidoActivo || ""}
             onVolver={volverAlInicio}
             onIrAJuegos={() => setVistaPrivada("juegos")}
+            onConfirmarRecepcion={(_id, mesa) => {
+              setMesaCliente(mesa);
+              setVistaPrivada("pedido_recibido" as any);
+            }}
             onEditarComanda={(motivo) => {
               if (!idPedidoActivo) return;
               setIdPedidoEnEdicion(idPedidoActivo);
               setMotivoRechazoEdicion(motivo);
               setVistaPrivada("carrito");
+            }}
+          />
+        )}
+
+        {/* Pantalla Post-Entrega: Juegos, Encuesta, Pedir Cuenta */}
+        {vistaPrivada === "pedido_recibido" && (
+          <PedidoRecibidoScreen
+            pedidoId={idPedidoActivo || ""}
+            numeroMesa={mesaCliente}
+            onIrAJuegos={() => setVistaPrivada("juegos")}
+            onIrAEncuesta={() => setVistaPrivada("encuesta" as any)}
+            onPedirCuenta={(_id, porcentaje) => {
+              setPropinaSeleccionada(porcentaje);
+              setVistaPrivada("cuenta" as any);
+            }}
+            onVolver={volverAlInicio}
+          />
+        )}
+
+        {vistaPrivada === "encuesta" && (
+          <EncuestaScreen
+            pedidoId={idPedidoActivo || ""}
+            userId={usuarioActual?.id}
+            userRole={usuarioActual?.perfil || "cliente_registrado"}
+            onVolver={() => setVistaPrivada("pedido_recibido" as any)}
+          />
+        )}
+
+        {vistaPrivada === "cuenta" && (
+          <CuentaScreen
+            pedidoId={idPedidoActivo || ""}
+            propinaPorcentaje={propinaSeleccionada}
+            onPagoCompletado={async () => {
+              // Limpia los identificadores de la estadía
+              setIdPedidoActivo(null);
+              setMesaCliente("S/N");
+              setNumeroMesaCliente(null);
+              setIdMesaCliente(null);
+              
+              // Desloguea al cliente y lo manda al login limpio
+              await cerrarSesion();
+            }}
+            onVolver={async () => {
+              // Si aprieta la flecha de volver arriba en la pantalla de pago,
+              // cierra sesión y manda al login
+              await cerrarSesion();
             }}
           />
         )}
@@ -980,6 +1057,16 @@ function AppInterna() {
         {/* Pedidos listos del Mozo */}
         {vistaPrivada === "pedidos_listos" && (
           <PedidosListosScreen />
+        )}
+
+        {/* Transacciones del Mozo */}
+        {vistaPrivada === "transacciones" && (
+          <TransaccionesScreen onVolver={volverAlInicio} />
+        )}
+
+        {/* Estadísticas de Encuestas (Dueño / Supervisor) */}
+        {vistaPrivada === "estadisticas" && (
+          <EstadisticasScreen onVolver={volverAlInicio} />
         )}
 
         {/* Tickets de Cocina / Bar */}

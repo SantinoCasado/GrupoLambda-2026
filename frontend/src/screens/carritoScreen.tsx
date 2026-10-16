@@ -1,4 +1,3 @@
-// src/screens/carritoScreen.tsx
 import React, { useState, useRef, useEffect } from "react";
 import { View, Text, FlatList, TouchableOpacity, Image, Alert, ActivityIndicator, Modal } from "react-native";
 import { useCart, ItemCarrito } from "../context/carritoContext";
@@ -14,7 +13,7 @@ interface CarritoScreenProps {
   onVolver: () => void;
   onPedidoConfirmado: (pedido: Pedido) => void;
   /** Pedido rechazado que se está corrigiendo. Si viene definido, el envío
-   *  corrige esa orden en vez de crear una nueva. */
+   *  corrige esa orden en vez de crear una nueva. **/
   pedidoIdEnEdicion?: string | null;
   motivoRechazo?: string | null;
   onCerrarEdicion?: () => void;
@@ -116,7 +115,7 @@ export function CarritoScreen({
       onPedidoConfirmado({
         id: pedidoId,
         status: "cancelled",
-        rejection_reason: motivo || "El mozo no pudo confirmar tu pedido.",
+        rejection_reason: motivo || "El mozo no pudo confirmar su pedido.",
       } as Pedido);
     }
   };
@@ -235,8 +234,8 @@ export function CarritoScreen({
         tipo: "exito",
         titulo: "¡Carrito vaciado!",
         mensaje: modoEdicion
-          ? "Quitaste todos los productos. Agregá algo de nuevo para poder reenviar la comanda."
-          : "Se eliminaron todos los productos de tu pedido.",
+          ? "Ha quitado todos los productos. Agregue algo de nuevo para poder reenviar la comanda."
+          : "Se eliminaron todos los productos de su pedido.",
       });
     }, 800);
   };
@@ -392,8 +391,8 @@ export function CarritoScreen({
             </Text>
             <Text className="text-xs text-stone-500 mt-1">
               {modoEdicion
-                ? "No podés reenviar una comanda vacía. Agregá productos o tocá Cancelar para volver."
-                : "Agregá platos o bebidas desde la carta para armar tu pedido."}
+                ? "No puede reenviar una comanda vacía. Agregue productos o toque Cancelar para volver."
+                : "Agregue platos o bebidas desde la carta para armar su pedido."}
             </Text>
           </View>
         }
@@ -452,10 +451,10 @@ export function CarritoScreen({
               Esperando confirmación
             </Text>
             <Text className="mt-2 text-center text-xs text-amber-100/90 leading-relaxed">
-              Tu pedido para la <Text className="font-bold text-mostaza">Mesa #{numeroMesa}</Text> fue recibido.
+              Su pedido para la <Text className="font-bold text-mostaza">Mesa #{numeroMesa}</Text> fue recibido.
             </Text>
             <Text className="mt-2 text-center text-[11px] text-amber-200/70">
-              El pedido necesita confirmación del mozo para comenzar a ser preparado.
+              El pedido necesita la confirmación del mozo para comenzar a ser preparado.
             </Text>
           </View>
         </View>
@@ -466,8 +465,8 @@ export function CarritoScreen({
         titulo="Vaciar carrito"
         mensaje={
           modoEdicion
-            ? "¿Desea quitar todos los productos? Tu comanda rechazada no se modifica hasta que la reenvíes, y no podrás enviarla vacía."
-            : "¿Desea vaciar el carrito? Se eliminarán todos los productos de tu pedido."
+            ? "¿Desea quitar todos los productos? Su comanda rechazada no se modifica hasta que la reenvíe, y no podrá enviarla vacía."
+            : "¿Desea vaciar el carrito? Se eliminarán todos los productos de su pedido."
         }
         textoConfirmar="Vaciar"
         textoCancelar="Cancelar"

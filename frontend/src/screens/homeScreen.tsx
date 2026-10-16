@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { View, Text, TouchableOpacity, Image, Vibration, Modal, LayoutChangeEvent } from "react-native";
+import { View, Text, TouchableOpacity, Image, Vibration, Modal, LayoutChangeEvent, ScrollView } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { UsuarioSeed } from "../data/usuariosPrecargados";
 import { ChineseFrame } from "../components/ChineseFrame";
@@ -18,6 +18,7 @@ export type HomeDestino =
   | "chat_mesas"
   | "pedidos_listos"
   | "estadisticas"
+  | "transacciones"
   | "preparacion";
 
 const PERFILES_EMPLEADO = [
@@ -138,9 +139,9 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                 </Text>
               </TouchableOpacity>
 
-              {/* Segunda acción: más grande que las de abajo, más chica que la principal */}
+              {/* Segunda acción: Estadísticas */}
               <TouchableOpacity
-                onPress={() => Vibration.vibrate([0, 40])}
+                onPress={() => navegar("estadisticas")}  // <--- Cambiado aquí
                 className="flex-row items-center justify-center rounded-2xl border-2 border-mostaza bg-vino px-6 active:bg-terracota"
                 style={{ paddingVertical: px(16, 0.06) }}
               >
@@ -311,8 +312,24 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                     resizeMode="contain"
                   />
                 </TouchableOpacity>
+              ) : pedidoActivoId ? (
+                /* ESTADO 2A: CON MESA Y CON PEDIDO CONFIRMADO (Se ocultan las cartas) */
+                <View className="rounded-2xl border-2 border-mostaza/50 bg-vino/90 p-5 shadow-md">
+                  <View className="flex-row items-center mb-2">
+                    <Text className="text-2xl mr-3">🍲</Text>
+                    <Text
+                      style={{ fontFamily: "LaOriental" }}
+                      className="text-lg uppercase text-mostaza"
+                    >
+                      Comanda en Proceso
+                    </Text>
+                  </View>
+                  <Text className="text-xs text-amber-100 leading-4">
+                    Su pedido ya fue enviado a cocina y barra. Puede consultar el estado de preparación y tiempos de entrega desde el botón al pie de la pantalla.
+                  </Text>
+                </View>
               ) : (
-                /* ESTADO 2: YA TIENE MESA ASIGNADA */
+                /* ESTADO 2B: CON MESA PERO SIN PEDIDO ACTIVO (Se muestran las cartas) */
                 <>
                   {/* Carta de Platos */}
                   <TouchableOpacity
@@ -423,21 +440,25 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
 
           {/* 5. MOZO */}
           {perfil === "mozo" && (
-            <View className="flex-1 gap-y-2 pb-2">
-              <Text className="text-xs font-bold text-vino uppercase">Operación de Salón</Text>
+            <ScrollView 
+              className="flex-1" 
+              contentContainerStyle={{ paddingBottom: 20 }}
+              showsVerticalScrollIndicator={false}
+            >
+              <Text className="text-xs font-bold text-vino uppercase mb-2">Operación de Salón</Text>
 
+              {/* Botón Principal: Comandas */}
               <TouchableOpacity
                 onPress={() => navegar("comandas")}
-                className="items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota shadow-md"
-                style={{ flexGrow: 3, flexShrink: 1, flexBasis: 0, padding: px(24, 0.07) }}
+                className="items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota shadow-md mb-2.5 py-5"
               >
                 <Image
                   source={require("../../assets/images/serving-y.png")}
-                  style={{ height: px(192, 0.38), width: px(192, 0.38), marginBottom: px(12, 0.03) }}
+                  style={{ height: 80, width: 80, marginBottom: 6 }}
                   resizeMode="contain"
                 />
                 <Text
-                  style={{ fontFamily: "LaOriental", fontSize: texto(30, 0.08) }}
+                  style={{ fontFamily: "LaOriental", fontSize: 22 }}
                   className="text-center uppercase tracking-wider text-mostaza"
                 >
                   Comandas
@@ -447,40 +468,57 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
               {/* Chat Mesas */}
               <TouchableOpacity
                 onPress={() => navegar("chat_mesas")}
-                className="items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota shadow-md"
-                style={{ flexGrow: 2, flexShrink: 1, flexBasis: 0, padding: px(12, 0.05) }}
+                className="flex-row items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota shadow-md mb-2.5 py-3 px-4"
               >
                 <Image
                   source={require("../../assets/images/table-y.png")}
-                  style={{ height: px(96, 0.2), width: px(96, 0.2), marginBottom: px(4, 0.02) }}
+                  style={{ height: 36, width: 36, marginRight: 10 }}
                   resizeMode="contain"
                 />
                 <Text
-                  style={{ fontFamily: "LaOriental", fontSize: texto(20, 0.06) }}
+                  style={{ fontFamily: "LaOriental", fontSize: 18 }}
                   className="text-center uppercase tracking-wider text-mostaza"
                 >
                   Chat Mesas
                 </Text>
               </TouchableOpacity>
 
+              {/* Pedidos Listos */}
               <TouchableOpacity
                 onPress={() => navegar("pedidos_listos")}
-                className="items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota shadow-md"
-                style={{ flexGrow: 2, flexShrink: 1, flexBasis: 0, padding: px(12, 0.05) }}
+                className="flex-row items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota shadow-md mb-2.5 py-3 px-4"
               >
                 <Image
                   source={require("../../assets/images/dish-y.png")}
-                  style={{ height: px(96, 0.2), width: px(96, 0.2), marginBottom: px(4, 0.02) }}
+                  style={{ height: 36, width: 36, marginRight: 10 }}
                   resizeMode="contain"
                 />
                 <Text
-                  style={{ fontFamily: "LaOriental", fontSize: texto(20, 0.06) }}
+                  style={{ fontFamily: "LaOriental", fontSize: 18 }}
                   className="text-center uppercase tracking-wider text-mostaza"
                 >
                   Pedidos Listos
                 </Text>
               </TouchableOpacity>
-            </View>
+
+              {/* Transacciones (Cobros de Cuentas) */}
+              <TouchableOpacity
+                onPress={() => navegar("transacciones")}
+                className="flex-row items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota shadow-md mb-2.5 py-3 px-4"
+              >
+                <Image
+                  source={require("../../assets/images/dish-y.png")} // o el icono que prefieras
+                  style={{ height: 36, width: 36, marginRight: 10 }}
+                  resizeMode="contain"
+                />
+                <Text
+                  style={{ fontFamily: "LaOriental", fontSize: 18 }}
+                  className="text-center uppercase tracking-wider text-mostaza"
+                >
+                  Transacciones
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
           )}
 
           {/* 6. OTROS */}
@@ -516,7 +554,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                   Ver Estado de mi Pedido
                 </Text>
                 <Text className="text-xs text-emerald-100">
-                  Pedido en preparación. Revisá tiempos y avance.
+                  Puede verificar el estado de su pedido. Revise tiempos y avance.
                 </Text>
               </View>
               <Image source={require("../../assets/images/right-arrow-w.png")} className="h-6 w-6" resizeMode="contain" />
