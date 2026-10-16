@@ -215,22 +215,9 @@ export function EstadoPedidoScreen({
                   {estaEntregado ? "¡Pedido servido!" : "Tiempo estimado"}
                 </Text>
                 <Text className="text-2xl font-black text-mostaza">
-                  {estaEntregado ? "🍲 ¡En tu mesa!" : `⏱ ~${pedido?.estimated_delivery_time || 15} min`}
+                  {estaEntregado ? "¡En tu mesa!" : `⏱ ~${pedido?.estimated_delivery_time || 15} min`}
                 </Text>
               </View>
-              {onIrAJuegos && (
-                <TouchableOpacity
-                  onPress={onIrAJuegos}
-                  className="items-center rounded-2xl border-2 border-caramelo bg-calabaza p-3 active:bg-terracota"
-                >
-                  <Image
-                    source={require("../../assets/images/joystick-w.png")}
-                    className="h-6 w-6"
-                    resizeMode="contain"
-                  />
-                  <Text className="text-[10px] font-bold text-white uppercase mt-0.5">Juegos</Text>
-                </TouchableOpacity>
-              )}
             </View>
           </View>
         )}

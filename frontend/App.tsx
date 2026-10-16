@@ -114,6 +114,9 @@ function AppInterna() {
   // Pantalla desde la que se abrió el chat del mozo, para que el botón
   // "volver" del header regrese al origen real (carta, chat_mesas, etc.)
   const [vistaOrigenChat, setVistaOrigenChat] = useState<VistaPrivada | null>(null);
+  // Pantalla desde la que se abrieron los juegos (home, estado_pedido o
+  // pedido_recibido), para que su botón "volver" regrese al origen real.
+  const [vistaOrigenJuegos, setVistaOrigenJuegos] = useState<VistaPrivada | null>(null);
 
   const [avisoNotif, setAvisoNotif] = useState<{
     visible: boolean;
@@ -204,6 +207,14 @@ function AppInterna() {
   const abrirChatMozo = () => {
     setVistaOrigenChat(vistaPrivada === "chat_mozo" ? null : vistaPrivada);
     setVistaPrivada("chat_mozo");
+  };
+
+  // Abre la pantalla de juegos y recuerda desde dónde se llegó (home,
+  // estado_pedido o pedido_recibido) para que su botón "volver" regrese al
+  // origen correcto en vez de caer siempre en el seguimiento del pedido.
+  const abrirJuegos = (origen: VistaPrivada) => {
+    setVistaOrigenJuegos(origen);
+    setVistaPrivada("juegos");
   };
 
   // Apertura del chat desde el badge "MESA #" del home del cliente. El chat
@@ -820,6 +831,7 @@ function AppInterna() {
             pedidoActivoId={idPedidoEnEdicion ? null : idPedidoActivo}
             onVerEstadoPedido={() => setVistaPrivada("estado_pedido")}
             onAbrirChatMozo={esCliente ? abrirChatMozoDesdeHome : undefined}
+            onIrAJuegos={() => abrirJuegos("home")}
           />
         </View>
       </SafeAreaView>
@@ -857,6 +869,7 @@ function AppInterna() {
             pedidoActivoId={idPedidoActivo}
             onVerEstadoPedido={() => setVistaPrivada("estado_pedido")}
             onAbrirChatMozo={esCliente ? abrirChatMozoDesdeHome : undefined}
+            onIrAJuegos={() => abrirJuegos("home")}
           />
         </View>
       </SafeAreaView>
@@ -973,7 +986,7 @@ function AppInterna() {
           <EstadoPedidoScreen
             pedidoId={idPedidoActivo || ""}
             onVolver={volverAlInicio}
-            onIrAJuegos={() => setVistaPrivada("juegos")}
+            onIrAJuegos={() => abrirJuegos("estado_pedido")}
             onConfirmarRecepcion={(_id, mesa) => {
               setMesaCliente(mesa);
               setVistaPrivada("pedido_recibido" as any);
@@ -992,7 +1005,7 @@ function AppInterna() {
           <PedidoRecibidoScreen
             pedidoId={idPedidoActivo || ""}
             numeroMesa={mesaCliente}
-            onIrAJuegos={() => setVistaPrivada("juegos")}
+            onIrAJuegos={() => abrirJuegos("pedido_recibido")}
             onIrAEncuesta={() => setVistaPrivada("encuesta" as any)}
             onPedirCuenta={(_id, porcentaje) => {
               setPropinaSeleccionada(porcentaje);
@@ -1036,7 +1049,7 @@ function AppInterna() {
         {/* Juegos de la Mesa */}
         {vistaPrivada === "juegos" && (
           <JuegosHomeScreen
-            onVolver={() => setVistaPrivada("estado_pedido")}
+            onVolver={() => setVistaPrivada(vistaOrigenJuegos ?? "estado_pedido")}
             onIrAMemotest={() => setVistaPrivada("memotest")}
             onIrAPuzzle={() => setVistaPrivada("puzzle")}
             onIrABolita={() => setVistaPrivada("bolita")}

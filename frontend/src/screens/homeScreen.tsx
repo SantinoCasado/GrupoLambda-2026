@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { UsuarioSeed } from "../data/usuariosPrecargados";
 import { ChineseFrame } from "../components/ChineseFrame";
 import { useCart } from "../context/carritoContext";
+import { usePedidoAprobado } from "../hooks/usePedidoAprobado";
 
 export type HomeDestino =
   | "empleados"
@@ -43,11 +44,16 @@ interface Props {
   pedidoActivoId?: string | null;
   onVerEstadoPedido?: () => void;
   onAbrirChatMozo?: () => void;
+  onIrAJuegos?: () => void;
 }
 
-export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicitarMesa, pedidoActivoId, onVerEstadoPedido, onAbrirChatMozo }: Props) {
+export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicitarMesa, pedidoActivoId, onVerEstadoPedido, onAbrirChatMozo, onIrAJuegos }: Props) {
   const [modalPerfilVisible, setModalPerfilVisible] = useState(false);
   const { carrito } = useCart();
+
+  // El pedido activo solo habilita "Juegos" una vez que el mozo lo aprobó
+  // (pasó de 'pending'). Se consulta una vez al cargar la pantalla.
+  const pedidoAprobado = usePedidoAprobado(pedidoActivoId);
 
   // La zona de botones se mide con onLayout porque es la única forma exacta de
   // saber cuánto alto sobra después del encabezado fijo y del pie de cliente:
@@ -339,19 +345,52 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                 </TouchableOpacity>
               ) : pedidoActivoId ? (
                 /* ESTADO 2A: CON MESA Y CON PEDIDO CONFIRMADO (Se ocultan las cartas) */
-                <View className="rounded-2xl border-2 border-mostaza/50 bg-vino/90 p-5">
-                  <View className="flex-row items-center mb-2">
-                    <Text className="text-2xl mr-3">🍲</Text>
-                    <Text
-                      style={{ fontFamily: "LaOriental" }}
-                      className="text-lg uppercase text-mostaza"
+                <View className="flex-1 gap-y-4 pb-2">
+                  <TouchableOpacity
+                    onPress={onVerEstadoPedido}
+                    className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza bg-vino px-6 active:bg-terracota"
+                    style={{ minHeight: px(250, 0.5) }}
+                  >
+                    <Image 
+                    source={require("../../assets/images/cart-y.png")} 
+                    style={{ height: px(120, 0.25), width: px(120, 0.25) }}
+                    />
+                    
+                    <Text 
+                      style={{ fontFamily: "LaOriental", fontSize: texto(28, 0.065) }}
+                      className="mt-3 text-center uppercase tracking-wider text-mostaza"
                     >
-                      Comanda en Proceso
+                      Ver Estado de mi Pedido
                     </Text>
-                  </View>
-                  <Text className="text-xs text-amber-100 leading-4">
-                    Su pedido ya fue enviado a cocina y barra. Puede consultar el estado de preparación y tiempos de entrega desde el botón al pie de la pantalla.
-                  </Text>
+                    
+                  </TouchableOpacity>
+
+                  {/* Juegos: solo si el mozo ya aprobó la comanda */}
+                  {pedidoAprobado && onIrAJuegos && (
+                    <TouchableOpacity
+                      onPress={() => {
+                        Vibration.vibrate([0, 40]);
+                        onIrAJuegos();
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel="Ir a los juegos de la mesa"
+                      className="flex-1 items-center justify-center rounded-2xl border-2 border-vino bg-mostaza px-6 active:bg-terracota"
+                      style={{ minHeight: px(120, 0.4) }}
+                    >
+                      <Image
+                        source={require("../../assets/images/joystick-v.png")}
+                        style={{ height: px(110, 0.25), width: px(110, 0.25) }}
+                        resizeMode="contain"
+                      />
+                      <Text
+                        style={{ fontFamily: "LaOriental", fontSize: texto(30, 0.065) }}
+                        className=" text-center uppercase tracking-wider text-vino"
+                      >
+                        Juegos
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  
                 </View>
               ) : (
                 /* ESTADO 2B: CON MESA PERO SIN PEDIDO ACTIVO (Se muestran las cartas
@@ -551,20 +590,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
       {/* Botón fijo al pie: Mi Pedido, o Ver Estado si hay pedido activo (solo clientes) */}
       {esCliente && (
         <View className="px-6 pb-6 pt-2">
-          {pedidoActivoId ? (
-            <TouchableOpacity
-              onPress={onVerEstadoPedido}
-              className="flex-row items-center rounded-2xl border-2 border-emerald-600 bg-emerald-700/90 p-4  active:bg-emerald-800"
-            >
-              <Image source={require("../../assets/images/cart-w.png")} className="h-8 w-8 mr-3" resizeMode="contain" />
-              <View className="flex-1">
-                <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase text-white">
-                  Ver Estado de mi Pedido
-                </Text>
-              </View>
-              <Image source={require("../../assets/images/right-arrow-w.png")} className="h-6 w-6" resizeMode="contain" />
-            </TouchableOpacity>
-          ) : (
+          {!pedidoActivoId ? (
             <TouchableOpacity
               onPress={() => navegar("carrito")}
               className="flex-row items-center rounded-2xl border-2 border-vino bg-mostaza px-3 py-2.5 active:bg-mostaza/80"
@@ -577,7 +603,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
               </View>
               <Image source={require("../../assets/images/right-arrow-v.png")} className="h-7 w-7 tint-vino" resizeMode="contain" />
             </TouchableOpacity>
-          )}
+          ) : ("")}
         </View>
       )}
 
