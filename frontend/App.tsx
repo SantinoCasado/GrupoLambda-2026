@@ -585,10 +585,7 @@ function AppInterna() {
     Vibration.vibrate([0, 40]);
     // Si está editando una comanda rechazada, la casita lo lleva a la carta
     // para que pueda seguir sumando o viendo platos sin bloquearse
-    if (idPedidoEnEdicion) {
-      setVistaPrivada("carta");
-      return;
-    }
+    
     setVistaPrivada("home");
   };
 
