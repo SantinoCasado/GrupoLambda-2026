@@ -22,6 +22,7 @@ type Fase = "reglas" | "previo" | "mezclando" | "elegir" | "revelando";
 
 const VASO = require("../../assets/images/games/cup.png");
 const BOLA = require("../../assets/images/games/ball.png");
+const FONDO = require("../../assets/images/games/background_test_2.png");
 
 const CANTIDAD_VASOS = 3;
 /** Cantidad de intercambios de la ronda: define la dificultad del mezclado. */
@@ -33,7 +34,6 @@ const MS_ACIERTO = 900;
 const MS_FALLO = 1400;
 const MS_ESPERA = 250;
 const GAP = 12;
-/** Holgura para que la inclinación del vaso no se corte en los bordes. */
 /** Holgura para que la inclinación del vaso no se corte en los bordes. */
 const MARGEN = 12;
 /** Holgura bajo la línea de apoyo, donde el vaso inclinado se sale un poco. */
@@ -88,7 +88,7 @@ const MENSAJES: Record<Fase, string> = {
   reglas: "Toque comenzar para jugar",
   previo: "Mire dónde está la bolita",
   mezclando: "Mezclando…",
-  elegir: "Ahora toque un vaso",
+  elegir: "Elija un vaso",
   revelando: "Un momento…",
 };
 
@@ -289,8 +289,7 @@ export function ShellGameScreen({ onVolver }: Props) {
               </Text>
               <Text className="mb-6 text-center text-sm font-medium leading-5 text-amber-100">
                 Mire bajo qué vaso está la bolita. Después de que los vasos se mezclen, toque uno para
-                ver qué hay debajo. Si la encuentra en el primer intento, ganará un 25% de
-                descuento en su pedido.
+                ver qué hay debajo. Si encuentra la bolita, gana.
               </Text>
 
               <TouchableOpacity
@@ -323,8 +322,8 @@ export function ShellGameScreen({ onVolver }: Props) {
               </Text>
               <Text className="mb-6 text-center text-sm font-medium leading-5 text-amber-100">
                 {aciertoEnPrimerIntento
-                  ? "¡Ganó un 25% de descuento en su pedido!"
-                  : "El 25% de descuento era para el primer intento de la partida. Siga jugando por diversión."}
+                  ? "Logró encontrar la bolita al primer intento. ¡Ganó un 25% de descuento en su pedido!"
+                  : `Felicidades, encontraste la bolita al intento número ${intentos}.`}
               </Text>
 
               <View className="w-full flex-row gap-3">
@@ -375,7 +374,7 @@ export function ShellGameScreen({ onVolver }: Props) {
               <Text style={{ fontFamily: "LaOriental" }} className="text-2xl text-mostaza uppercase">
                 ¿Y la bolita?
               </Text>
-              <Text className="mt-1 text-xs font-semibold text-amber-100">
+              <Text className="mt-1 text-xs font-semibold text-center text-amber-100">
                 {premioGanado
                   ? "¡Descuento asegurado! Ahora juegue por diversión."
                   : intentoDisponible
@@ -407,71 +406,94 @@ export function ShellGameScreen({ onVolver }: Props) {
           <Text className="text-xs font-semibold uppercase text-amber-100">
             {MENSAJES[fase]}
           </Text>
-          <Text style={{ fontFamily: "LaOriental" }} className="text-base text-mostaza">
-            Intento {intentos}
-          </Text>
+          <View className="flex-row items-center">
+            <Text className="text-base text-amber-100 font-black mr-1">
+              INTENTO NÚMERO:
+            </Text>
+            <Text style={{ fontFamily: "LaOriental" }} className="mt-1 text-xl text-mostaza">
+              {intentos}
+            </Text>
+          </View>
         </View>
 
         {/* Tablero: la bolita va detrás de los vasos y asoma al levantarlos. */}
-        <View
-          style={{
-            width: ANCHO_TABLERO,
-            height: ALTO_TABLERO,
-            alignSelf: "center",
-            marginTop: 8,
-          }}
-        >
-          <Animated.Image
-            source={BOLA}
-            resizeMode="contain"
+        <View 
             style={{
-              position: "absolute",
-              left: 0,
-              bottom: BASE,
-              width: RADIO_BOLA,
-              height: RADIO_BOLA,
-              opacity: opBola,
-              transform: [{ translateX: xBola }, { scale: escBola }],
-            }}
-          />
+              width: "100%",
+              height: "115%",
+              alignSelf: "center",
+            }} className="border-2 border-vino rounded-xl items-center overflow-hidden">
 
-          {xVasos.map((x, vaso) => (
-            <TouchableOpacity
-              key={vaso}
-              onPress={() => elegirVaso(vaso)}
-              disabled={fase !== "elegir"}
+            <Image
+              source={FONDO}
+              resizeMode="stretch"
+              style={{ position: "absolute", left: 0, top: 0, width: "100%", height: "100%" }}
+              className=""
+            />
+
+          <View
+            style={{
+              width: ANCHO_TABLERO,
+              height: ALTO_TABLERO,
+              alignSelf: "center",
+              marginTop: 50,
+              
+            }}
+          >
+            <Animated.Image
+              source={BOLA}
+              resizeMode="contain"
               style={{
                 position: "absolute",
                 left: 0,
                 bottom: BASE,
-                width: ANCHO_VASO,
-                height: ALTO_VASO,
-                transform: [{ translateX: x }],
+                width: RADIO_BOLA,
+                height: RADIO_BOLA,
+                opacity: opBola,
+                transform: [{ translateX: xBola }, { scale: escBola }],
               }}
-            >
-              <Animated.View
+            />
+
+            {xVasos.map((x, vaso) => (
+              <TouchableOpacity
+                key={vaso}
+                onPress={() => elegirVaso(vaso)}
+                disabled={fase !== "elegir"}
                 style={{
-                  flex: 1,
-                  transform: [
-                    { translateY: yVasos[vaso] },
-                    {
-                      rotate: rotVasos[vaso].interpolate({
-                        inputRange: [0, TILT],
-                        outputRange: ["0deg", `${TILT}deg`],
-                      }),
-                    },
-                  ],
+                  position: "absolute",
+                  left: 0,
+                  bottom: BASE,
+                  width: ANCHO_VASO,
+                  height: ALTO_VASO,
+                  transform: [{ translateX: x }],
                 }}
               >
-                <Image
-                  source={VASO}
-                  style={{ width: "100%", height: "100%" }}
-                  resizeMode="contain"
-                />
-              </Animated.View>
-            </TouchableOpacity>
-          ))}
+                <Animated.View
+                  style={{
+                    flex: 1,
+                    transform: [
+                      { translateY: yVasos[vaso] },
+                      {
+                        rotate: rotVasos[vaso].interpolate({
+                          inputRange: [TILT, 0],
+                          outputRange: [`${TILT}deg`, "0deg"],
+                        }),
+                      },
+                    ],
+                  }}
+                >
+                  <Image
+                    source={VASO}
+                    style={{ width: "100%", height: "100%" }}
+                    resizeMode="contain"
+                  />
+                </Animated.View>
+              </TouchableOpacity>
+            ))}
+          </View>
+          
         </View>
+        
       </ScrollView>
     </View>
   );
