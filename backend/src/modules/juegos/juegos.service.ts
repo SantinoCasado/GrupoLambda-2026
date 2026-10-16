@@ -33,18 +33,18 @@ export const registrarJugadaService = async (datos: RegistrarJugadaDTO) => {
   // 3. Verificar si el cliente ya tiene un descuento ganado en este pedido (no acumulativos)
   const { data: descuentosPrevios, error: discError } = await supabase
     .from('game_discounts')
-    .select('*')
+    .select('id')
     .eq('order_id', order_id)
-    .eq('won_on_first_try', true)
-    .gt('discount_percentage', 0);
+    .gt('discount_percentage', 0); // Busca si ya embolsó algún premio antes en cualquier juego
 
   if (discError) {
     throw new Error(`Error al verificar descuentos previos: ${discError.message}`);
   }
 
+  // Si encuentra al menos un registro con premio, el cerrojo se cierra de forma definitiva para esa mesa
   const yaTieneDescuento = descuentosPrevios && descuentosPrevios.length > 0;
 
-  // Si ya tiene un descuento ganado, no se acumula otro
+  // Solo se aplica el descuento si ganó en el primer intento de ESTE juego y NUNCA antes había ganado otro
   const porcentajeAplicable = (won_on_first_try && !yaTieneDescuento) ? discount_percentage : 0;
 
   // 4. Registrar la jugada en la tabla game_discounts
@@ -66,30 +66,25 @@ export const registrarJugadaService = async (datos: RegistrarJugadaDTO) => {
     throw new Error(`Error al registrar jugada: ${insertError.message}`);
   }
 
-  // 5. Si aplico el descuento, recalcular y actualizar total_amount en orders
-  let montoDescuento = 0; // Calcular el monto exacto del descuento y guardarlo en 'discount_amount'
+  // 5. Guardar el porcentaje en la tabla orders (SIN ACUMULAR, porque es el único que va a tener)
   if (porcentajeAplicable > 0) {
-    // Calculamos cuánta plata física representa ese porcentaje
-    montoDescuento = Math.round(pedido.total_amount * (porcentajeAplicable / 100));
-
     const { error: updateOrderError } = await supabase
       .from('orders')
-      .update({ discount_amount: montoDescuento })
+      .update({ discount_amount: porcentajeAplicable }) // Pone el 15 y listo
       .eq('id', order_id);
 
     if (updateOrderError) {
-      throw new Error(`Error al aplicar descuento en el pedido: ${updateOrderError.message}`);
+      throw new Error(`Error al guardar el descuento en el pedido: ${updateOrderError.message}`);
     }
   }
 
   return {
     jugada: nuevaJugada,
-    descuento_aplicado_porcentaje: porcentajeAplicable,
-    monto_descontado: montoDescuento,
+    descuento_aplicado: porcentajeAplicable,
     mensaje: yaTieneDescuento
-      ? 'Jugada registrada. No se aplicó descuento porque ya cuenta con un beneficio previo.'
+      ? 'Jugada registrada. No sumás descuento porque ya habías ganado en otro juego.'
       : porcentajeAplicable > 0
-      ? `¡Felicitaciones! Ganaste un ${porcentajeAplicable}% de descuento (Equivale a $${montoDescuento}).`
+      ? `¡Felicitaciones! Ganaste un ${porcentajeAplicable}% de descuento para tu cuenta.`
       : 'Jugada registrada sin descuento.',
   };
 };

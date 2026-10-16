@@ -699,7 +699,7 @@ export const cobrarPedidoService = async (pedidoId: string, porcentajePropina: n
     // Obtener el pedido actual y la relación con la mesa para la Notificación Push
     const { data: pedido, error: errorPedido } = await supabase
         .from('orders')
-        .select('*, restaurant_tables(table_number)') // <-- BONUS: Necesario para que la push sepa el número
+        .select('*, restaurant_tables(table_number)')
         .eq('id', pedidoId)
         .single();
 
