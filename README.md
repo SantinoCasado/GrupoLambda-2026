@@ -84,9 +84,11 @@ Las capturas están agrupadas por rol para recorrer los flujos disponibles en ca
 | Alta de empleado, paso 2                  | ![Alta de empleado paso 2](./assets/mapeo/dueño/dueño_altaEmpleado_2.jpeg)                 |
 | Alta de mesa, paso 1                      | ![Alta de mesa paso 1](./assets/mapeo/dueño/dueño_altaMesas_1.jpeg)                        |
 | Alta de mesa, paso 2                      | ![Alta de mesa paso 2](./assets/mapeo/dueño/dueño_altaMesas_2.jpeg)                        |
-| Alta de mesa exitosa                      | ![Alta de mesa exitosa](./assets/mapeo/dueño/dueño_altaMesa_exito.jpeg)                    |
+| Asignación de mesa exitosa                | ![Asignación de mesa exitosa](./assets/mapeo/dueño/dueño_asignarMesa_exito.jpeg)           |
 | Gestión de mesas                          | ![Dashboard de mesas del dueño](./assets/mapeo/dueño/dueño_dashboard_mesas.jpeg)           |
 | Aprobación de clientes                    | ![Aprobación de clientes](./assets/mapeo/dueño/dueño_aprobacionCliente.jpeg)               |
+
+---
 
 <a id="walkthrough-supervisor"></a>
 
@@ -105,6 +107,8 @@ Las capturas están agrupadas por rol para recorrer los flujos disponibles en ca
 | Error de validación de mesa duplicada     | ![Validación de mesa duplicada](./assets/mapeo/supervisor/supervisor_mesas_validator.jpeg)             |
 | Aprobación de clientes                    | ![Aprobación de clientes por supervisor](./assets/mapeo/supervisor/supervisor_aprobacionClientes.jpeg) |
 
+---
+
 <a id="walkthrough-metre"></a>
 
 #### Walkthrough: Metre
@@ -117,6 +121,8 @@ Las capturas están agrupadas por rol para recorrer los flujos disponibles en ca
 | Selección de mesa para asignación       | ![Selección de mesa para asignar al cliente](./assets/mapeo/metre/metre_asignarMesa_seleccionar.jpeg) |
 | Confirmación de asignación              | ![Confirmación de mesa asignada](./assets/mapeo/metre/metre_asignarMesa_confirmacion.jpeg)            |
 | Registro asistido de cliente            | ![Registro de cliente por el metre](./assets/mapeo/metre/metre_registroCliente.jpeg)                  |
+
+---
 
 <a id="walkthrough-mozo"></a>
 
@@ -131,6 +137,8 @@ Las capturas están agrupadas por rol para recorrer los flujos disponibles en ca
 
 Pendiente de agregar: pedido listo, entrega, solicitud de cuenta y confirmación del pago.
 
+---
+
 <a id="walkthrough-cocinero"></a>
 
 #### Walkthrough: Cocinero
@@ -141,6 +149,9 @@ Pendiente de agregar: pedido listo, entrega, solicitud de cuenta y confirmación
 | Alta de plato, paso 1 | ![Alta de plato, datos](./assets/mapeo/cocinero/cocinero_altaPlato_1.jpeg)         |
 | Alta de plato, paso 2 | ![Alta de plato, fotografías](./assets/mapeo/cocinero/cocinero_altaPlato_2.jpeg)   |
 | Carta de platos       | ![Carta de platos del cocinero](./assets/mapeo/cocinero/cocinero_cartaPlatos.jpeg) |
+| Comandas de cocina    | ![Comandas del sector cocina](./assets/mapeo/cocinero/cocinero_comandas.jpeg)      |
+
+---
 
 <a id="walkthrough-cantinero"></a>
 
@@ -153,6 +164,9 @@ Pendiente de agregar: pedido listo, entrega, solicitud de cuenta y confirmación
 | Alta de bebida, paso 2           | ![Alta de bebida, fotografías](./assets/mapeo/cantinero/cantinero_altaBebida_2.jpeg)                        |
 | Validación de campos incompletos | ![Error de validación en el alta de bebida](./assets/mapeo/cantinero/cantinero_altaBebida_validations.jpeg) |
 | Carta de bebidas                 | ![Carta de bebidas del cantinero](./assets/mapeo/cantinero/cantinero_cartaBebidas.jpeg)                     |
+| Comandas de bar                  | ![Comandas del sector bar](./assets/mapeo/cantinero/cantinero_comandas.jpeg)                                |
+
+---
 
 <a id="walkthrough-clientes"></a>
 
@@ -165,7 +179,47 @@ Pendiente de agregar: pedido listo, entrega, solicitud de cuenta y confirmación
 | Registro, paso 1 | ![Registro de cliente paso 1](./assets/mapeo/registro_inicio_clientes/cliente_registro_1.jpeg) |
 | Registro, paso 2 | ![Registro de cliente paso 2](./assets/mapeo/registro_inicio_clientes/cliente_registro_2.jpeg) |
 
-Pendiente de agregar: espera de aprobación, aviso de aprobación/rechazo, login aceptado y denegado, asignación de mesa, carta, carrito, estado de pedido, juegos, cuenta y pago.
+##### Ingreso y sala de espera
+
+| Paso / pantalla                           | Captura                                                                                                                              |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Dashboard de ingreso a la lista de espera | ![Dashboard del cliente en lista de espera](./assets/mapeo/registro_inicio_clientes/cliente_dashboard_ingresoListaEspera.jpeg)       |
+| Ver Reseñas del Restaurante               | ![Ver Reseñas del Restaurante](./assets/mapeo/registro_inicio_clientes/cliente_verReseñas.jpeg)                                      |
+| Confirmación de ingreso en puerta         | ![Ingreso confirmado en puerta](./assets/mapeo/registro_inicio_clientes/cliente_confirmacion_listaEspera.jpeg)                       |
+| Modal de ingreso confirmado               | ![Confirmación para entrar a la lista de espera](./assets/mapeo/registro_inicio_clientes/cliente_confirmacionModal_listaEspera.jpeg) |
+| Confirmación para abandonar la fila       | ![Modal para abandonar la lista de espera](./assets/mapeo/registro_inicio_clientes/cliente_abandonarModal_listaEspera.jpeg)          |
+
+##### Asignación de mesa y acceso al menú
+
+| Paso / pantalla                        | Captura                                                                                                                 |
+| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Modal de mesa asignada                 | ![Confirmación de mesa asignada](./assets/mapeo/registro_inicio_clientes/cliente_confirmacionModal_asignacionMesa.jpeg) |
+| Escaneo del QR de la mesa              | ![Cliente listo para escanear el QR de su mesa](./assets/mapeo/registro_inicio_clientes/cliente_escanearMesa.jpeg)      |
+| Carta con opción para agregar un plato | ![Producto de la carta agregado al pedido](./assets/mapeo/registro_inicio_clientes/cliente_agregarAPedido.jpeg)         |
+| Otro producto agregado desde la carta  | ![Segundo producto de la carta](./assets/mapeo/registro_inicio_clientes/cliente_agregarAPedido_2.jpeg)                  |
+
+##### Chat con el mozo
+
+![Consulta del cliente al mozo desde la mesa](./assets/mapeo/registro_inicio_clientes/cliente_chatMozo.jpeg)
+
+##### Juegos y descuentos
+
+| Paso / pantalla                              | Captura                                                                                                                 |
+| -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Dashboard de juegos                          | ![Sección de juegos del cliente registrado](./assets/mapeo/registro_inicio_clientes/cliente_dashBoard_games.jpeg)       |
+| Instrucciones del memotest                   | ![Instrucciones para jugar al memotest](./assets/mapeo/registro_inicio_clientes/cliente_comoJugar_memTest.jpeg)         |
+| Partida de memotest                          | ![Partida de memotest](./assets/mapeo/registro_inicio_clientes/cliente_inGame_memoTest.jpeg)                            |
+| Memotest completado y descuento obtenido     | ![Resultado exitoso del memotest](./assets/mapeo/registro_inicio_clientes/cliente_finished_memoTest.jpeg)               |
+| Instrucciones del rompecabezas               | ![Instrucciones para armar el rompecabezas](./assets/mapeo/registro_inicio_clientes/cliente_comoJugar_rompeCabeza.jpeg) |
+| Partida de rompecabezas                      | ![Partida de rompecabezas](./assets/mapeo/registro_inicio_clientes/cliente_inGame_rompeCabeza.jpeg)                     |
+| Reinicio del rompecabezas                    | ![Reinicio del rompecabezas](./assets/mapeo/registro_inicio_clientes/cliente_reiniciar_rompeCabeza.jpeg)                |
+| Rompecabezas completado y descuento obtenido | ![Resultado exitoso del rompecabezas](./assets/mapeo/registro_inicio_clientes/cliente_finished_rompeCabeza.jpeg)        |
+
+##### Reseñas y encuestas
+
+![Resultados de reseñas visibles para el cliente](./assets/mapeo/registro_inicio_clientes/cliente_verReseñas.jpeg)
+
+Pendiente de agregar: espera de aprobación, aviso de aprobación/rechazo, login aceptado y denegado, estado del pedido, cuenta y pago.
 
 ##### Cliente anónimo / invitado
 
@@ -173,7 +227,7 @@ Pendiente de agregar: espera de aprobación, aviso de aprobación/rechazo, login
 | --------------------- | --------------------------------------------------------------------------------------------- |
 | Ingreso como invitado | ![Ingreso de cliente invitado](./assets/mapeo/registro_inicio_clientes/cliente_invitado.jpeg) |
 
-Pendiente de agregar: registro anónimo completo, solicitud de mesa, espera, asignación, acceso limitado a juegos y visualización de encuestas.
+Pendiente de agregar: pasos exclusivos del registro anónimo y su experiencia posterior a la asignación de mesa.
 
 <a id="chats-y-conversaciones"></a>
 
@@ -206,13 +260,17 @@ Captura disponible de una validación de mesa duplicada: [ver walkthrough del Su
 
 Las capturas actuales muestran notificaciones del sistema en iOS y Android. Se pueden sumar evidencias por evento: nuevo cliente, lista de espera, mesa asignada, chat, cocina/bar, pedido listo y cierre de cuenta.
 
+---
+
 <a id="correos-transaccionales"></a>
 
 ### Correos transaccionales
 
-| Evento                         | Captura                                                                       |
-| ------------------------------ | ----------------------------------------------------------------------------- |
-| Rechazo de registro de cliente | ![Correo automático de rechazo del registro](./assets/notifications/mail.png) |
+| Evento                         | Captura                                                                              |
+| ------------------------------ | ------------------------------------------------------------------------------------ |
+| Rechazo de registro de cliente | ![Correo automático de rechazo del registro](./assets/notifications/mailRechazo.png) |
+
+---
 
 <a id="galeria-codigos-qr"></a>
 
@@ -231,6 +289,8 @@ Las capturas actuales muestran notificaciones del sistema en iOS y Android. Se p
 | Mesa 3 | ![QR de mesa 3](./assets/qrs/qr_mesa_3.jpeg) |
 | Mesa 4 | ![QR de mesa 4](./assets/qrs/qr_mesa_4.jpeg) |
 
+---
+
 #### QR de propinas
 
 | Porcentaje | Código QR                                                      |
@@ -240,6 +300,8 @@ Las capturas actuales muestran notificaciones del sistema en iOS y Android. Se p
 | 10 %       | ![QR de propina 10 por ciento](./assets/qrs/qr_propina_10.PNG) |
 | 15 %       | ![QR de propina 15 por ciento](./assets/qrs/qr_propina_15.PNG) |
 | 20 %       | ![QR de propina 20 por ciento](./assets/qrs/qr_propina_20.PNG) |
+
+---
 
 <a id="evidencia-de-pruebas"></a>
 
