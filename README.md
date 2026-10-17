@@ -216,7 +216,7 @@ Pendiente de agregar: pedido listo, entrega, solicitud de cuenta y confirmación
 
 ##### Chat con el mozo
 
-![Consulta del cliente al mozo desde la mesa](./assets/mapeo/registro_inicio_clientes/cliente_chatMozo.jpg)
+![Consulta del cliente al mozo desde la mesa](./assets/mapeo/registro_inicio_clientes/cliente_chatMozo.jpeg)
 
 ##### Juegos y descuentos
 
