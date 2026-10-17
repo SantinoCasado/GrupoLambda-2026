@@ -37,7 +37,7 @@ const CATEGORIAS: { id: Categoria; etiqueta: string }[] = [
 // no se les ofrecen las secciones que no les corresponden. Los demás roles
 // (clientes y personal jerárquico) ven la carta completa.
 const CATEGORIAS_POR_ROL: Partial<Record<PerfilUsuario, Categoria[]>> = {
-  cocinero: ["dish"],
+  cocinero: ["dish", "dessert"],
   cantinero: ["drink"],
 };
 
@@ -52,6 +52,31 @@ const TITULO_CATEGORIA: Record<Categoria, string> = {
   dish: "Carta de Platos",
   drink: "Carta de Bebidas",
   dessert: "Carta de Postres",
+};
+
+const ETIQUETA_FILTRO: Record<Categoria, string> = {
+  dish: "Platos",
+  drink: "Bebidas",
+  dessert: "Postres",
+};
+
+// El filtro en pantalla solo ofrece comidas y postres; las bebidas se navegan
+// desde el inicio y no se mezclan en el mismo selector.
+type CategoriaFiltro = "dish" | "dessert";
+
+const CATEGORIAS_FILTRO: CategoriaFiltro[] = ["dish", "dessert"];
+
+// Íconos de cada botón de filtro: variante vino (activo) sobre fondo mostaza y
+// variante mostaza (inactivo) sobre fondo vino.
+const ICONO_FILTRO: Record<CategoriaFiltro, { activo: any; inactivo: any }> = {
+  dish: {
+    activo: require("../../assets/images/food-v.png"),
+    inactivo: require("../../assets/images/food-y.png"),
+  },
+  dessert: {
+    activo: require("../../assets/images/cake-v.png"),
+    inactivo: require("../../assets/images/cake-y.png"),
+  },
 };
 
 // Carrusel de fotos de un producto. Es un componente propio porque la carta
@@ -208,6 +233,14 @@ export function CartaScreen({
   // Secciones que el rol puede ver. Si el rol no tiene restricción, ve todas.
   const categoriasVisibles = CATEGORIAS_POR_ROL[rolUsuario] ?? CATEGORIAS.map((c) => c.id);
 
+   // Cocinero y clientes pueden alternar de sección dentro de la carta; el
+  // cantinero solo tiene una sección y el resto del personal navega por separado.
+  const muestraFiltrosCategoria = rolUsuario === "cocinero" || esCliente;
+
+    // Botones de filtro que efectivamente se muestran: intersección entre las
+  // secciones del rol y las que el selector ofrece (comidas y postres).
+  const categoriasFiltro = CATEGORIAS_FILTRO.filter((cat) => categoriasVisibles.includes(cat));
+
   // Si la categoría inicial no está permitida para el rol (por ejemplo, el
   // cantinero entra con "comida"), se usa la primera disponible. Se resuelve
   // durante el render para no llegar a consultar una sección prohibida.
@@ -333,16 +366,42 @@ export function CartaScreen({
   return (
     <View className="flex-1 bg-amber-50/40">
       {/* 1. Header con Mesa y Consulta al Mozo */}
-      <View className="items-center border-b border-mostaza/20 bg-vino px-5 py-3 shadow-md">
-
-        <View className="flex-1" />
-
-        <View className="items-center">
-          <Text style={{ fontFamily: "LaOriental" }} className="text-xl uppercase text-mostaza">
-            {TITULO_CATEGORIA[categoriaActiva]}
-          </Text>
+      <View className="border-b border-mostaza/20 bg-vino px-5 py-3 items-center">
+        <View className="flex-row items-center">
+          <View className="items-center justify-center w-full border-b border-mostaza/70 py-2">
+            <Text style={{ fontFamily: "LaOriental" }} className="text-3xl uppercase text-mostaza">
+              {TITULO_CATEGORIA[categoriaActiva]}
+            </Text>
+          </View>
         </View>
-
+      {/* Filtros de categoría: cocinero y clientes alternan entre Platos y Postres */}
+        {muestraFiltrosCategoria && categoriasFiltro.length > 1 && (
+          <View className="mt-3 flex-row justify-center gap-3">
+            {categoriasFiltro.map((cat) => {
+              const activa = cat === categoriaActiva;
+              const icono = ICONO_FILTRO[cat];
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  onPress={() => setCategoriaSeleccionada(cat)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ver ${ETIQUETA_FILTRO[cat]}`}
+                  className={`rounded-full border px-4 py-2 ${
+                    activa
+                      ? "border-mostaza bg-mostaza"
+                      : "border-mostaza/50 bg-transparent active:bg-mostaza/20"
+                  }`}
+                >
+                  <Image
+                    source={activa ? icono.activo : icono.inactivo}
+                    className="h-7 w-7"
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
       </View>
 
       {/* 3. Contenido Principal — una tarjeta por página, scroll vertical tipo Reels */}
@@ -387,7 +446,7 @@ export function CartaScreen({
                     {/* Ficha descriptiva */}
                     <View className="mt-3.5">
                       <View className="flex-row items-start justify-between">
-                        <Text className="mr-2 mb-2 pr-5 flex-1 text-xl font-black text-vino">
+                        <Text className="mr-2 mb-2 pr-5 flex-1 text-2xl font-black text-vino">
                           {item.nombre}
                         </Text>
                         <Text className="text-3xl font-black text-calabaza">
@@ -397,14 +456,15 @@ export function CartaScreen({
 
                       <View className="mt-1 flex-row items-center">
                         <View className="rounded-md bg-amber-100 px-2 py-0.5">
-                          <Text className="text-sm font-bold text-amber-900">
+                          <Text className="font-bold text-amber-900" style={{ fontSize: 16 }}>
                             ⏱ {item.tiempoElaboracion} minutos
                           </Text>
                         </View>
                       </View>
                       <Text
                         numberOfLines={3}
-                        className="px-5 mt-2 text-s text-stone-600"
+                        className="px-5 my-2 text-stone-600"
+                        style={{ fontSize: 16 }}
                       >
                         {item.descripcion}
                       </Text>
@@ -416,19 +476,19 @@ export function CartaScreen({
                 {puedeDarDeBaja ? (
                   <TouchableOpacity
                     onPress={() => setItemAEliminar(item)}
-                    className="mt-3 flex-row items-center justify-center rounded-xl bg-terracota/20 py-2.5 active:bg-terracota/40"
+                    className="mt-2 flex-row items-center justify-center rounded-xl bg-terracota/20 py-2.5 active:bg-terracota/40"
                   >
                     <Image
                       source={require("../../assets/images/trash-t.png")}
-                      className="mr-1.5 h-4 w-4"
+                      className="mr-1.5 h-7 w-7"
                       resizeMode="contain"
                     />
-                    <Text className="text-xs font-bold text-terracota">Dar de baja producto</Text>
+                    <Text className="text-lg font-bold text-terracota">Dar de baja producto</Text>
                   </TouchableOpacity>
                 ) : esCliente ? (
                       <TouchableOpacity
                         onPress={() => agregarAlCarrito(item)}
-                        className="mt-3 flex-row items-center justify-center rounded-2xl bg-vino py-3 active:bg-terracota"
+                        className="mt-2 flex-row items-center justify-center rounded-2xl bg-vino py-3 active:bg-terracota"
                       >
                         <Image
                           source={require("../../assets/images/sello.png")}
@@ -437,7 +497,7 @@ export function CartaScreen({
                         />
                         <Text
                           style={{ fontFamily: "LaOriental" }}
-                          className="mx-5 text-s uppercase tracking-wider text-mostaza"
+                          className="mx-4 text-lg uppercase tracking-wider text-mostaza pt-1"
                         >
                           Agregar a la Mesa
                         </Text>
