@@ -1,6 +1,20 @@
-import { supabase } from "../config/supabase";
+import { API_BASE_URL } from "../../apiConfig";
 
-export interface GameDiscountRecord {
+/** Nombres de juego usados como clave en la tabla `game_discounts`. */
+export const NOMBRE_JUEGO = {
+  memotest: "memotest",
+  puzzle: "puzzle",
+  bolita: "shellgame",
+} as const;
+
+/** Porcentaje que otorga cada juego al ganar en el primer intento. */
+export const DESCUENTO_JUEGO = {
+  memotest: 10,
+  puzzle: 15,
+  bolita: 20,
+} as const;
+
+export interface JugadaPedido {
   id?: string;
   order_id: string;
   client_id?: string;
@@ -10,65 +24,65 @@ export interface GameDiscountRecord {
   played_at?: string;
 }
 
-/**
- * Consulta si la comanda ya utilizó su intento de juego.
- */
-export async function obtenerDescuentoJuego(orderId: string): Promise<GameDiscountRecord | null> {
-  const { data, error } = await supabase
-    .from("game_discounts")
-    .select("*")
-    .eq("order_id", orderId)
-    .maybeSingle();
+export interface ResultadoJugada {
+  jugada: JugadaPedido;
+  descuento_aplicado: number;
+  mensaje: string;
+}
 
-  if (error) {
-    console.warn("Error al consultar descuento de juego:", error.message);
-    return null;
+/** Devuelve el `game_name` del juego que ya ganó el descuento del pedido, o null. */
+export function juegoGanador(jugadas: JugadaPedido[]): string | null {
+  const ganadora = jugadas.find((j) => Number(j.discount_percentage) > 0);
+  return ganadora ? ganadora.game_name : null;
+}
+
+/** Historial de jugadas/descuentos de un pedido (GET /api/juegos/pedido/:order_id). */
+export async function obtenerJugadasPedido(orderId: string): Promise<JugadaPedido[]> {
+  if (!orderId) return [];
+
+  try {
+    const respuesta = await fetch(`${API_BASE_URL}/juegos/pedido/${orderId}`);
+    if (!respuesta.ok) {
+      console.warn(`⚠️ [Juegos] No se pudo leer el pedido (HTTP ${respuesta.status}).`);
+      return [];
+    }
+
+    const json = await respuesta.json();
+    return Array.isArray(json?.data) ? (json.data as JugadaPedido[]) : [];
+  } catch (error) {
+    console.warn("⚠️ [Juegos] Error al consultar las jugadas del pedido:", error);
+    return [];
   }
-  return data;
 }
 
 /**
- * Registra el resultado del juego solo si es el primer intento.
- * Si ya se jugó para este pedido, ignora la solicitud.
+ * Registra una victoria al primer intento. El backend es la única fuente de
+ * verdad: rechaza el descuento si el pedido ya ganó en otro juego.
  */
-export async function registrarResultadoJuego(
-  orderId: string,
-  clientId: string | undefined,
-  gameName: string,
-  gano: boolean,
-  porcentajeGanado: number = 10
-): Promise<{ aplicado: boolean; mensaje: string }> {
-  // 1. Verificar si ya jugó
-  const previo = await obtenerDescuentoJuego(orderId);
-  if (previo) {
-    return {
-      aplicado: false,
-      mensaje: "Ya se utilizó el intento disponible para este pedido.",
-    };
+export async function registrarJugadaPedido(payload: {
+  order_id: string;
+  client_id: string;
+  game_name: string;
+  discount_percentage: number;
+  won_on_first_try: boolean;
+}): Promise<ResultadoJugada | null> {
+  try {
+    const respuesta = await fetch(`${API_BASE_URL}/juegos/jugada`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!respuesta.ok) {
+      const detalle = await respuesta.text();
+      console.warn(`⚠️ [Juegos] El backend rechazó la jugada (HTTP ${respuesta.status}): ${detalle}`);
+      return null;
+    }
+
+    const json = await respuesta.json();
+    return (json?.data as ResultadoJugada) ?? null;
+  } catch (error) {
+    console.warn("⚠️ [Juegos] Error al registrar la jugada:", error);
+    return null;
   }
-
-  // 2. Si ganó en el primer intento, se le asigna el porcentaje. Si perdió, 0%.
-  const porcentaje = gano ? porcentajeGanado : 0;
-
-  const payload: GameDiscountRecord = {
-    order_id: orderId,
-    client_id: clientId,
-    game_name: gameName,
-    discount_percentage: porcentaje,
-    won_on_first_try: gano,
-  };
-
-  const { error } = await supabase.from("game_discounts").insert([payload]);
-
-  if (error) {
-    console.error("Error al registrar descuento:", error.message);
-    return { aplicado: false, mensaje: error.message };
-  }
-
-  return {
-    aplicado: true,
-    mensaje: gano
-      ? `¡Felicitaciones! Obtuvo un ${porcentaje}% de descuento en su cuenta.`
-      : "No logró ganar en este intento. ¡Mejor suerte la próxima!",
-  };
 }

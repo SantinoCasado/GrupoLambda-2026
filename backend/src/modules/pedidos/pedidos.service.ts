@@ -708,13 +708,13 @@ export const cobrarPedidoService = async (pedidoId: string, porcentajePropina: n
     if (pedido.status === 'paid') throw new Error('El pedido ya está cobrado.');
     if (pedido.status === 'cancelled') throw new Error('No se puede cobrar un pedido cancelado.');
   
-    const subtotal = Number(pedido.total_amount || pedido.total || 0); 
-    const descuentoJuego = Number(pedido.discount_amount || 0); 
-    
-    // Aplicamos el descuento al subtotal
-    const subtotalConDescuento = subtotal - descuentoJuego;
-    const montoPropina = subtotal * (porcentajePropina / 100);
-    const totalFinal = subtotalConDescuento + montoPropina;
+    // El total ya quedó cerrado cuando el cliente solicitó la cuenta:
+    // solicitarCuentaApi guarda en `total_amount` el subtotal - descuento + propina.
+    // No se vuelve a aplicar el descuento ni la propina para no duplicarlos.
+    const totalFinal = Number(pedido.total_amount || 0);
+    const descuentoJuego = Number(pedido.discount_amount || 0);
+    const montoPropina = Number(pedido.tip_amount || 0);
+    const subtotal = totalFinal - montoPropina + descuentoJuego;
 
     // Marca como pagado
     const { error: errorUpdatePedido } = await supabase

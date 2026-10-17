@@ -248,14 +248,20 @@ export async function obtenerDetalleCuenta(
   // 4. Descuento de juegos (primer intento)
   let porcentajeDescuento = 0;
   try {
-    const { data: juegoData } = await supabase
+    // Puede haber varias jugadas por pedido: solo una puede tener descuento > 0.
+    const { data: jugadas } = await supabase
       .from("game_discounts")
       .select("discount_percentage, won_on_first_try")
-      .eq("order_id", pedidoId)
-      .maybeSingle();
+      .eq("order_id", pedidoId);
 
-    if (juegoData && (juegoData.won_on_first_try === true || juegoData.won_on_first_try === "true")) {
-      porcentajeDescuento = Number(juegoData.discount_percentage || 0);
+    const ganadora = (jugadas || []).find(
+      (j: any) =>
+        Number(j.discount_percentage || 0) > 0 &&
+        (j.won_on_first_try === true || j.won_on_first_try === "true")
+    );
+
+    if (ganadora) {
+      porcentajeDescuento = Number(ganadora.discount_percentage || 0);
     }
   } catch (e) {
     console.warn("No se pudo leer descuento de juegos:", e);

@@ -1046,22 +1046,40 @@ function AppInterna() {
             onIrAMemotest={() => setVistaPrivada("memotest")}
             onIrAPuzzle={() => setVistaPrivada("puzzle")}
             onIrABolita={() => setVistaPrivada("bolita")}
+            pedidoId={idPedidoActivo}
+            clienteId={usuarioActual?.id}
+            puedeGanarDescuento={usuarioActual?.perfil === "cliente_registrado"}
           />
         )}
 
         {/* Memotest */}
         {vistaPrivada === "memotest" && (
-          <MemotestScreen onVolver={() => setVistaPrivada("juegos")} />
+          <MemotestScreen
+            onVolver={() => setVistaPrivada("juegos")}
+            pedidoId={idPedidoActivo}
+            clienteId={usuarioActual?.id}
+            puedeGanarDescuento={usuarioActual?.perfil === "cliente_registrado"}
+          />
         )}
 
         {/* Puzzle de ordenar fichas */}
         {vistaPrivada === "puzzle" && (
-          <PuzzleScreen onVolver={() => setVistaPrivada("juegos")} />
+          <PuzzleScreen
+            onVolver={() => setVistaPrivada("juegos")}
+            pedidoId={idPedidoActivo}
+            clienteId={usuarioActual?.id}
+            puedeGanarDescuento={usuarioActual?.perfil === "cliente_registrado"}
+          />
         )}
 
         {/* Juego de la bolita */}
         {vistaPrivada === "bolita" && (
-          <ShellGameScreen onVolver={() => setVistaPrivada("juegos")} />
+          <ShellGameScreen
+            onVolver={() => setVistaPrivada("juegos")}
+            pedidoId={idPedidoActivo}
+            clienteId={usuarioActual?.id}
+            puedeGanarDescuento={usuarioActual?.perfil === "cliente_registrado"}
+          />
         )}
 
         {/* Comandas del Mozo */}

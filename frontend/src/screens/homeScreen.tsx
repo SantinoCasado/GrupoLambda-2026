@@ -486,10 +486,8 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
 
           {/* 5. MOZO */}
           {perfil === "mozo" && (
-            <ScrollView 
+            <View 
               className="flex-1" 
-              contentContainerStyle={{ paddingBottom: 20 }}
-              showsVerticalScrollIndicator={false}
             >
               <Text className="text-xs font-bold text-vino uppercase mb-2">Operación de Salón</Text>
 
@@ -565,7 +563,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                   </Text>
                 </TouchableOpacity>
               </View>
-            </ScrollView>
+            </View>
           )}
 
           {/* 6. OTROS */}

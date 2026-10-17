@@ -13,9 +13,15 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { ChineseFrame } from "../components/ChineseFrame";
+import { useDescuentoJuego } from "../hooks/useDescuentoJuego";
+import { DESCUENTO_JUEGO, NOMBRE_JUEGO } from "../services/juegosService";
 
 interface Props {
   onVolver: () => void;
+  pedidoId?: string | null;
+  clienteId?: string;
+  /** Los invitados anónimos pueden jugar pero nunca ganan descuento. */
+  puedeGanarDescuento?: boolean;
 }
 
 type Fase = "reglas" | "previo" | "mezclando" | "elegir" | "revelando";
@@ -92,7 +98,12 @@ const MENSAJES: Record<Fase, string> = {
   revelando: "Un momento…",
 };
 
-export function ShellGameScreen({ onVolver }: Props) {
+export function ShellGameScreen({
+  onVolver,
+  pedidoId,
+  clienteId,
+  puedeGanarDescuento = true,
+}: Props) {
   const [fase, setFase] = useState<Fase>("reglas");
   // Ronda actual: la sube "Jugar de nuevo".
   const [ronda, setRonda] = useState(1);
@@ -101,7 +112,14 @@ export function ShellGameScreen({ onVolver }: Props) {
   const [terminado, setTerminado] = useState(false);
   // El acierto en el primer intento es de la ronda; el premio es de la sesión.
   const [aciertoEnPrimerIntento, setAciertoEnPrimerIntento] = useState(false);
-  const [premioGanado, setPremioGanado] = useState(false);
+
+  // Estado del descuento del pedido: ganado en este juego, en otro, o disponible.
+  const { disponible, ganado, registrarVictoria } = useDescuentoJuego({
+    pedidoId,
+    clienteId,
+    puedeGanar: puedeGanarDescuento,
+    gameName: NOMBRE_JUEGO.bolita,
+  });
 
   /** Corta las cadenas de animación si la pantalla se desmonta. */
   const montadoRef = useRef(true);
@@ -215,8 +233,8 @@ export function ShellGameScreen({ onVolver }: Props) {
     mezclar,
   ]);
 
-  /** El 25% sigue disponible: primer intento de la primera ronda. */
-  const intentoDisponible = ronda === 1 && intentos === 1;
+  /** El 20% sigue disponible: primer intento de la primera ronda y sin ganador previo. */
+  const intentoDisponible = disponible && ronda === 1 && intentos === 1;
 
   const elegirVaso = async (vaso: number) => {
     // El toque se valida contra el ref: dos toques seguidos no pasan.
@@ -225,14 +243,15 @@ export function ShellGameScreen({ onVolver }: Props) {
     Vibration.vibrate([0, 40]);
 
     const acierto = vaso === bolitaVasoRef.current;
-    // El 25% se gana solo con el primer intento de la primera ronda.
+    // El 20% se gana solo con el primer intento de la primera ronda.
     const premioEnJuego = intentoDisponible;
     // El intento solo sube al fallar: en un acierto queda el que se usó.
     if (!acierto) setIntentos((i) => i + 1);
 
     if (acierto) {
       setAciertoEnPrimerIntento(premioEnJuego);
-      if (premioEnJuego) setPremioGanado(true);
+      // El backend decide si corresponde: rechaza si el pedido ya ganó en otro juego.
+      if (premioEnJuego) void registrarVictoria(DESCUENTO_JUEGO.bolita);
       Vibration.vibrate([0, 80, 60, 150]);
       await levantar([vaso]);
       if (!montadoRef.current) return;
@@ -276,8 +295,8 @@ export function ShellGameScreen({ onVolver }: Props) {
     iniciarRonda();
   };
 
-  /** Estado de la insignia "-25%": ganada > disponible (primer intento) > perdida. */
-  const insignia = premioGanado
+  /** Estado de la insignia "-20%": ganada > disponible (primer intento) > deshabilitada. */
+  const insignia = ganado
     ? INSIGNIAS.ganada
     : intentoDisponible
     ? INSIGNIAS.disponible
@@ -338,8 +357,8 @@ export function ShellGameScreen({ onVolver }: Props) {
                 {aciertoEnPrimerIntento ? "¡Felicidades!" : "¡La encontraste!"}
               </Text>
               <Text className="mb-6 text-center text-sm font-medium leading-5 text-amber-100">
-                {aciertoEnPrimerIntento
-                  ? "Logró encontrar la bolita al primer intento. ¡Ganó un 25% de descuento en su pedido!"
+                {ganado
+                  ? "Logró encontrar la bolita al primer intento. ¡Ganó un 20% de descuento en su pedido!"
                   : `Felicidades, encontraste la bolita al intento número ${intentos}.`}
               </Text>
 
@@ -392,10 +411,10 @@ export function ShellGameScreen({ onVolver }: Props) {
                 ¿Y la bolita?
               </Text>
               <Text className="mt-1 text-xs font-semibold text-center text-amber-100">
-                {premioGanado
+                {ganado
                   ? "¡Descuento asegurado! Ahora juegue por diversión."
                   : intentoDisponible
-                  ? "Encuentre la bola en el primer intento y gane un 25% de descuento"
+                  ? "Encuentre la bola en el primer intento y gane un 20% de descuento"
                   : "Ya usó su primer intento. Siga jugando por diversión."}
               </Text>
 
@@ -406,7 +425,7 @@ export function ShellGameScreen({ onVolver }: Props) {
                   style={{ fontFamily: "LaOriental" }}
                   className={`justify-center align-center text-xs uppercase ${insignia.texto}`}
                 >
-                  -25%
+                  -20%
                 </Text>
               </View>
             </View>

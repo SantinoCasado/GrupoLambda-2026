@@ -171,7 +171,7 @@ export function EstadoPedidoScreen({
   };
 
   return (
-    <View className="flex-1 bg-[#FFF8F0]">
+    <View className="flex-1 bg-[#FCE7CB]">
       {/* Header */}
       <View className="my-3 flex-row items-center justify-center border-b border-mostaza/70 pb-3 px-4 pt-2">
         <View className="items-center w-full justify-center flex-col">
@@ -274,7 +274,7 @@ export function EstadoPedidoScreen({
         </View>
 
         {/* Resumen del pedido */}
-        <View style={{ height: 215 }} className="mb-2 rounded-2xl border border-mostaza/70 bg-amber-50 p-4 mt-auto">
+        <View style={{ height: 215 }} className="mb-2 rounded-2xl border border-mostaza/70 bg-amber-50 p-4">
           <Text style={{ fontFamily: "LaOriental" }} className="mb-2 text-xl uppercase text-vino">
             Detalle del Pedido
           </Text>
