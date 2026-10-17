@@ -87,6 +87,9 @@ Las capturas están agrupadas por rol para recorrer los flujos disponibles en ca
 | Asignación de mesa exitosa                | ![Asignación de mesa exitosa](./assets/mapeo/dueño/dueño_asignarMesa_exito.jpeg)           |
 | Gestión de mesas                          | ![Dashboard de mesas del dueño](./assets/mapeo/dueño/dueño_dashboard_mesas.jpeg)           |
 | Aprobación de clientes                    | ![Aprobación de clientes](./assets/mapeo/dueño/dueño_aprobacionCliente.jpeg)               |
+| Estadisticas Torta                        | ![Estadísticas de torta del dueño](./assets/mapeo/dueño/dueño_estadisticas_torta.jpeg)     |
+| Estadisticas Barras                       | ![Estadísticas de barras del dueño](./assets/mapeo/dueño/dueño_estadisticas_barras.jpeg)   |
+| Estadisticas Lineal                       | ![Estadísticas de lineas del dueño](./assets/mapeo/dueño/dueño_estadisticas_lineal.jpeg)   |
 
 ---
 
@@ -94,18 +97,21 @@ Las capturas están agrupadas por rol para recorrer los flujos disponibles en ca
 
 #### Walkthrough: Supervisor
 
-| Paso / pantalla                           | Captura                                                                                                |
-| ----------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| Dashboard                                 | ![Dashboard del supervisor](./assets/mapeo/supervisor/supervisor_dashboard.jpeg)                       |
-| Selección de perfil para alta de empleado | ![Selección del perfil de empleado](./assets/mapeo/supervisor/supervisor_altaEmpleado_seleccion.jpeg)  |
-| Alta de empleado, paso 1                  | ![Alta de empleado del supervisor, paso 1](./assets/mapeo/supervisor/supervisor_altaEmpleado_1.jpeg)   |
-| Alta de empleado, paso 2                  | ![Alta de empleado del supervisor, paso 2](./assets/mapeo/supervisor/supervisor_altaEmpleado_2.jpeg)   |
-| Gestión de mesas y QR                     | ![Gestión de mesas del supervisor](./assets/mapeo/supervisor/supervisor_dashboardMesas.jpeg)           |
-| Alta de mesa, paso 1                      | ![Alta de mesa del supervisor, paso 1](./assets/mapeo/supervisor/supervisor_altaMesa_1.jpeg)           |
-| Alta de mesa, paso 2                      | ![Alta de mesa del supervisor, paso 2](./assets/mapeo/supervisor/supervisor_altaMesa_2.jpeg)           |
-| Confirmación de alta de mesa              | ![Confirmación de alta de mesa](./assets/mapeo/supervisor/supervisor_altaMesa_confirmacion.jpeg)       |
-| Error de validación de mesa duplicada     | ![Validación de mesa duplicada](./assets/mapeo/supervisor/supervisor_mesas_validator.jpeg)             |
-| Aprobación de clientes                    | ![Aprobación de clientes por supervisor](./assets/mapeo/supervisor/supervisor_aprobacionClientes.jpeg) |
+| Paso / pantalla                           | Captura                                                                                                 |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Dashboard                                 | ![Dashboard del supervisor](./assets/mapeo/supervisor/supervisor_dashboard.jpeg)                        |
+| Selección de perfil para alta de empleado | ![Selección del perfil de empleado](./assets/mapeo/supervisor/supervisor_altaEmpleado_seleccion.jpeg)   |
+| Alta de empleado, paso 1                  | ![Alta de empleado del supervisor, paso 1](./assets/mapeo/supervisor/supervisor_altaEmpleado_1.jpeg)    |
+| Alta de empleado, paso 2                  | ![Alta de empleado del supervisor, paso 2](./assets/mapeo/supervisor/supervisor_altaEmpleado_2.jpeg)    |
+| Gestión de mesas y QR                     | ![Gestión de mesas del supervisor](./assets/mapeo/supervisor/supervisor_dashboardMesas.jpeg)            |
+| Alta de mesa, paso 1                      | ![Alta de mesa del supervisor, paso 1](./assets/mapeo/supervisor/supervisor_altaMesa_1.jpeg)            |
+| Alta de mesa, paso 2                      | ![Alta de mesa del supervisor, paso 2](./assets/mapeo/supervisor/supervisor_altaMesa_2.jpeg)            |
+| Confirmación de alta de mesa              | ![Confirmación de alta de mesa](./assets/mapeo/supervisor/supervisor_altaMesa_confirmacion.jpeg)        |
+| Error de validación de mesa duplicada     | ![Validación de mesa duplicada](./assets/mapeo/supervisor/supervisor_mesas_validator.jpeg)              |
+| Aprobación de clientes                    | ![Aprobación de clientes por supervisor](./assets/mapeo/supervisor/supervisor_aprobacionClientes.jpeg)  |
+| Estadisticas Torta                        | ![Estadísticas de torta del supervisor](./assets/mapeo/supervisor/supervisor_estadisticas_torta.jpeg)   |
+| Estadisticas Barras                       | ![Estadísticas de barras del supervisor](./assets/mapeo/supervisor/supervisor_estadisticas_barras.jpeg) |
+| Estadisticas Lineal                       | ![Estadísticas de lineas del supervisor](./assets/mapeo/supervisor/supervisor_estadisticas_lineal.jpeg) |
 
 ---
 
@@ -128,12 +134,14 @@ Las capturas están agrupadas por rol para recorrer los flujos disponibles en ca
 
 #### Walkthrough: Mozo
 
-| Paso / pantalla         | Captura                                                                                     |
-| ----------------------- | ------------------------------------------------------------------------------------------- |
-| Dashboard del mozo      | ![Dashboard del mozo](./assets/mapeo/mozo/mozo_dashboard.jpeg)                              |
-| Acceso a chats / mesas  | ![Dashboard de chats del mozo](./assets/mapeo/mozo/mozo_dashboard_chats.jpeg)               |
-| Ejemplo de chat en vivo | ![Conversación de consulta al mozo en la mesa 2](./assets/mapeo/mozo/mozo_chatEjemplo.jpeg) |
-| Comandas                | ![Comandas visibles para el mozo](./assets/mapeo/mozo/mozo_comandas.jpeg)                   |
+| Paso / pantalla         | Captura                                                                                      |
+| ----------------------- | -------------------------------------------------------------------------------------------- |
+| Dashboard del mozo      | ![Dashboard del mozo](./assets/mapeo/mozo/mozo_dashboard.jpg)                                |
+| Acceso a chats / mesas  | ![Dashboard de chats del mozo](./assets/mapeo/mozo/mozo_dashboard_chats.jpeg)                |
+| Ejemplo de chat en vivo | ![Conversación de consulta al mozo en la mesa 2](./assets/mapeo/mozo/mozo_chatEjemplo.jpeg)  |
+| Comandas                | ![Comandas visibles para el mozo](./assets/mapeo/mozo/mozo_comandas.jpeg)                    |
+| Pedidos Listos          | ![Pedidos listos para entregar](./assets/mapeo/mozo/mozo_dashboard_pedidosListos.jpeg)       |
+| Transacciones           | ![Transacciones de pedidos y cuentas](./assets/mapeo/mozo/mozo_dashboard_transacciones.jpeg) |
 
 Pendiente de agregar: pedido listo, entrega, solicitud de cuenta y confirmación del pago.
 
@@ -143,13 +151,14 @@ Pendiente de agregar: pedido listo, entrega, solicitud de cuenta y confirmación
 
 #### Walkthrough: Cocinero
 
-| Paso / pantalla       | Captura                                                                            |
-| --------------------- | ---------------------------------------------------------------------------------- |
-| Dashboard             | ![Dashboard del cocinero](./assets/mapeo/cocinero/cocinero_dashboard.jpeg)         |
-| Alta de plato, paso 1 | ![Alta de plato, datos](./assets/mapeo/cocinero/cocinero_altaPlato_1.jpeg)         |
-| Alta de plato, paso 2 | ![Alta de plato, fotografías](./assets/mapeo/cocinero/cocinero_altaPlato_2.jpeg)   |
-| Carta de platos       | ![Carta de platos del cocinero](./assets/mapeo/cocinero/cocinero_cartaPlatos.jpeg) |
-| Comandas de cocina    | ![Comandas del sector cocina](./assets/mapeo/cocinero/cocinero_comandas.jpeg)      |
+| Paso / pantalla       | Captura                                                                                |
+| --------------------- | -------------------------------------------------------------------------------------- |
+| Dashboard             | ![Dashboard del cocinero](./assets/mapeo/cocinero/cocinero_dashboard.jpeg)             |
+| Alta de plato, paso 1 | ![Alta de plato, datos](./assets/mapeo/cocinero/cocinero_altaPlato_1.jpeg)             |
+| Alta de plato, paso 2 | ![Alta de plato, fotografías](./assets/mapeo/cocinero/cocinero_altaPlato_2.jpeg)       |
+| Carta de platos       | ![Carta de platos del cocinero](./assets/mapeo/cocinero/cocinero_cartaPlatos_1.jpeg)   |
+| Carta de platos 2     | ![Carta de platos del cocinero 2](./assets/mapeo/cocinero/cocinero_cartaPlatos_2.jpeg) |
+| Comandas de cocina    | ![Comandas del sector cocina](./assets/mapeo/cocinero/cocinero_comandas.jpeg)          |
 
 ---
 
@@ -191,22 +200,27 @@ Pendiente de agregar: pedido listo, entrega, solicitud de cuenta y confirmación
 
 ##### Asignación de mesa y acceso al menú
 
-| Paso / pantalla                        | Captura                                                                                                                 |
-| -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Modal de mesa asignada                 | ![Confirmación de mesa asignada](./assets/mapeo/registro_inicio_clientes/cliente_confirmacionModal_asignacionMesa.jpeg) |
-| Escaneo del QR de la mesa              | ![Cliente listo para escanear el QR de su mesa](./assets/mapeo/registro_inicio_clientes/cliente_escanearMesa.jpeg)      |
-| Carta con opción para agregar un plato | ![Producto de la carta agregado al pedido](./assets/mapeo/registro_inicio_clientes/cliente_agregarAPedido.jpeg)         |
-| Otro producto agregado desde la carta  | ![Segundo producto de la carta](./assets/mapeo/registro_inicio_clientes/cliente_agregarAPedido_2.jpeg)                  |
+| Paso / pantalla                        | Captura                                                                                                                    |
+| -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Modal de mesa asignada                 | ![Confirmación de mesa asignada](./assets/mapeo/registro_inicio_clientes/cliente_confirmacionModal_asignacionMesa.jpeg)    |
+| Escaneo del QR de la mesa              | ![Cliente listo para escanear el QR de su mesa](./assets/mapeo/registro_inicio_clientes/cliente_escanearMesa.jpeg)         |
+| Dashboard pedir y chat desde la mesa   | ![Dashboard del cliente en la mesa](./assets/mapeo/registro_inicio_clientes/cliente_dashboard_agregarPedido.jpg)           |
+| Carta con opción para agregar un plato | ![Producto de la carta agregado al pedido](./assets/mapeo/registro_inicio_clientes/cliente_agregarAPedido.jpg)             |
+| Otro producto agregado desde la carta  | ![Segundo producto de la carta](./assets/mapeo/registro_inicio_clientes/cliente_agregarAPedido_2.jpg)                      |
+| Pedido rechazado por el mozo           | ![Pedido rechazado por el mozo](./assets/mapeo/registro_inicio_clientes/cliente_rechazo_comanda.jpg)                       |
+| Carrito post rechazo del mozo          | ![Carrito del cliente luego del rechazo del mozo](./assets/mapeo/registro_inicio_clientes/cliente_carrito_postRechazo.jpg) |
+| Dashboard post pedido                  | ![Dashboard del cliente con pedido en curso](./assets/mapeo/registro_inicio_clientes/cliente_dashboard_postPedido.jpg)     |
+| Detalle del pedido en curso            | ![Detalle del pedido en curso](./assets/mapeo/registro_inicio_clientes/cliente_verEstadoPedido.jpg)                        |
 
 ##### Chat con el mozo
 
-![Consulta del cliente al mozo desde la mesa](./assets/mapeo/registro_inicio_clientes/cliente_chatMozo.jpeg)
+![Consulta del cliente al mozo desde la mesa](./assets/mapeo/registro_inicio_clientes/cliente_chatMozo.jpg)
 
 ##### Juegos y descuentos
 
 | Paso / pantalla                              | Captura                                                                                                                 |
 | -------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Dashboard de juegos                          | ![Sección de juegos del cliente registrado](./assets/mapeo/registro_inicio_clientes/cliente_dashBoard_games.jpeg)       |
+| Dashboard de juegos                          | ![Sección de juegos del cliente registrado](./assets/mapeo/registro_inicio_clientes/cliente_dashBoard_games.jpg)        |
 | Instrucciones del memotest                   | ![Instrucciones para jugar al memotest](./assets/mapeo/registro_inicio_clientes/cliente_comoJugar_memTest.jpeg)         |
 | Partida de memotest                          | ![Partida de memotest](./assets/mapeo/registro_inicio_clientes/cliente_inGame_memoTest.jpeg)                            |
 | Memotest completado y descuento obtenido     | ![Resultado exitoso del memotest](./assets/mapeo/registro_inicio_clientes/cliente_finished_memoTest.jpeg)               |
@@ -214,6 +228,8 @@ Pendiente de agregar: pedido listo, entrega, solicitud de cuenta y confirmación
 | Partida de rompecabezas                      | ![Partida de rompecabezas](./assets/mapeo/registro_inicio_clientes/cliente_inGame_rompeCabeza.jpeg)                     |
 | Reinicio del rompecabezas                    | ![Reinicio del rompecabezas](./assets/mapeo/registro_inicio_clientes/cliente_reiniciar_rompeCabeza.jpeg)                |
 | Rompecabezas completado y descuento obtenido | ![Resultado exitoso del rompecabezas](./assets/mapeo/registro_inicio_clientes/cliente_finished_rompeCabeza.jpeg)        |
+| Instrucciones del ¿Y la bolita?              | ![Instrucciones para armar el rompecabezas](./assets/mapeo/registro_inicio_clientes/cliente_comoJugar_yLaBolita.jpg)    |
+| Partida de ¿Y la bolita?                     | ![Partida de rompecabezas](./assets/mapeo/registro_inicio_clientes/cliente_inGame_yLaBolita.jpg)                        |
 
 ##### Reseñas y encuestas
 
@@ -435,6 +451,102 @@ La instancia de Supabase puede reforzar el ciclo de pedidos mediante constraints
 
 ---
 
+<a id="documentacion-del-proyecto"></a>
+
+## 📚 División 2 — Documentación del Proyecto
+
+<a id="identidad-y-equipo"></a>
+
+## 🎨 Identidad Visual
+
+- **Temática:** restaurante de comida china.
+- **Paleta principal:**
+  - `#780116` — rojo oscuro.
+  - `#F7B538` — amarillo.
+  - `#DB7C26` — naranja suave.
+  - `#D8572A` — naranja intenso.
+  - `#C32F27` — rojo vibrante.
+
+---
+
+## 👥 Grupo y Responsabilidades
+
+### 1. Brazanovich, Valentín
+
+- **Rol:** Frontend Lead & UX/UI.
+- **Objetivos:** autenticación, alta de empleados, registro de clientes y maquetación de la aplicación.
+- **Fecha de inicio:** 25/08/2026.
+- **Fecha estimada de cierre:** pendiente de confirmar con la cátedra.
+- **Branch:** `feature/valentin-auth-ui`.
+
+### 2. Andreozzi, Sebastián
+
+- **Rol:** Frontend App Developer.
+- **Objetivos:** pantallas de platos y bebidas, carta, interacción de cliente y funcionalidades de interfaz vinculadas con pedidos y juegos.
+- **Fecha de inicio:** 25/08/2026.
+- **Fecha estimada de cierre:** pendiente de confirmar con la cátedra.
+- **Branch:** `feature/sebastian-menu-juegos`.
+
+### 3. Casado, Santino
+
+- **Rol:** Backend & Integration Engineer.
+- **Objetivos:** autenticación, clientes, aprobación de usuarios, correos transaccionales con Nodemailer e integración transversal de notificaciones push mediante Expo API.
+- **Fecha de inicio:** 25/08/2026.
+- **Fecha estimada de cierre:** pendiente de confirmar con la cátedra.
+- **Branch:** Integrada en `main` desde `feature/santino-server-setup`.
+
+### 4. Sanchez, Rocío
+
+- **Rol:** Database Admin, API Developer & QA.
+- **Objetivos:** modelo de tablas, QR, mesas, políticas RLS y desarrollo de los módulos y endpoints de Pedidos y Chat en tiempo real.
+- **Fecha de inicio:** 25/08/2026.
+- **Fecha estimada de cierre:** pendiente de confirmar con la cátedra.
+- **Branch:** `feature/rocio-supabase-db`.
+
+> La fecha oficial de entrega se coordina con la cátedra y el cronograma vigente del equipo.
+
+---
+
+<a id="tecnologias-y-arquitectura"></a>
+
+## 🛠️ Tecnologías
+
+- **Aplicación móvil:** React Native, Expo y TypeScript.
+- **Estilos:** NativeWind.
+- **API:** Node.js, Express y TypeScript.
+- **Base de datos, autenticación y almacenamiento:** Supabase, PostgreSQL, Supabase Auth y Supabase Storage.
+- **Validación de datos:** Zod.
+- **Carga de archivos:** Multer.
+- **Correo transaccional:** Nodemailer.
+- **Notificaciones móviles:** Expo Notifications y Expo Push API.
+- **Lectura de QR y cámara:** Expo Camera.
+
+---
+
+## 🏗️ Arquitectura
+
+El frontend se organiza en pantallas, servicios de acceso a API y contextos de sesión y carrito. La navegación principal está coordinada desde `frontend/App.tsx`.
+
+El backend separa rutas, controladores, servicios y esquemas por dominio:
+
+- `auth`
+- `cliente`
+- `empleados`
+- `productos`
+- `mesas`
+- `pedidos`
+- `chat`
+- `juegos`
+- `encuesta` (módulo completo, con validación de unicidad por pedido, cálculo agregado de promedios para gráficos y conteo de requerimientos excluyentes).
+
+Supabase proporciona persistencia, autenticación y almacenamiento de archivos. Las políticas RLS deben revisarse junto con la autorización aplicada en los middleware del backend.
+
+El endpoint de asignación de mesas utiliza actualizaciones condicionales sobre la fila de espera y la disponibilidad para detectar cambios concurrentes. Si la mesa deja de estar libre luego de marcar la espera como asignada, intenta revertir esa asignación. Es un rollback compensatorio entre peticiones, no una transacción atómica; el código registra si la reversión también falla.
+
+La tabla `orders` implementa un cierre contable preciso utilizando los campos `total_amount` (precio base de los ítems), `discount_amount` (descuento ganado en juegos), `tip_amount` (propina) y `final_total` (precio inmutable pagado por el cliente). La instancia de Supabase refuerza el ciclo de pedidos mediante constraints SQL como `orders_status_check`. Los estados admitidos son: `pending`, `in_preparation`, `ready`, `on_the_way`, `delivered`, `bill_requested`, `paid` y `cancelled`.
+
+---
+
 <a id="funcionalidades-y-consignas"></a>
 
 ## 📋 Funcionalidades del Sistema
@@ -449,8 +561,8 @@ La instancia de Supabase puede reforzar el ciclo de pedidos mediante constraints
 - Chat entre clientes y personal del restaurante.
 - Notificaciones push para eventos de clientes, pedidos, mesas y chat.
 - Registro de jugadas y consulta de descuentos asociados a pedidos.
-- **Puntos 21–22 — Solicitud y cierre de cuenta:** flujo completo de solicitud, selección obligatoria de propina, cálculo del total, aplicación de descuentos, notificaciones y liberación de mesa. El pago sigue el modelo de simulación definido para el TFI.
-- Encuestas y estadísticas: módulo completo con validación de una única encuesta por pedido/estadía y consulta de resultados.
+- **Puntos 21–22 — Solicitud y cierre de cuenta:** flujo completo de solicitud, selección obligatoria de propina, cálculo del precio final, aplicación automática de descuentos previos y liberación de mesa.
+- Encuestas y estadísticas: módulo con validación de una única encuesta por pedido/estadía, recolección de fotos/requerimientos excluyentes y consulta de datos procesados listos para gráficos de torta, barra y lineal.
 
 ### Matriz de cobertura de las consignas
 
@@ -458,30 +570,30 @@ La instancia de Supabase puede reforzar el ciclo de pedidos mediante constraints
 
 Los 22 puntos de la consigna están completados.
 
-| Punto | Flujo evaluado                                                               | Estado                                                    |
-| ----- | ---------------------------------------------------------------------------- | --------------------------------------------------------- |
-| 1     | Alta de empleado por dueño/supervisor, DNI, foto desde cámara y validaciones | Completo.                                                 |
-| 2     | Alta de plato con descripción, tiempo, precio y tres imágenes                | Completo.                                                 |
-| 3     | Alta de bebida con campos y tres imágenes                                    | Completo.                                                 |
-| 4     | Alta/listado/estado de mesa y QR automático                                  | Completo.                                                 |
-| 5     | Registro de cliente, QR de DNI, foto en vivo y estado pendiente              | Completo.                                                 |
-| 6     | Lista de pendientes y aprobación/rechazo por dueño/supervisor                | Completo.                                                 |
-| 7     | Rechazo, correo personalizado y bloqueo del cliente                          | Completo.                                                 |
-| 8     | Aprobación, correo personalizado e ingreso habilitado                        | Completo.                                                 |
-| 9     | Cliente anónimo, QR de entrada, cola de espera y consulta de encuestas       | Completo.                                                 |
-| 10    | Asignación de mesa por metre y restricciones de vinculación                  | Completo.                                                 |
-| 11    | QR de mesa, carta con imágenes y chat con push                               | Completo.                                                 |
-| 12    | Carrito, cantidades, importe, tiempo y aprobación del mozo                   | Completo.                                                 |
-| 13    | Rechazo y edición/reenvío del pedido                                         | Completo.                                                 |
-| 14    | Aprobación y derivación a cocina/bar; descuentos de juegos                   | Completo.                                                 |
-| 15    | Acceso a juegos y aplicación de un único beneficio                           | Completo.                                                 |
-| 16    | Pedidos de cocina agrupados por mesa y cambio de estado                      | Completo.                                                 |
-| 17    | Pedidos de bar agrupados por mesa y cambio de estado                         | Completo.                                                 |
-| 18    | Pedido completo cuando cocina/bar finalizan; aviso al mozo                   | Completo.                                                 |
-| 19    | Entrega del mozo y recepción confirmada por cliente                          | Completo.                                                 |
-| 20    | Encuesta única por estadía y gráficos de resultados                          | Completo: una encuesta por pedido y resultados agregados. |
-| 21    | Solicitud de cuenta, detalle, descuento, propina y pago                      | Completo: propina obligatoria, cálculo y descuentos.      |
-| 22    | Confirmación de pago, mesa libre y notificación a dueño/supervisor           | Completo: liberación de mesa y notificaciones.            |
+| Punto | Flujo evaluado                                                               | Estado                                                   |
+| ----- | ---------------------------------------------------------------------------- | -------------------------------------------------------- |
+| 1     | Alta de empleado por dueño/supervisor, DNI, foto desde cámara y validaciones | Completo.                                                |
+| 2     | Alta de plato con descripción, tiempo, precio y tres imágenes                | Completo.                                                |
+| 3     | Alta de bebida con campos y tres imágenes                                    | Completo.                                                |
+| 4     | Alta/listado/estado de mesa y QR automático                                  | Completo.                                                |
+| 5     | Registro de cliente, QR de DNI, foto en vivo y estado pendiente              | Completo.                                                |
+| 6     | Lista de pendientes y aprobación/rechazo por dueño/supervisor                | Completo.                                                |
+| 7     | Rechazo, correo personalizado y bloqueo del cliente                          | Completo.                                                |
+| 8     | Aprobación, correo personalizado e ingreso habilitado                        | Completo.                                                |
+| 9     | Cliente anónimo, QR de entrada, cola de espera y consulta de encuestas       | Completo.                                                |
+| 10    | Asignación de mesa por metre y restricciones de vinculación                  | Completo.                                                |
+| 11    | QR de mesa, carta con imágenes y chat con push                               | Completo.                                                |
+| 12    | Carrito, cantidades, importe, tiempo y aprobación del mozo                   | Completo.                                                |
+| 13    | Rechazo y edición/reenvío del pedido                                         | Completo.                                                |
+| 14    | Aprobación y derivación a cocina/bar; descuentos de juegos                   | Completo.                                                |
+| 15    | Acceso a juegos y aplicación de un único beneficio                           | Completo.                                                |
+| 16    | Pedidos de cocina agrupados por mesa y cambio de estado                      | Completo.                                                |
+| 17    | Pedidos de bar agrupados por mesa y cambio de estado                         | Completo.                                                |
+| 18    | Pedido completo cuando cocina/bar finalizan; aviso al mozo                   | Completo.                                                |
+| 19    | Entrega del mozo y recepción confirmada por cliente                          | Completo.                                                |
+| 20    | Encuesta única por estadía y gráficos de resultados                          | Completo: incluye gráficos y requerimientos excluyentes. |
+| 21    | Solicitud de cuenta, detalle, descuento, propina y pago                      | Completo: cálculo de `final_total` con propina en JSON.  |
+| 22    | Confirmación de pago, mesa libre y notificación a dueño/supervisor           | Completo: actualización a `free` y envío de push.        |
 
 ### Flujos principales por perfil
 
@@ -505,7 +617,6 @@ Los 22 puntos de la consigna están completados.
 - Expo Go o un development build / emulador compatible.
 - Para un dispositivo físico, computadora y dispositivo conectados a la misma red local.
 - Para probar push remoto, un dispositivo o build compatible y permisos de notificaciones habilitados.
-- En Android, las notificaciones push remotas requieren un development build o una compilación independiente; no están disponibles en Expo Go en la configuración actual.
 
 ### Backend
 
@@ -649,7 +760,7 @@ RESTO-TFI-MESA-<numero>
 
 `order_type` admite `dine_in` o `delivery`. El detalle de cuenta y el resultado del pago se obtienen mediante las rutas de solicitud y cobro documentadas arriba.
 
-> **Integración del Punto 21:** solicitar cuenta con `PATCH /api/pedidos/:id/solicitar-cuenta`; registrar el pago con `POST /api/pedidos/cobrar` y body `{ "pedido_id": "<UUID>", "propina": 10 }`. El backend exige seleccionar y enviar un porcentaje de propina antes de procesar el pago.
+> **Integración de Juegos y Cobros**: El frontend no debe enviar el monto del descuento. El backend lo extrae de forma segura leyendo el campo discount_amount inyectado previamente por el módulo de juegos.
 
 > ## ⚠️ Atención Frontend: los roles de la API se envían en inglés
 >
