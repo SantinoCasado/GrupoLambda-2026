@@ -293,10 +293,10 @@ export function MemotestScreen({ onVolver }: Props) {
               </Text>
               <Text className="mb-6 text-center text-sm font-medium leading-5 text-amber-100">
                 {gano
-                  ? `¡Ganaste un 10% de descuento en tu pedido!`
+                  ? `¡Ganó un 10% de descuento en su pedido!`
                   : intentos > 1
-                  ? `Encontraste todos los pares.`
-                  : `Encontraste todos los pares.`}
+                  ? `Encontró todos los pares.`
+                  : `Encontró todos los pares.`}
               </Text>
 
               <View className="w-full flex-row gap-3">

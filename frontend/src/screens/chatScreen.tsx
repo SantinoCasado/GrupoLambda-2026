@@ -1,20 +1,54 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
   TextInput,
   TouchableOpacity,
   FlatList,
-  KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
+  Image,
 } from "react-native";
+import {
+  KeyboardChatScrollView,
+  KeyboardStickyView,
+} from "react-native-keyboard-controller";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../config/supabase";
 import {
   obtenerMensajesChat,
   enviarMensajeChat,
   MensajeChat,
 } from "../services/chatService";
+
+import type { ScrollViewProps } from "react-native";
+import type { KeyboardChatScrollViewProps } from "react-native-keyboard-controller";
+
+/**
+ * Adapta `KeyboardChatScrollView` (un ScrollView) para poder usarlo como el
+ * componente de scroll de un `FlatList`. Así conservamos la virtualización de
+ * los mensajes y dejamos que la librería calcule el offset del teclado de
+ * forma nativa (sin la matemática de `KeyboardAvoidingView`, que provocaba que
+ * la barra quedara tapada en Android).
+ */
+const ChatScrollView = React.forwardRef<
+  React.ComponentRef<typeof KeyboardChatScrollView>,
+  KeyboardChatScrollViewProps
+>(function ChatScrollView(props, ref) {
+  // El ScrollView termina por encima de la barra de entrada y del inset
+  // inferior de la pantalla, así que hay que descontar ese inset del empuje
+  // que aplica el teclado.
+  const { bottom } = useSafeAreaInsets();
+
+  return (
+    <KeyboardChatScrollView
+      ref={ref}
+      automaticallyAdjustContentInsets={false}
+      contentInsetAdjustmentBehavior="never"
+      offset={bottom}
+      {...props}
+    />
+  );
+});
 
 interface Props {
   tableId: string;
@@ -40,6 +74,7 @@ export function ChatMozoScreen({
   const [cargando, setCargando] = useState(true);
 
   const flatListRef = useRef<FlatList>(null);
+  const insets = useSafeAreaInsets();
   const esMozo = usuarioActual.perfil === "mozo";
 
   useEffect(() => {
@@ -108,12 +143,24 @@ export function ChatMozoScreen({
     }
   };
 
+  const renderScrollComponent = useCallback(
+    (props: ScrollViewProps) => <ChatScrollView {...props} />,
+    []
+  );
+
   const renderMensaje = ({ item }: { item: MensajeChat }) => {
     const esMio = item.sender_id === usuarioActual.id;
     const hora = item.created_at
       ? new Date(item.created_at).toLocaleTimeString([], {
           hour: "2-digit",
           minute: "2-digit",
+        })
+      : "";
+
+    const fecha = item.created_at
+      ? new Date(item.created_at).toLocaleDateString([], {
+          day: "2-digit",
+          month: "2-digit",
         })
       : "";
 
@@ -126,50 +173,70 @@ export function ChatMozoScreen({
         }`}
       >
         {!esMio && (
-          <Text className="mb-0.5 text-[11px] font-bold text-vino">
-            {esMozo ? `Mesa #${numeroMesa} (Cliente)` : "Mozo de Salón"}
+          <Text className="mb-0.5 text-sm font-bold text-vino">
+            {esMozo ? `Mesa #${numeroMesa}` : "Mozo de Salón"}
           </Text>
         )}
 
         <Text
-          className={`text-sm ${
-            esMio ? "font-semibold text-stone-900" : "text-stone-800"
-          }`}
+        style={{
+          fontFamily: "sans-serif",
+          fontSize: 14,
+          color: esMio ? "#1c1917" : "#292524",
+          fontWeight: esMio ? "600" : "400",
+        }}
         >
           {item.message}
+          
         </Text>
-
+        
         <Text
           className={`mt-1 text-[10px] text-right ${
             esMio ? "text-stone-700" : "text-stone-400"
           }`}
         >
-          {hora}
+          {fecha} {hora}
         </Text>
       </View>
     );
   };
 
   return (
-    <KeyboardAvoidingView
-      className="flex-1 bg-amber-50"
-      behavior="padding"
-      keyboardVerticalOffset={Platform.OS === "ios" ? 20 : 0}
-    >
+    <View className="flex-1 bg-amber-50">
       {/* Header estilo WhatsApp con temática Oriental */}
-      <View className="flex-row items-center justify-between border-b border-mostaza/30 bg-vino px-4 py-3 shadow-md">
+      <View className="flex-row items-center border-b border-mostaza/30 bg-vino px-4 py-3 shadow-md">
+        {/* Izquierda: botón volver. Este bloque y el contrapeso de la derecha
+            tienen el mismo flex, así el título queda centrado en la caja. */}
+        <View className="flex-1 items-start">
+          <TouchableOpacity
+            onPress={onVolver}
+            accessibilityRole="button"
+            accessibilityLabel="Volver"
+            className="items-center justify-center rounded-xl border-2 border-mostaza bg-terracota px-2 py-1 active:bg-terracota/70"
+          >
+            <Image
+              source={require("../../assets/images/left-arrow-y.png")}
+              className="h-6 w-6 mr-1"
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        </View>
 
-        <View className="items-center flex-1">
+        {/* Centro: título y subtítulo */}
+        <View className="items-center">
           <Text
             style={{ fontFamily: "LaOriental" }}
-            className="text-lg uppercase text-mostaza"
+            className="text-xl uppercase text-mostaza"
           >
-            Consulta al Mozo
+            {esMozo ? "Consultas de la Mesa" : "Consulta al Mozo"}
           </Text>
-          <Text className="text-[11px] font-bold text-emerald-300">
+          <Text className="text-sm font-bold text-emerald-300">
             Mesa #{numeroMesa} • En Vivo
           </Text>
         </View>
+
+        {/* Contrapeso derecho: mismo ancho que el bloque izquierdo */}
+        <View className="flex-1" />
       </View>
 
       {/* Lista de Mensajes */}
@@ -197,9 +264,11 @@ export function ChatMozoScreen({
         ) : (
           <FlatList
             ref={flatListRef}
+            style={{ flex: 1 }}
             data={mensajes}
             keyExtractor={(item) => item.id}
             renderItem={renderMensaje}
+            renderScrollComponent={renderScrollComponent}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ paddingBottom: 10 }}
@@ -211,31 +280,33 @@ export function ChatMozoScreen({
       </View>
 
       {/* Barra de Entrada de Texto */}
-      <View className="flex-row items-center border-t border-mostaza/30 bg-white px-3 py-2">
-        <TextInput
-          value={texto}
-          onChangeText={setTexto}
-          placeholder="Escribir consulta al mozo..."
-          placeholderTextColor="#a8a29e"
-          className="flex-1 rounded-2xl border border-stone-300 bg-stone-50 px-4 py-2.5 text-s text-stone-800"
-          multiline
-          maxLength={300}
-        />
+      <KeyboardStickyView offset={{ opened: insets.bottom }}>
+        <View className="flex-row items-center border-t border-mostaza/30 bg-white px-3 py-2">
+          <TextInput
+            value={texto}
+            onChangeText={setTexto}
+            placeholder="Escribir consulta al mozo..."
+            placeholderTextColor="#a8a29e"
+            className="flex-1 rounded-2xl border border-stone-300 bg-stone-50 px-4 py-2.5 text-lg text-stone-800"
+            multiline
+            maxLength={300}
+          />
 
-        <TouchableOpacity
-          onPress={handleEnviar}
-          disabled={!texto.trim() || enviando}
-          className={`ml-2 h-11 w-11 items-center justify-center rounded-2xl ${
-            !texto.trim() || enviando ? "border border-stone-300 bg-white" : "bg-vino active:bg-terracota"
-          }`}
-        >
-          {enviando ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Text className="text-lg text-mostaza">➤</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+          <TouchableOpacity
+            onPress={handleEnviar}
+            disabled={!texto.trim() || enviando}
+            className={`ml-2 h-12 w-12 items-center justify-center rounded-2xl ${
+              !texto.trim() || enviando ? "border border-stone-300 bg-white" : "bg-vino active:bg-terracota"
+            }`}
+          >
+            {enviando ? (
+              <ActivityIndicator size="small" color="#FFFFFF" />
+            ) : (
+              <Text className="text-xl text-mostaza">➤</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </KeyboardStickyView>
+    </View>
   );
 }

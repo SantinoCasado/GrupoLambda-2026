@@ -681,23 +681,25 @@ export default function AltaMesaScreen() {
                   </View>
                 )}
 
-                {listaPage < agrupadas.length - 1 && (
-                  <TouchableOpacity
-                    onPress={irSiguienteLista}
-                    className="mx-5 my-1 flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
-                  >
-                    <Text style={{ fontFamily: "LaOriental" }} className="text-s text-calabaza">Siguiente</Text>
-                  </TouchableOpacity>
-                )}
+                <View className="mx-5 my-1 flex-row gap-2">
+                  {listaPage > 0 && (
+                    <TouchableOpacity
+                      onPress={irVolverLista}
+                      className="flex-1 flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
+                    >
+                      <Text style={{ fontFamily: "LaOriental" }} className="text-s text-calabaza">Volver</Text>
+                    </TouchableOpacity>
+                  )}
 
-                {listaPage > 0 && (
-                  <TouchableOpacity
-                    onPress={irVolverLista}
-                    className="mx-5 mt-1 flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
-                  >
-                    <Text style={{ fontFamily: "LaOriental" }} className="text-s text-calabaza">Volver</Text>
-                  </TouchableOpacity>
-                )}
+                  {listaPage < agrupadas.length - 1 && (
+                    <TouchableOpacity
+                      onPress={irSiguienteLista}
+                      className="flex-1 flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
+                    >
+                      <Text style={{ fontFamily: "LaOriental" }} className="text-s text-calabaza">Siguiente</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </>
             )}
           </View>

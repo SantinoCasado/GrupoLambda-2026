@@ -380,10 +380,10 @@ export function PuzzleScreen({ onVolver }: Props) {
               </Text>
               <Text className="mb-6 text-center text-sm font-medium leading-5 text-amber-100">
                 {aciertoEnPar && intentos === 1
-                  ? `¡Armaste la imagen en ${movimientos} movimientos y ganaste un 15% de descuento en tu pedido!`
+                  ? `¡Armó la imagen en ${movimientos} movimientos y ganó un 15% de descuento en su pedido!`
                   : aciertoEnPar
-                  ? `¡Felicitaciones! Armaste la imagen.`
-                  : `¡Felicitaciones! Armaste la imagen.`}
+                  ? `¡Felicitaciones! Armó la imagen.`
+                  : `¡Felicitaciones! Armó la imagen.`}
               </Text>
 
               <View className="w-full flex-row gap-3">

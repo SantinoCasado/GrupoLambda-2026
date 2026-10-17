@@ -22,7 +22,7 @@ interface Juego {
   clave: string;
   numero: number;
   titulo: string;
-  descripcion: string;
+  descuento: string;
   /** Los juegos sin icono muestran su número en un círculo. */
   icono?: ImageSourcePropType;
 }
@@ -32,21 +32,21 @@ const JUEGOS: Juego[] = [
     clave: "memotest",
     numero: 1,
     titulo: "Memotest",
-    descripcion: "Encuentra los pares",
+    descuento: "10",
     icono: require("../../assets/images/tiles-y.png"),
   },
   {
     clave: "puzzle",
     numero: 2,
     titulo: "Armá el puzzle",
-    descripcion: "Armá la imagen",
+    descuento: "15",
     icono: require("../../assets/images/puzzle-y.png"),
   },
   {
     clave: "bolita",
     numero: 3,
     titulo: "¿Y la bolita?",
-    descripcion: "Encuentra la bolita",
+    descuento: "20",
     icono: require("../../assets/images/ball-y.png"),
   },
 ];
@@ -115,32 +115,29 @@ export function JuegosHomeScreen({
               Vibration.vibrate([0, 40]);
               console.log(`${juego.titulo} — pendiente de implementación`);
             }}
-            className="mb-4 flex-row items-center rounded-2xl border-2 border-mostaza bg-vino p-4 shadow-md active:bg-vino/80"
+            className="mb-2 flex-column gap-y-3 items-center rounded-2xl border-2 border-mostaza bg-vino p-4 active:bg-vino/80"
           >
             {juego.icono ? (
               <Image
                 source={juego.icono}
-                className="mr-3 h-12 w-12"
+                className="h-16 w-16"
                 resizeMode="contain"
               />
             ) : (
-              <View className="mr-3 h-12 w-12 items-center justify-center rounded-full border-2 border-mostaza bg-vino">
+              <View className="h-12 w-12 items-center justify-center rounded-full border-2 border-mostaza bg-vino">
                 <Text style={{ fontFamily: "LaOriental" }} className="text-xl text-mostaza">
                   {juego.numero}
                 </Text>
               </View>
             )}
-            <View className="flex-1">
-              <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase text-mostaza">
+            <View className="flex-column items-center ">
+              <Text style={{ fontFamily: "LaOriental" }} className="text-2xl uppercase text-mostaza">
                 {juego.titulo}
               </Text>
-              <Text className="text-xs text-amber-100">{juego.descripcion}</Text>
+              <Text style={{ fontFamily: "LaOriental" }} className="text-sm text-calabaza rounded-2xl border border-calabaza bg-[#FBE9DF] px-2 pt-1">
+                - {juego.descuento}% OFF
+              </Text>
             </View>
-            <Image
-              source={require("../../assets/images/right-arrow-y.png")}
-              className="h-6 w-6"
-              resizeMode="contain"
-            />
           </TouchableOpacity>
         ))}
       </ScrollView>
