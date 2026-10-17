@@ -122,8 +122,10 @@ export function JuegosHomeScreen({
               <Text style={{ fontFamily: "LaOriental" }} className="text-2xl text-mostaza uppercase">
                 Juegos
               </Text>
-              <Text className="mt-1 text-xs font-semibold text-amber-100">
-                Juega para ganar descuentos
+              <Text className="mt-1 text-center text-xs font-semibold text-amber-100">
+                {puedeGanarDescuento
+                  ? "Juega para ganar descuentos"
+                  : "Juega por diversión. Los descuentos solo están habilitados para clientes registrados."}
               </Text>
             </View>
           </ChineseFrame>

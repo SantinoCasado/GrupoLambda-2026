@@ -233,11 +233,7 @@ export function CartaScreen({
   // Secciones que el rol puede ver. Si el rol no tiene restricción, ve todas.
   const categoriasVisibles = CATEGORIAS_POR_ROL[rolUsuario] ?? CATEGORIAS.map((c) => c.id);
 
-   // Cocinero y clientes pueden alternar de sección dentro de la carta; el
-  // cantinero solo tiene una sección y el resto del personal navega por separado.
-  const muestraFiltrosCategoria = rolUsuario === "cocinero" || esCliente;
-
-    // Botones de filtro que efectivamente se muestran: intersección entre las
+  // Botones de filtro que efectivamente se muestran: intersección entre las
   // secciones del rol y las que el selector ofrece (comidas y postres).
   const categoriasFiltro = CATEGORIAS_FILTRO.filter((cat) => categoriasVisibles.includes(cat));
 
@@ -247,6 +243,16 @@ export function CartaScreen({
   const categoriaActiva = categoriasVisibles.includes(categoriaSeleccionada)
     ? categoriaSeleccionada
     : categoriasVisibles[0];
+
+  // Cocinero y clientes pueden alternar de sección dentro de la carta; el
+  // cantinero solo tiene una sección y el resto del personal navega por separado.
+  // El selector solo ofrece Platos y Postres, así que se oculta cuando la sección
+  // activa es Bebidas (se navega desde el inicio y no se mezcla en el selector).
+  const esCategoriaFiltro = (cat: Categoria): cat is CategoriaFiltro =>
+    CATEGORIAS_FILTRO.includes(cat as CategoriaFiltro);
+
+  const muestraFiltrosCategoria =
+    (rolUsuario === "cocinero" || esCliente) && esCategoriaFiltro(categoriaActiva);
 
   const iconoCategoria = ICONO_CATEGORIA[categoriaActiva];
 
