@@ -134,14 +134,15 @@ Las capturas están agrupadas por rol para recorrer los flujos disponibles en ca
 
 #### Walkthrough: Mozo
 
-| Paso / pantalla         | Captura                                                                                      |
-| ----------------------- | -------------------------------------------------------------------------------------------- |
-| Dashboard del mozo      | ![Dashboard del mozo](./assets/mapeo/mozo/mozo_dashboard.jpg)                                |
-| Acceso a chats / mesas  | ![Dashboard de chats del mozo](./assets/mapeo/mozo/mozo_dashboard_chats.jpeg)                |
-| Ejemplo de chat en vivo | ![Conversación de consulta al mozo en la mesa 2](./assets/mapeo/mozo/mozo_chatEjemplo.jpeg)  |
-| Comandas                | ![Comandas visibles para el mozo](./assets/mapeo/mozo/mozo_comandas.jpeg)                    |
-| Pedidos Listos          | ![Pedidos listos para entregar](./assets/mapeo/mozo/mozo_dashboard_pedidosListos.jpeg)       |
-| Transacciones           | ![Transacciones de pedidos y cuentas](./assets/mapeo/mozo/mozo_dashboard_transacciones.jpeg) |
+| Paso / pantalla         | Captura                                                                                           |
+| ----------------------- | ------------------------------------------------------------------------------------------------- |
+| Dashboard del mozo      | ![Dashboard del mozo](./assets/mapeo/mozo/mozo_dashboard.jpg)                                     |
+| Acceso a chats / mesas  | ![Dashboard de chats del mozo](./assets/mapeo/mozo/mozo_dashboard_chats.jpeg)                     |
+| Ejemplo de chat en vivo | ![Conversación de consulta al mozo en la mesa 2](./assets/mapeo/mozo/mozo_chatEjemplo.jpeg)       |
+| Comandas                | ![Comandas visibles para el mozo](./assets/mapeo/mozo/mozo_comandas.jpeg)                         |
+| Pedidos Listos          | ![Pedidos listos para entregar](./assets/mapeo/mozo/mozo_dashboard_pedidosListos.jpeg)            |
+| Transacciones           | ![Transacciones de pedidos y cuentas](./assets/mapeo/mozo/mozo_dashboard_transacciones.jpeg)      |
+| Detalle de Transacción  | ![Detalle de transacción de pedido y cuenta](./assets/mapeo/mozo/mozo_detalle_transacciones.jpeg) |
 
 Pendiente de agregar: pedido listo, entrega, solicitud de cuenta y confirmación del pago.
 
@@ -211,6 +212,7 @@ Pendiente de agregar: pedido listo, entrega, solicitud de cuenta y confirmación
 | Carrito post rechazo del mozo          | ![Carrito del cliente luego del rechazo del mozo](./assets/mapeo/registro_inicio_clientes/cliente_carrito_postRechazo.jpg) |
 | Dashboard post pedido                  | ![Dashboard del cliente con pedido en curso](./assets/mapeo/registro_inicio_clientes/cliente_dashboard_postPedido.jpg)     |
 | Detalle del pedido en curso            | ![Detalle del pedido en curso](./assets/mapeo/registro_inicio_clientes/cliente_verEstadoPedido.jpg)                        |
+| Detalle del Pago                       | ![Detalle del pago del pedido](./assets/mapeo/registro_inicio_clientes/cliente_pago_detalle.jpeg)                          |
 
 ##### Chat con el mozo
 
@@ -282,9 +284,10 @@ Las capturas actuales muestran notificaciones del sistema en iOS y Android. Se p
 
 ### Correos transaccionales
 
-| Evento                         | Captura                                                                              |
-| ------------------------------ | ------------------------------------------------------------------------------------ |
-| Rechazo de registro de cliente | ![Correo automático de rechazo del registro](./assets/notifications/mailRechazo.png) |
+| Evento                            | Captura                                                                                    |
+| --------------------------------- | ------------------------------------------------------------------------------------------ |
+| Rechazo de registro de cliente    | ![Correo automático de rechazo del registro](./assets/notifications/mailRechazo.png)       |
+| Aprobación de registro de cliente | ![Correo automático de aprobación del registro](./assets/notifications/mailAprobacion.png) |
 
 ---
 
