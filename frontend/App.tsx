@@ -49,11 +49,7 @@ import { EstadisticasScreen } from "./src/screens/estadisticasScreen";
 const NO_PHOTO = require("./assets/images/no-photo.jpg");
 
 const obtenerFotoUsuario = (usuario: UsuarioSeed) =>
-  usuario.perfil === "dueño" ||
-  usuario.perfil === "supervisor" ||
-  !usuario.foto
-    ? NO_PHOTO
-    : { uri: usuario.foto };
+  !usuario.foto ? NO_PHOTO : { uri: usuario.foto };
 
 type VistaPrivada =
   | "home"
