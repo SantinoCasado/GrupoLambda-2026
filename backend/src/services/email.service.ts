@@ -117,3 +117,61 @@ export const enviarNotificacionAprobacion = async (email: string, nombre: string
         return false; 
     }
 };
+
+export const enviarFacturaPorEmail = async (
+    emailDestino: string, 
+    nombreCliente: string, 
+    urlFactura: string
+) => {
+    const asunto = '🧾 Tu factura de Jardín Imperial';
+    const contenidoHtml = `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+            <h2 style="color: #780116; text-align: center;">¡Gracias por tu visita, ${nombreCliente}!</h2>
+            <p style="color: #333; font-size: 16px;">Esperamos que hayas disfrutado tu comida en Jardín Imperial.</p>
+            <p style="color: #333; font-size: 16px;">Adjuntamos el enlace oficial para que puedas descargar el comprobante de tu pago:</p>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="${urlFactura}" style="background-color: #D8572A; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 16px;">
+                    📥 Descargar Factura PDF
+                </a>
+            </div>
+            
+            <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;" />
+            <p style="color: #777; font-size: 12px; text-align: center;">
+                Si el botón no funciona, copiá y pegá este enlace en tu navegador:<br>
+                <a href="${urlFactura}" style="color: #DB7C26;">${urlFactura}</a>
+            </p>
+        </div>
+    `;
+
+    try {
+        const respuesta = await fetch('https://api.brevo.com/v3/smtp/email', {
+            method: 'POST',
+            headers: {
+                'accept': 'application/json',
+                'api-key': process.env.BREVO_API_KEY as string,
+                'content-type': 'application/json'
+            },
+            body: JSON.stringify({
+                sender: { 
+                    name: "Jardín Imperial", 
+                    email: process.env.GMAIL_USER as string
+                },
+                to: [{ email: emailDestino, name: nombreCliente }],
+                subject: asunto,
+                htmlContent: contenidoHtml
+            })
+        });
+
+        if (!respuesta.ok) {
+            const errorBody = await respuesta.json();
+            throw new Error(`Fallo Brevo: ${JSON.stringify(errorBody)}`);
+        }
+
+        console.log(`✉️ Factura enviada por HTTP (Brevo) a: ${emailDestino}`);
+        return true; 
+    } catch (error: any) {
+        console.error('❌ Error enviando factura por mail:', error.message);
+        return false; 
+    }
+};

@@ -1,5 +1,7 @@
 import { supabase } from '../../config/supabase';
 import { enviarPushNotification } from '../../services/pushNotifications.service';
+import { enviarFacturaPorEmail } from '../../services/email.service';
+import { generarYSubirFactura } from '../../services/factura.service';
 
 interface ProductoItem {
   id_producto: string;
@@ -716,6 +718,14 @@ export const cobrarPedidoService = async (pedidoId: string, porcentajePropina: n
     const montoPropina = subtotal * (porcentajePropina / 100);
     const totalFinal = subtotalConDescuento + montoPropina;
 
+    // 3. Generamos el PDF y lo subimos a Supabase Storage
+    const invoiceUrl = await generarYSubirFactura(pedidoId, pedido.client, {
+        precioBase: subtotal,
+        descuento: descuentoJuego,
+        propina: montoPropina,
+        precioFinal: totalFinal
+    });
+
     // Marca como pagado
     const { error: errorUpdatePedido } = await supabase
         .from('orders')
@@ -733,6 +743,23 @@ export const cobrarPedidoService = async (pedidoId: string, porcentajePropina: n
         .from('restaurant_tables') 
         .update({ availability: 'free' })
         .eq('id', pedido.table_id);
+      
+    // Envio de la factura al cliente según su rol
+    const cliente = pedido.client;
+    if (cliente.role === 'registered_client') {
+        // Pasa por la API de Brevo
+        await enviarFacturaPorEmail(cliente.email, cliente.first_name, invoiceUrl);
+    } else if (cliente.role === 'anonymous_client' || cliente.role === 'client_anonymous') {
+        // Los anónimos reciben una Push para descargarlo
+        if (cliente.push_token) {
+            await enviarPushNotification(
+                cliente.push_token,
+                '🧾 ¡Tu factura está lista!',
+                'Gracias por visitarnos. Tocá acá para descargar tu comprobante.',
+                { urlFactura: invoiceUrl }
+            );
+        }
+    }
 
     // Aviso del supervisor y dueño por Push que la mesa pagó y se liberó
     try {
