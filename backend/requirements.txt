@@ -7,5 +7,7 @@ tsx
 multer
 @types/multer
 nodemailer
-@types/nodemaile
+@types/nodemailer
 expo-server-sdk
+npm install pdfkit
+npm install -D @types/pdfkit
