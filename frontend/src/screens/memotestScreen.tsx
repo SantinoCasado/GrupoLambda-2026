@@ -12,9 +12,15 @@ import {
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { ChineseFrame } from "../components/ChineseFrame";
+import { useDescuentoJuego } from "../hooks/useDescuentoJuego";
+import { DESCUENTO_JUEGO, NOMBRE_JUEGO } from "../services/juegosService";
 
 interface Props {
   onVolver: () => void;
+  pedidoId?: string | null;
+  clienteId?: string;
+  /** Los invitados anónimos pueden jugar pero nunca ganan descuento. */
+  puedeGanarDescuento?: boolean;
 }
 
 interface Carta {
@@ -59,7 +65,12 @@ function generarCartas(): Carta[] {
   ]);
 }
 
-export function MemotestScreen({ onVolver }: Props) {
+export function MemotestScreen({
+  onVolver,
+  pedidoId,
+  clienteId,
+  puedeGanarDescuento = true,
+}: Props) {
   const [cartas, setCartas] = useState<Carta[]>(generarCartas);
   const [seleccionadas, setSeleccionadas] = useState<number[]>([]);
   const [movimientos, setMovimientos] = useState(0);
@@ -68,8 +79,13 @@ export function MemotestScreen({ onVolver }: Props) {
   const [previsualizando, setPrevisualizando] = useState(true);
   // Las instrucciones se muestran en cada entrada a la pantalla.
   const [mostrarReglas, setMostrarReglas] = useState(true);
-  // El premio se gana una sola vez y no se pierde al reintentar.
-  const [premioGanado, setPremioGanado] = useState(false);
+  // Estado del descuento del pedido: ganado en este juego, en otro, o disponible.
+  const { disponible, ganado, registrarVictoria } = useDescuentoJuego({
+    pedidoId,
+    clienteId,
+    puedeGanar: puedeGanarDescuento,
+    gameName: NOMBRE_JUEGO.memotest,
+  });
 
   // Bloquea el toque mientras el par fallido vuelve a voltearse.
   const bloqueadoRef = useRef(false);
@@ -197,26 +213,31 @@ export function MemotestScreen({ onVolver }: Props) {
     iniciarDeal();
   };
 
-  // El premio se gana una sola vez: queda en verde aunque el jugador reintente.
-  // El efecto corre tras el commit, cuando `movimientos` ya incluye el
-  // incremento del último par, así que la condición es la misma que `gano`.
-  useEffect(() => {
-    if (terminado && intentos === 1 && movimientos <= PAR) setPremioGanado(true);
-  }, [terminado, intentos, movimientos]);
-
   // Solo cuenta como victoria al primer intento: al reintentar ya no hay
   // descuento, aunque se alcance el par (`won_on_first_try` del backend).
   const gano = intentos === 1 && movimientos <= PAR;
 
-  /** Estado de la insignia "-10%": ganada > disponible (primer intento) > perdida. */
+  // Al ganar en el primer intento se pide el descuento al backend, que decide si
+  // corresponde (lo rechaza si el pedido ya lo ganó en otro juego).
+  const registroPedidoRef = useRef(false);
+  useEffect(() => {
+    if (!terminado || !gano) return;
+    if (!disponible || registroPedidoRef.current) return;
+    registroPedidoRef.current = true;
+    void registrarVictoria(DESCUENTO_JUEGO.memotest);
+  }, [terminado, gano, disponible, registrarVictoria]);
+
+  /** Estado de la insignia "-10%": ganada > disponible (primer intento) > deshabilitada. */
   const insignias = {
     ganada: { fondo: "bg-[#10b981]", texto: "text-white" },
     disponible: { fondo: "bg-mostaza", texto: "text-vino" },
     perdida: { fondo: "bg-stone-100", texto: "text-stone-500" },
   };
-  const insignia = premioGanado
+  /** El 10% sigue en juego solo si nadie lo ganó todavía y es el primer intento. */
+  const premioDisponible = disponible && intentos === 1;
+  const insignia = ganado
     ? insignias.ganada
-    : intentos === 1
+    : premioDisponible
     ? insignias.disponible
     : insignias.perdida;
 
@@ -289,14 +310,12 @@ export function MemotestScreen({ onVolver }: Props) {
                 style={{ fontFamily: "LaOriental" }}
                 className="mb-3 text-center text-xl uppercase tracking-wide text-mostaza"
               >
-                {gano ? "¡Felicidades!" : "¡Ganaste!"}
+                {ganado ? "¡Felicidades!" : "¡Ganaste!"}
               </Text>
               <Text className="mb-6 text-center text-sm font-medium leading-5 text-amber-100">
-                {gano
-                  ? `¡Ganaste un 10% de descuento en tu pedido!`
-                  : intentos > 1
-                  ? `Encontraste todos los pares.`
-                  : `Encontraste todos los pares.`}
+                {ganado
+                  ? `¡Ganó un 10% de descuento en su pedido!`
+                  : `Encontró todos los pares.`}
               </Text>
 
               <View className="w-full flex-row gap-3">
@@ -348,9 +367,9 @@ export function MemotestScreen({ onVolver }: Props) {
                 Memotest
               </Text>
               <Text className="mt-1 text-xs font-semibold text-amber-100">
-                {premioGanado
+                {ganado
                   ? "¡Descuento asegurado! Ahora jugá por diversión."
-                  : intentos === 1
+                  : premioDisponible
                   ? "Gana en el primer intento y obten un 10% de descuento"
                   : "Desafía tu memoria en este juego de cartas."}
               </Text>

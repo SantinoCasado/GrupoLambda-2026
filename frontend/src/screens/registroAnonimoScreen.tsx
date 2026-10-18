@@ -225,6 +225,10 @@ export function RegistroAnonimoScreen({ onVolver, onRegistroExitoso }: Props) {
               Foto *
             </Text>
 
+            {errors.fotoUri && (
+              <Text className="ml-6 text-xs font-medium text-rose-400">{errors.fotoUri}</Text>
+            )}
+
             <View className="w-[88%] h-62 bg-[#FFF8EA] self-center rounded-2xl border border-mostaza p-4 mb-6">
               {fotoUri ? (
               <View className="items-center">
@@ -254,9 +258,7 @@ export function RegistroAnonimoScreen({ onVolver, onRegistroExitoso }: Props) {
               </TouchableOpacity>
             )}
             </View>
-            {errors.fotoUri && (
-              <Text className="mt-1 text-xs font-medium text-rose-400">{errors.fotoUri}</Text>
-            )}
+            
 
           {/* Botón de Envío */}
           <TouchableOpacity

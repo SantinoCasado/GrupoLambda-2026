@@ -15,9 +15,15 @@ import { StatusBar } from "expo-status-bar";
 import Svg, { Image as SvgImage } from "react-native-svg";
 import { ChineseFrame } from "../components/ChineseFrame";
 import { ConfirmModal } from "../components/ConfirmModal";
+import { useDescuentoJuego } from "../hooks/useDescuentoJuego";
+import { DESCUENTO_JUEGO, NOMBRE_JUEGO } from "../services/juegosService";
 
 interface Props {
   onVolver: () => void;
+  pedidoId?: string | null;
+  clienteId?: string;
+  /** Los invitados anónimos pueden jugar pero nunca ganan descuento. */
+  puedeGanarDescuento?: boolean;
 }
 
 type Fase = "reglas" | "jugando" | "moviendo" | "terminado";
@@ -156,7 +162,12 @@ const MENSAJES: Record<Fase, string> = {
   terminado: "¡Ordenado!",
 };
 
-export function PuzzleScreen({ onVolver }: Props) {
+export function PuzzleScreen({
+  onVolver,
+  pedidoId,
+  clienteId,
+  puedeGanarDescuento = true,
+}: Props) {
   // La partida inicial y sus posiciones se reparten una sola vez, en el primer
   // render, así no hay un primer cuadro con todas las fichas apiladas.
   const [inicio] = useState(() => {
@@ -178,8 +189,6 @@ export function PuzzleScreen({ onVolver }: Props) {
   // 1 = primer intento; sube cada vez que se reinicia el tablero.
   const [intentos, setIntentos] = useState(1);
   const [movimientos, setMovimientos] = useState(0);
-  const [aciertoEnPar, setAciertoEnPar] = useState(false);
-  const [premioGanado, setPremioGanado] = useState(false);
   const [mostrarReinicio, setMostrarReinicio] = useState(false);
   /** Referencia de la foto armada. Verla es gratis: no toca la oportunidad del 15%. */
   const [mostrarImagen, setMostrarImagen] = useState(false);
@@ -189,6 +198,14 @@ export function PuzzleScreen({ onVolver }: Props) {
   const [tableroInicial, setTableroInicial] = useState<number[]>(inicio.base);
   /** El 15% se gana una sola vez por pedido, aunque después se juegue de nuevo. */
   const [oportunidadUsada, setOportunidadUsada] = useState(false);
+
+  // Estado del descuento del pedido: ganado en este juego, en otro, o disponible.
+  const { disponible, ganado, registrarVictoria } = useDescuentoJuego({
+    pedidoId,
+    clienteId,
+    puedeGanar: puedeGanarDescuento,
+    gameName: NOMBRE_JUEGO.puzzle,
+  });
 
   /** Se leen dentro de la animación, donde el estado todavía no cambió. */
   const tableroRef = useRef<number[]>(inicio.base);
@@ -234,7 +251,6 @@ export function PuzzleScreen({ onVolver }: Props) {
       tableroRef.current = base;
       setTablero(base);
       setMovimientos(0);
-      setAciertoEnPar(false);
       if (mismaPartida) setIntentos((i) => i + 1);
       cambiarFase("jugando");
     },
@@ -294,13 +310,13 @@ export function PuzzleScreen({ onVolver }: Props) {
     if (estaResuelto(siguiente)) {
       Vibration.vibrate([0, 80, 60, 150]);
       celebrar();
-      setAciertoEnPar(pasos <= PAR);
       // El valor leído acá es el de antes de esta jugada, así que la primera
       // partida todavía puede ganarse el 15%; terminarla lo gasta para siempre
       // y ni un reinicio ni otro "Jugar de nuevo" lo devuelven.
       const gana = !oportunidadUsada && intentos === 1 && pasos <= PAR;
       setOportunidadUsada(true);
-      if (gana) setPremioGanado(true);
+      // El backend decide si corresponde: rechaza si el pedido ya ganó en otro juego.
+      if (gana && disponible) void registrarVictoria(DESCUENTO_JUEGO.puzzle);
       cambiarFase("terminado");
       return;
     }
@@ -310,8 +326,8 @@ export function PuzzleScreen({ onVolver }: Props) {
 
   /** El 15% sigue disponible: primer intento y todavía sin gastar la oportunidad. */
   const premioDisponible =
-    intentos === 1 && !oportunidadUsada && fase !== "terminado";
-  const insignia = premioGanado
+    disponible && intentos === 1 && !oportunidadUsada && fase !== "terminado";
+  const insignia = ganado
     ? INSIGNIAS.ganada
     : premioDisponible
     ? INSIGNIAS.disponible
@@ -376,14 +392,12 @@ export function PuzzleScreen({ onVolver }: Props) {
                 style={{ fontFamily: "LaOriental" }}
                 className="mb-3 text-center text-xl uppercase tracking-wide text-mostaza"
               >
-                {aciertoEnPar && intentos === 1 ? "¡Felicidades!" : "¡Resuelto!"}
+                {ganado ? "¡Felicidades!" : "¡Resuelto!"}
               </Text>
               <Text className="mb-6 text-center text-sm font-medium leading-5 text-amber-100">
-                {aciertoEnPar && intentos === 1
-                  ? `¡Armaste la imagen en ${movimientos} movimientos y ganaste un 15% de descuento en tu pedido!`
-                  : aciertoEnPar
-                  ? `¡Felicitaciones! Armaste la imagen.`
-                  : `¡Felicitaciones! Armaste la imagen.`}
+                {ganado
+                  ? `¡Armó la imagen en ${movimientos} movimientos y ganó un 15% de descuento en su pedido!`
+                  : `¡Felicitaciones! Armó la imagen.`}
               </Text>
 
               <View className="w-full flex-row gap-3">
@@ -435,13 +449,13 @@ export function PuzzleScreen({ onVolver }: Props) {
         visible={mostrarReinicio}
         titulo="¿Reiniciar el puzzle?"
         mensaje={
-          intentos === 1
+          premioDisponible
             ? "Si reiniciás, perdés el 15% de descuento: solo se gana resolviendo el puzzle al primer intento."
             : "El 15% ya no está disponible. Podés reiniciar el mismo puzzle para seguir practicando."
         }
         textoConfirmar="Reiniciar"
         textoCancelar="Seguir jugando"
-        tipo={intentos === 1 ? "peligro" : "confirmar"}
+        tipo={premioDisponible ? "peligro" : "confirmar"}
         onConfirm={() => {
           // Si no se cierra, el aviso queda arriba del tablero que recién arrancó.
           setMostrarReinicio(false);
@@ -469,13 +483,11 @@ export function PuzzleScreen({ onVolver }: Props) {
                 Rompecabezas
               </Text>
               <Text className="mt-1 text-xs px-3 text-center font-semibold text-amber-100">
-                {premioGanado
+                {ganado
                   ? "¡Descuento asegurado! Ahora jugá por diversión."
                   : premioDisponible
                   ? `Armá la imagen en ${PAR} movimientos o menos y ganá un 15% de descuento`
-                  : intentos > 1
-                  ? "Ejercitá tu mente con este rompecabezas artistico."
-                  : `Ejercitá tu mente con este rompecabezas artistico.`}
+                  : "Ejercitá tu mente con este rompecabezas artistico."}
               </Text>
 
               <View
