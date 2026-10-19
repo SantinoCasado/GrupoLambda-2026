@@ -5,7 +5,8 @@ import path from 'path';
 export const generarYSubirFactura = async (
     pedidoId: string, 
     cliente: any, 
-    detallePrecios: any
+    detallePrecios: any,
+    items: any[] 
 ): Promise<string> => {
     return new Promise((resolve, reject) => {
         try {
@@ -15,16 +16,15 @@ export const generarYSubirFactura = async (
             doc.on('data', buffers.push.bind(buffers));
             doc.on('end', async () => {
                 const pdfBuffer = Buffer.concat(buffers);
-                
-                // Subir a Supabase Storage
                 const fileName = `factura_${pedidoId}_${Date.now()}.pdf`;
+                
                 const { error: uploadError } = await supabase.storage
                     .from('invoices')
                     .upload(fileName, pdfBuffer, { contentType: 'application/pdf' });
 
-                if (uploadError) throw new Error(uploadError.message);
+                // Usar reject en vez de throw adentro del callback
+                if (uploadError) return reject(new Error(uploadError.message));
 
-                // Obtener URL pública
                 const { data: publicUrlData } = supabase.storage
                     .from('invoices')
                     .getPublicUrl(fileName);
@@ -32,49 +32,54 @@ export const generarYSubirFactura = async (
                 resolve(publicUrlData.publicUrl);
             });
 
-            // --- DISEÑO DEL PDF ---
-            // Nombre, Logo (Texto alusivo) y Dirección
             try {
-                // ruta absoluta al PNG del logo
                 const logoPath = path.join(__dirname, '../../../assets/logo.png'); 
-                
-                // Centrado la imagen calculando la mitad de la página menos la mitad del ancho de la imagen
                 doc.image(logoPath, (doc.page.width - 100) / 2, doc.y, { width: 100 });
-                doc.moveDown(0.5); // Espacio debajo del logo
+                doc.moveDown(0.5);
             } catch (err) {
-                // Si por algún motivo no encuentra el archivo, no rompe el PDF, solo avisa en consola
-                console.warn('⚠️ No se encontró el logo en assets, renderizando sin imagen.');
+                console.warn('⚠️ No se encontró el logo, renderizando sin imagen.');
             }
-            doc.fontSize(20).text('Jardin Imperial', { align: 'center' });
-            doc.fontSize(10).text('Av. no entendo 123, Buenos Aires', { align: 'center' });
-            doc.moveDown();
 
-            // Fecha y úmero de Factura
-            doc.fontSize(12).text(`Fecha: ${new Date().toLocaleDateString('es-AR')}`);
-            // Guardado de las partes en un array y le asigna un valor por defecto (||) a la posición 0
+            doc.font('Helvetica-Bold').fontSize(20).text('Restaurante Imperial', { align: 'center' });
+            doc.font('Helvetica').fontSize(10).text('Av. Siempre Viva 123, Buenos Aires', { align: 'center' });
+            doc.moveDown(2);
+
             const partesId = pedidoId.split('-');
             const numeroFactura = (partesId[0] || pedidoId).toUpperCase();
+            
+            doc.fontSize(12).text(`Fecha: ${new Date().toLocaleDateString('es-AR')}`);
             doc.text(`Factura N°: ${numeroFactura}`);
             doc.moveDown();
 
-            // Datos del Cliente y Número de Pedido
-            doc.text(`Cliente: ${cliente.first_name} ${cliente.last_name || ''}`);
+            // el DNI
+            doc.text(`Cliente: ${cliente.first_name} ${cliente.last_name || ''} - DNI: ${cliente.dni || 'N/A'}`);
             doc.text(`Pedido N°: ${pedidoId}`);
             doc.moveDown();
 
-            // Detalle de lo facturado
-            doc.fontSize(14).text('Detalle de Facturación:', { underline: true });
+            doc.font('Helvetica-Bold').fontSize(14).text('Detalle de Facturación:', { underline: true });
             doc.moveDown(0.5);
-            doc.fontSize(12);
+            doc.font('Helvetica').fontSize(12);
+
+            // Listar ítems con precio unitario (Punto 21)
+            if (items && items.length > 0) {
+                items.forEach(item => {
+                    const nombrePlato = item.product?.name || 'Producto sin nombre';
+                    doc.text(`${item.quantity}x ${nombrePlato} - $${item.unit_price} c/u`); 
+                });
+                doc.moveDown();
+            }
+
             doc.text(`Subtotal Comida: $${detallePrecios.precioBase}`);
             if (detallePrecios.descuento > 0) {
                 doc.text(`Descuento (Juegos): -$${detallePrecios.descuento}`);
             }
-            doc.text(`Propina: $${detallePrecios.propina}`);
+            
+            // Mostrar porcentaje de propina
+            doc.text(`Propina (${detallePrecios.porcentajePropina}%): $${detallePrecios.propina}`);
             doc.moveDown();
-            doc.font('Helvetica-Bold')
-                .fontSize(14)
-                .text(`TOTAL FINAL: $${detallePrecios.precioFinal}`);
+            
+            doc.font('Helvetica-Bold').fontSize(14).text(`TOTAL FINAL: $${detallePrecios.precioFinal}`);
+
             doc.end();
         } catch (error) {
             reject(error);
