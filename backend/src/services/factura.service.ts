@@ -40,7 +40,7 @@ export const generarYSubirFactura = async (
                 console.warn('⚠️ No se encontró el logo, renderizando sin imagen.');
             }
 
-            doc.font('Helvetica-Bold').fontSize(20).text('Restaurante Imperial', { align: 'center' });
+            doc.font('Helvetica-Bold').fontSize(20).text('Jardín Imperial', { align: 'center' });
             doc.font('Helvetica').fontSize(10).text('Av. Siempre Viva 123, Buenos Aires', { align: 'center' });
             doc.moveDown(2);
 
