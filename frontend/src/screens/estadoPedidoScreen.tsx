@@ -144,7 +144,7 @@ export function EstadoPedidoScreen({
 
   if (cargando) {
     return (
-      <View className="flex-1 items-center justify-center bg-amber-50">
+      <View className="flex-1 items-center justify-center bg-[#FCE7CB]">
         <ActivityIndicator size="large" color="#800020" />
       </View>
     );
@@ -325,7 +325,7 @@ export function EstadoPedidoScreen({
                 estaEntregado ? "text-white" : "text-stone-500"
               }`}
             >
-              {estaEntregado ? "Pedir cuenta" : "Esperando Entrega..."}
+              {estaEntregado ? "Pagar cuenta" : "Esperando Entrega..."}
             </Text>
           </TouchableOpacity>
         )}

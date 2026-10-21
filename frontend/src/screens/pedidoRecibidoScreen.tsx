@@ -40,6 +40,7 @@ export function PedidoRecibidoScreen({
   onIrAJuegos,
   onIrAEncuesta,
   onPedirCuenta,
+  onVolver,
 }: Props) {
   const [modalQrVisible, setModalQrVisible] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
@@ -141,6 +142,22 @@ export function PedidoRecibidoScreen({
 
       {/* Cabecera */}
       <View className="px-5 pt-4">
+        <View className="absolute left-5 z-10"
+              style={{ top: 30 }}>
+          <TouchableOpacity
+            onPress={onVolver}
+            accessibilityRole="button"
+            accessibilityLabel="Volver"
+            className="items-center justify-center rounded-xl border-2 border-mostaza bg-vino px-2 py-1 active:bg-terracota/70"
+          >
+            <Image
+              source={require("../../assets/images/left-arrow-y.png")}
+              className="h-6 w-6 mr-1 my-1"
+              resizeMode="contain"
+            />
+          </TouchableOpacity>
+        </View>
+
         <Image
           source={require("../../assets/images/logo-name.png")}
           className="h-20 w-auto self-center"
@@ -148,10 +165,10 @@ export function PedidoRecibidoScreen({
         />
         <Image
           source={require("../../assets/images/separator.png")}
-          className="my-2 h-5 w-full"
+          className="mt-2 h-8 w-full"
           resizeMode="contain"
         />
-        <ChineseFrame className="mt-2 bg-vino">
+        <ChineseFrame className="mt-1 bg-vino">
           <View className="items-center rounded-xl bg-mostaza/15 px-4 py-4">
             <Text
               style={{ fontFamily: "LaOriental" }}
