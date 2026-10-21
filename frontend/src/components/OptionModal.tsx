@@ -1,4 +1,3 @@
-// src/components/OptionModal.tsx
 import React from "react";
 import { Modal, View, Text, Image, TouchableOpacity } from "react-native";
 import { ChineseFrame } from "./ChineseFrame";

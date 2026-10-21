@@ -17,9 +17,8 @@ import { PerfilUsuario } from "../data/usuariosPrecargados";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { FeedbackModal } from "../components/FeedbackModal";
 
-// Únicos autorizados a dar de baja productos: cocinero y cantinero, cada uno
-// sobre sus propias secciones (el cocinero ve comidas y postres, el cantinero
-// solo bebidas).
+// Únicos autorizados a dar de baja productos: cozinero y cantinero, cada uno
+// sobre su propia sección (el cocinero solo ve comidas, el cantinero solo bebidas).
 const ROLES_DAR_DE_BAJA: PerfilUsuario[] = ["cocinero", "cantinero"];
 
 // Clientes (registrado o anónimo). Son los únicos con mesa y comanda, así que
@@ -34,9 +33,9 @@ const CATEGORIAS: { id: Categoria; etiqueta: string }[] = [
   { id: "dessert", etiqueta: "🍰 Postres" },
 ];
 
-// El cocinero trabaja con comidas y postres y el cantinero solo con bebidas,
-// así que no se les ofrecen las secciones que no les corresponden. Los demás
-// roles (clientes y personal jerárquico) ven la carta completa.
+// El cocinero solo trabaja con comidas y el cantinero solo con bebidas, así que
+// no se les ofrecen las secciones que no les corresponden. Los demás roles
+// (clientes y personal jerárquico) ven la carta completa.
 const CATEGORIAS_POR_ROL: Partial<Record<PerfilUsuario, Categoria[]>> = {
   cocinero: ["dish", "dessert"],
   cantinero: ["drink"],
@@ -55,8 +54,6 @@ const TITULO_CATEGORIA: Record<Categoria, string> = {
   dessert: "Carta de Postres",
 };
 
-// Etiqueta corta de los botones de filtro (se usa como texto accesible, ya que
-// los botones muestran íconos).
 const ETIQUETA_FILTRO: Record<Categoria, string> = {
   dish: "Platos",
   drink: "Bebidas",
@@ -233,10 +230,6 @@ export function CartaScreen({
   const puedeDarDeBaja = ROLES_DAR_DE_BAJA.includes(rolUsuario);
   const esCliente = ROLES_CLIENTE.includes(rolUsuario);
 
-  // Cocinero y clientes pueden alternar de sección dentro de la carta; el
-  // cantinero solo tiene una sección y el resto del personal navega por separado.
-  const muestraFiltrosCategoria = rolUsuario === "cocinero" || esCliente;
-
   // Secciones que el rol puede ver. Si el rol no tiene restricción, ve todas.
   const categoriasVisibles = CATEGORIAS_POR_ROL[rolUsuario] ?? CATEGORIAS.map((c) => c.id);
 
@@ -250,6 +243,16 @@ export function CartaScreen({
   const categoriaActiva = categoriasVisibles.includes(categoriaSeleccionada)
     ? categoriaSeleccionada
     : categoriasVisibles[0];
+
+  // Cocinero y clientes pueden alternar de sección dentro de la carta; el
+  // cantinero solo tiene una sección y el resto del personal navega por separado.
+  // El selector solo ofrece Platos y Postres, así que se oculta cuando la sección
+  // activa es Bebidas (se navega desde el inicio y no se mezcla en el selector).
+  const esCategoriaFiltro = (cat: Categoria): cat is CategoriaFiltro =>
+    CATEGORIAS_FILTRO.includes(cat as CategoriaFiltro);
+
+  const muestraFiltrosCategoria =
+    (rolUsuario === "cocinero" || esCliente) && esCategoriaFiltro(categoriaActiva);
 
   const iconoCategoria = ICONO_CATEGORIA[categoriaActiva];
 
@@ -369,31 +372,15 @@ export function CartaScreen({
   return (
     <View className="flex-1 bg-amber-50/40">
       {/* 1. Header con Mesa y Consulta al Mozo */}
-      <View className="border-b border-mostaza/20 bg-vino px-5 py-3 shadow-md">
+      <View className="border-b border-mostaza/20 bg-vino px-5 py-3 items-center">
         <View className="flex-row items-center">
-          <View className="flex-1" />
-
-          <View className="items-center">
-            <Text style={{ fontFamily: "LaOriental" }} className="text-2xl uppercase text-mostaza">
+          <View className="items-center justify-center w-full border-b border-mostaza/70 py-2">
+            <Text style={{ fontFamily: "LaOriental" }} className="text-3xl uppercase text-mostaza">
               {TITULO_CATEGORIA[categoriaActiva]}
             </Text>
           </View>
-
-          {/* Botón Consulta al Mozo (Punto 11) */}
-          <View className="flex-1 items-end">
-            {esCliente && onAbrirChatMozo ? (
-              <TouchableOpacity
-                onPress={onAbrirChatMozo}
-                className="flex-row items-center rounded-xl border border-mostaza/60 bg-calabaza/90 px-2.5 py-1.5 active:bg-calabaza"
-              >
-                <Text className="mr-1 text-sm">💬</Text>
-                <Text className="text-[11px] font-extrabold text-white uppercase">Mozo</Text>
-              </TouchableOpacity>
-            ) : null}
-          </View>
         </View>
-
-        {/* Filtros de categoría: cocinero y clientes alternan entre Platos y Postres */}
+      {/* Filtros de categoría: cocinero y clientes alternan entre Platos y Postres */}
         {muestraFiltrosCategoria && categoriasFiltro.length > 1 && (
           <View className="mt-3 flex-row justify-center gap-3">
             {categoriasFiltro.map((cat) => {
@@ -465,24 +452,25 @@ export function CartaScreen({
                     {/* Ficha descriptiva */}
                     <View className="mt-3.5">
                       <View className="flex-row items-start justify-between">
-                        <Text className="mr-2 mb-2 pr-5 flex-1 text-[22px] font-black text-vino">
+                        <Text className="mr-2 mb-2 pr-5 flex-1 text-2xl font-black text-vino">
                           {item.nombre}
                         </Text>
-                        <Text className="text-[30px] font-black text-calabaza">
+                        <Text className="text-3xl font-black text-calabaza">
                           ${item.precio}
                         </Text>
                       </View>
 
                       <View className="mt-1 flex-row items-center">
                         <View className="rounded-md bg-amber-100 px-2 py-0.5">
-                          <Text className="text-[16px] font-bold text-amber-900">
+                          <Text className="font-bold text-amber-900" style={{ fontSize: 16 }}>
                             ⏱ {item.tiempoElaboracion} minutos
                           </Text>
                         </View>
                       </View>
                       <Text
                         numberOfLines={3}
-                        className="px-5 mt-2 text-[16px] text-stone-600"
+                        className="px-5 my-2 text-stone-600"
+                        style={{ fontSize: 16 }}
                       >
                         {item.descripcion}
                       </Text>
@@ -494,7 +482,7 @@ export function CartaScreen({
                 {puedeDarDeBaja ? (
                   <TouchableOpacity
                     onPress={() => setItemAEliminar(item)}
-                    className="mt-3 flex-row items-center justify-center rounded-xl bg-terracota/20 py-2.5 active:bg-terracota/40"
+                    className="mt-2 flex-row items-center justify-center rounded-xl bg-terracota/20 py-2.5 active:bg-terracota/40"
                   >
                     <Image
                       source={require("../../assets/images/trash-t.png")}
@@ -506,7 +494,7 @@ export function CartaScreen({
                 ) : esCliente ? (
                       <TouchableOpacity
                         onPress={() => agregarAlCarrito(item)}
-                        className="mt-3 flex-row items-center justify-center rounded-2xl bg-vino py-3 active:bg-terracota"
+                        className="mt-2 flex-row items-center justify-center rounded-2xl bg-vino py-3 active:bg-terracota"
                       >
                         <Image
                           source={require("../../assets/images/sello.png")}
@@ -515,7 +503,7 @@ export function CartaScreen({
                         />
                         <Text
                           style={{ fontFamily: "LaOriental" }}
-                          className="mx-5 text-s uppercase tracking-wider text-mostaza"
+                          className="mx-4 text-lg uppercase tracking-wider text-mostaza pt-1"
                         >
                           Agregar a la Mesa
                         </Text>

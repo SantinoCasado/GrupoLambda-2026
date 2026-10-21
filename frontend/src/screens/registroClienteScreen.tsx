@@ -530,6 +530,9 @@ onMomentumScrollEnd={(e) => {
                 <Text className="mt-4 mb-2 ml-6 text-s font-bold text-vino">
                 Foto de perfil*
               </Text>
+              {errors.fotoUri && (
+                <Text className="mt-2 ml-6 text-center text-xs font-medium text-rose-400">{errors.fotoUri}</Text>
+              )}
 
             {/* Fotografía Personal (Solo Cámara Física) */}
             <View className="relative w-[88%] h-36 bg-[#FFF8EA] self-center rounded-2xl border border-mostaza p-4">
@@ -570,10 +573,6 @@ onMomentumScrollEnd={(e) => {
                     resizeMode="contain"
                   />
                 </TouchableOpacity>
-              )}
-
-              {errors.fotoUri && (
-                <Text className="mt-2 text-center text-xs font-medium text-rose-400">{errors.fotoUri}</Text>
               )}
             </View>
 

@@ -692,13 +692,14 @@ export const solicitarCuentaService = async (pedidoId: string) => {
 };
 
 export const cobrarPedidoService = async (pedidoId: string, porcentajePropina: number) => {
-    if (porcentajePropina === undefined || porcentajePropina === null) {
-        throw new Error('Debe seleccionar un porcentaje de propina para generar la cuenta.');
+    if (porcentajePropina === undefined || porcentajePropina === null || isNaN(porcentajePropina)) {
+        throw new Error('Debe seleccionar un porcentaje de propina válido.');
     }
-    // Obtener el pedido actual
+
+    // Obtener el pedido actual y la relación con la mesa para la Notificación Push
     const { data: pedido, error: errorPedido } = await supabase
-        .from('orders') // Ajustá al nombre de tu tabla
-        .select('*')
+        .from('orders')
+        .select('*, restaurant_tables(table_number)')
         .eq('id', pedidoId)
         .single();
 
@@ -706,14 +707,14 @@ export const cobrarPedidoService = async (pedidoId: string, porcentajePropina: n
     
     if (pedido.status === 'paid') throw new Error('El pedido ya está cobrado.');
     if (pedido.status === 'cancelled') throw new Error('No se puede cobrar un pedido cancelado.');
-
-    // Calculo de la propina y el total final
-    const subtotal = Number(pedido.total);
-    const descuentoJuego = pedido.game_discount || 0; // Si ganó el primer intento
-    const subtotalConDescuento = subtotal - descuentoJuego;
-
-    const montoPropina = subtotal * (porcentajePropina / 100);
-    const totalFinal = subtotal + montoPropina;
+  
+    // El total ya quedó cerrado cuando el cliente solicitó la cuenta:
+    // solicitarCuentaApi guarda en `total_amount` el subtotal - descuento + propina.
+    // No se vuelve a aplicar el descuento ni la propina para no duplicarlos.
+    const totalFinal = Number(pedido.total_amount || 0);
+    const descuentoJuego = Number(pedido.discount_amount || 0);
+    const montoPropina = Number(pedido.tip_amount || 0);
+    const subtotal = totalFinal - montoPropina + descuentoJuego;
 
     // Marca como pagado
     const { error: errorUpdatePedido } = await supabase
@@ -727,13 +728,13 @@ export const cobrarPedidoService = async (pedidoId: string, porcentajePropina: n
 
     if (errorUpdatePedido) throw new Error(`Error al cobrar: ${errorUpdatePedido.message}`);
 
-    // Libera la mesa
+    // Libera la mesa 
     await supabase
         .from('restaurant_tables') 
-        .update({ status: 'free' })
+        .update({ availability: 'free' })
         .eq('id', pedido.table_id);
 
-    // Aviso del supervisor y duelo por Push que la mesa pagó y se liberó
+    // Aviso del supervisor y dueño por Push que la mesa pagó y se liberó
     try {
       const numeroMesa = (pedido.restaurant_tables as any)?.table_number || 'S/N';
 
@@ -758,16 +759,46 @@ export const cobrarPedidoService = async (pedidoId: string, porcentajePropina: n
               }
           }
       }
-  } catch (pushError) {
-      console.error('⚠️ Error al enviar las push de confirmación de pago:', pushError);
-  }
+    } catch (pushError) {
+        console.error('⚠️ Error al enviar las push de confirmación de pago:', pushError);
+    }
 
     return {
-        items: pedido.items, // Pedidos realizados con precios unitarios
+        items: pedido.items, 
         subtotal,
         descuento_juego: descuentoJuego,
         porcentaje_propina: porcentajePropina,
         monto_propina: montoPropina,
         total_a_abonar: totalFinal 
+    };
+};
+
+export const obtenerResumenPreciosService = async (pedidoId: string) => {
+    // Trae las columnas 
+    const { data: pedido, error } = await supabase
+        .from('orders')
+        .select('total_amount, discount_amount, tip_amount, final_total, status')
+        .eq('id', pedidoId)
+        .single();
+
+    if (error || !pedido) {
+        throw new Error('Pedido no encontrado.');
+    }
+
+    const precioBase = Number(pedido.total_amount || 0);
+    const descuento = Number(pedido.discount_amount || 0);
+    const propina = Number(pedido.tip_amount || 0);
+
+    const precioFinal = Number(pedido.final_total) > 0 
+        ? Number(pedido.final_total) 
+        : (precioBase - descuento + propina);
+
+    // JSON con la estructura exacta que pidieron
+    return {
+        precio_pedido: precioBase,
+        descuento: -descuento, 
+        propina: propina,
+        precio_final_pedido: precioFinal,
+        estado: pedido.status // 'pending', 'paid', etc.
     };
 };
