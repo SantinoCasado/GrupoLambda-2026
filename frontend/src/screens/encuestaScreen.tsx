@@ -301,7 +301,7 @@ export function EncuestaScreen({ pedidoId, userId, userRole = "cliente_registrad
               keyboardShouldPersistTaps="handled"
               contentContainerStyle={{ paddingBottom: 12 }}
             >
-              <View className="rounded-2xl border border-mostaza/30 bg-white p-4">
+              <View className="rounded-2xl border border-mostaza bg-white p-4">
                 {/* 1. Sabor de la comida */}
                 <Text style={{ fontFamily: "LaOriental" }} className="text-xl uppercase text-vino mb-1 text-center">
                   Sabor de la Comida
@@ -362,23 +362,22 @@ export function EncuestaScreen({ pedidoId, userId, userRole = "cliente_registrad
               showsVerticalScrollIndicator={false}
               keyboardShouldPersistTaps="handled"
               automaticallyAdjustKeyboardInsets
-              contentContainerStyle={{ paddingBottom: 12 }}
+              contentContainerStyle={{ paddingBottom: 12, flexGrow: 1 }}
             >
               {/* Comentario */}
-              <View className="rounded-2xl border border-mostaza/30 bg-white p-4">
-                <Text style={{ fontFamily: "LaOriental" }} className="text-sm uppercase text-vino mb-2">
+              <View className="rounded-2xl border border-mostaza bg-white p-4" style={{ flexGrow: 1 }}>
+                <Text style={{ fontFamily: "LaOriental" }} className="text-xl uppercase text-vino mb-2">
                   Déjanos tu comentario
                 </Text>
                 <TextInput
                   multiline
-                  numberOfLines={4}
                   value={comentario}
                   onChangeText={setComentario}
-                  placeholder="Cuéntanos qué platos te gustaron más, sugerencias de mejora o felicitaciones al equipo..."
+                  placeholder="Contános qué platos te gustaron más, sugerinos mejoras o felicitá al equipo..."
                   placeholderTextColor="#9ca3af"
                   textAlignVertical="top"
-                  className="w-full rounded-xl border border-stone-300 p-3 text-xs text-stone-800 bg-amber-50/40"
-                  style={{ minHeight: 80 }}
+                  className="w-full rounded-xl border border-stone-300 p-3 text-sm text-stone-800 bg-amber-50/40"
+                  style={{ flexGrow: 1, minHeight: 80 }}
                 />
               </View>
             </ScrollView>
@@ -389,20 +388,27 @@ export function EncuestaScreen({ pedidoId, userId, userRole = "cliente_registrad
               <TouchableOpacity
                 onPress={enviarEncuesta}
                 disabled={enviando}
-                className={`w-full rounded-2xl bg-emerald-600 py-3.5 active:bg-emerald-700 ${
+                className={`flex-row items-center justify-center w-full rounded-2xl bg-vino py-3.5 active:bg-vino-700 ${
                   enviando ? "opacity-50" : ""
                 }`}
               >
-                {enviando ? (
-                  <ActivityIndicator color="#FFF" size="small" />
-                ) : (
+                <Image
+                  source={require("../../assets/images/sello.png")}
+                  className="h-7 w-7"
+                  resizeMode="contain"
+                />
                   <Text
                     style={{ fontFamily: "LaOriental" }}
-                    className="text-center text-sm uppercase tracking-wider text-white"
+                    className="text-center mt-1 mx-5 text-xl uppercase tracking-wider text-mostaza"
                   >
                     Enviar Encuesta
                   </Text>
-                )}
+               
+                <Image
+                  source={require("../../assets/images/sello.png")}
+                  className="h-7 w-7"
+                  resizeMode="contain"
+                />
               </TouchableOpacity>
                 {renderPaginacion()}
               <View className="pb-4">

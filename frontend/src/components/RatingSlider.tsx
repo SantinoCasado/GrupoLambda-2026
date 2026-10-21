@@ -1,9 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { View, Text, TouchableOpacity, PanResponder, LayoutChangeEvent } from "react-native";
+import { View, Text, PanResponder, LayoutChangeEvent, Animated } from "react-native";
 import * as Haptics from "expo-haptics";
 
 const THUMB = 28;
 const TRACK_H = 8;
+// Cuánto hay que mover el dedo antes de considerar que es un arrastre
+// y no un simple toque (así un tap no cambia la calificación).
+const UMBRAL_ARRASTRE = 3;
 
 interface RatingSliderProps {
   value: number;
@@ -16,7 +19,8 @@ interface RatingSliderProps {
 
 /**
  * Slider de calificación con paradas discretas (por defecto 1 a 5).
- * Implementado con PanResponder para no requerir módulos nativos.
+ * El pulgar sigue al dedo de forma continua y el valor se ajusta por pasos.
+ * Solo cambia con un arrastre: tocar la pista o los números no selecciona nada.
  */
 export function RatingSlider({
   value,
@@ -30,7 +34,16 @@ export function RatingSlider({
 
   const rango = Math.max(1, max - min);
   const valorActual = Math.min(max, Math.max(min, Math.round(value)));
-  const ratio = (valorActual - min) / rango;
+  const utilWidth = Math.max(0, trackWidth - THUMB);
+
+  // Posición animada del pulgar en píxeles (0 .. utilWidth).
+  const pos = useRef(new Animated.Value(0)).current;
+  const posActualRef = useRef(0);
+  const posInicialRef = useRef(0);
+  const inicioXRef = useRef(0);
+  const arrastrandoRef = useRef(false);
+  const movidoRef = useRef(false);
+  const inicializadoRef = useRef(false);
 
   // El PanResponder se crea una sola vez, así que guardamos los datos
   // "frescos" en una ref para evitar closures viejos.
@@ -53,22 +66,64 @@ export function RatingSlider({
     datosRef.current.onSlidingEnd = onSlidingEnd;
   });
 
-  const inicioRef = useRef(0);
+  // Sincroniza el pulgar con el valor cuando cambia desde afuera.
+  useEffect(() => {
+    if (arrastrandoRef.current) return;
+
+    const destino = ((valorActual - min) / rango) * utilWidth;
+
+    if (!inicializadoRef.current) {
+      if (utilWidth <= 0) return;
+      inicializadoRef.current = true;
+      posActualRef.current = destino;
+      pos.setValue(destino);
+      return;
+    }
+
+    posActualRef.current = destino;
+    Animated.timing(pos, {
+      toValue: destino,
+      duration: 180,
+      useNativeDriver: false,
+    }).start();
+  }, [valorActual, min, max, rango, utilWidth, pos]);
 
   const panResponder = useMemo(() => {
-    const calcular = (x: number) => {
-      const { width, min: mn, max: mx, onChange: emitir } = datosRef.current;
-      if (width <= 0) return;
+    const valorDesdePos = (px: number) => {
+      const { min: mn, max: mx, width } = datosRef.current;
+      if (width <= 0) return datosRef.current.value;
 
       const util = Math.max(1, width - THUMB);
-      const proporcion = Math.min(1, Math.max(0, (x - THUMB / 2) / util));
-      const nuevo = mn + Math.round(proporcion * (mx - mn));
+      const proporcion = Math.min(1, Math.max(0, px / util));
+      return mn + Math.round(proporcion * (mx - mn));
+    };
 
+    const emitirSiCambia = (px: number) => {
+      const nuevo = valorDesdePos(px);
       if (nuevo !== datosRef.current.value) {
         datosRef.current.value = nuevo;
-        emitir(nuevo);
+        datosRef.current.onChange(nuevo);
         Haptics.selectionAsync().catch(() => {});
       }
+    };
+
+    const acomodarPulgar = () => {
+      arrastrandoRef.current = false;
+
+      const { min: mn, max: mx, width } = datosRef.current;
+      const util = Math.max(0, width - THUMB);
+      const destino =
+        util > 0 ? ((datosRef.current.value - mn) / Math.max(1, mx - mn)) * util : 0;
+
+      posActualRef.current = destino;
+      Animated.spring(pos, {
+        toValue: destino,
+        speed: 20,
+        bounciness: 4,
+        useNativeDriver: false,
+      }).start();
+
+      datosRef.current.onSlidingEnd?.();
     };
 
     return PanResponder.create({
@@ -76,25 +131,33 @@ export function RatingSlider({
       onMoveShouldSetPanResponder: () => true,
       onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: (evt) => {
+        arrastrandoRef.current = true;
+        movidoRef.current = false;
+        inicioXRef.current = evt.nativeEvent.locationX;
+        posInicialRef.current = posActualRef.current;
+        pos.stopAnimation((valorPos: number) => {
+          posActualRef.current = valorPos;
+          posInicialRef.current = valorPos;
+        });
         datosRef.current.onSlidingStart?.();
-        inicioRef.current = evt.nativeEvent.locationX;
-        calcular(inicioRef.current);
       },
       onPanResponderMove: (_evt, gesture) => {
-        calcular(inicioRef.current + gesture.dx);
-      },
-      onPanResponderRelease: () => {
-        datosRef.current.onSlidingEnd?.();
-      },
-      onPanResponderTerminate: () => {
-        datosRef.current.onSlidingEnd?.();
-      },
-    });
-  }, []);
+        if (!movidoRef.current) {
+          if (Math.abs(gesture.dx) < UMBRAL_ARRASTRE) return;
+          movidoRef.current = true;
+        }
 
-  const utilWidth = Math.max(0, trackWidth - THUMB);
-  const thumbLeft = ratio * utilWidth;
-  const relleno = thumbLeft + THUMB / 2;
+        const util = Math.max(0, datosRef.current.width - THUMB);
+        const nueva = Math.min(util, Math.max(0, posInicialRef.current + gesture.dx));
+
+        posActualRef.current = nueva;
+        pos.setValue(nueva);
+        emitirSiCambia(nueva);
+      },
+      onPanResponderRelease: acomodarPulgar,
+      onPanResponderTerminate: acomodarPulgar,
+    });
+  }, [pos]);
 
   const alMedir = (e: LayoutChangeEvent) => {
     const { width } = e.nativeEvent.layout;
@@ -103,6 +166,12 @@ export function RatingSlider({
   };
 
   const pasos = Array.from({ length: rango + 1 }, (_, i) => min + i);
+
+  const relleno = pos.interpolate({
+    inputRange: [0, Math.max(1, utilWidth)],
+    outputRange: [THUMB / 2, utilWidth + THUMB / 2],
+    extrapolate: "clamp",
+  });
 
   const mover = (nuevo: number) => {
     const acotado = Math.min(max, Math.max(min, nuevo));
@@ -129,34 +198,35 @@ export function RatingSlider({
         style={{ height: THUMB }}
         className="w-full justify-center"
       >
-        <View pointerEvents="none" className="w-full rounded-full bg-stone-200" style={{ height: TRACK_H }} />
         <View
           pointerEvents="none"
-          className="absolute left-0 rounded-full bg-calabaza"
+          className="w-full rounded-full bg-stone-200"
+          style={{ height: TRACK_H }}
+        />
+        <Animated.View
+          pointerEvents="none"
+          className="absolute left-0 rounded-full bg-vino"
           style={{ height: TRACK_H, width: relleno }}
         />
-        <View
+        <Animated.View
           pointerEvents="none"
-          className="absolute items-center justify-center rounded-full border-2 border-mostaza bg-vino"
-          style={{ width: THUMB, height: THUMB, left: thumbLeft }}
+          className="absolute left-0 items-center justify-center rounded-full border-2 border-mostaza bg-vino"
+          style={{ width: THUMB, height: THUMB, transform: [{ translateX: pos }] }}
         >
           <Text allowFontScaling={false} className="text-[11px] font-bold text-mostaza">
             {valorActual}
           </Text>
-        </View>
+        </Animated.View>
       </View>
 
-      {/* Paradas 1..5 */}
+      {/* Escala de referencia (no seleccionable: hay que deslizar) */}
       <View className="relative mt-1" style={{ height: 20 }}>
         {pasos.map((paso) => {
           const r = (paso - min) / rango;
           const activo = paso === valorActual;
           return (
-            <TouchableOpacity
+            <View
               key={paso}
-              onPress={() => mover(paso)}
-              accessibilityRole="button"
-              accessibilityLabel={`${paso} de ${max}`}
               className="absolute items-center justify-center"
               style={{ left: r * utilWidth, width: THUMB, height: 20 }}
             >
@@ -166,7 +236,7 @@ export function RatingSlider({
               >
                 {paso}
               </Text>
-            </TouchableOpacity>
+            </View>
           );
         })}
       </View>
@@ -175,6 +245,7 @@ export function RatingSlider({
         <Text className="text-[10px] text-stone-500">Malo</Text>
         <Text className="text-[10px] text-stone-500">Excelente</Text>
       </View>
+
     </View>
   );
 }
