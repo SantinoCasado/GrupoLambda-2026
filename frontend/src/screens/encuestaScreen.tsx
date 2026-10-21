@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
@@ -7,11 +7,14 @@ import {
   TextInput,
   Image,
   ActivityIndicator,
+  useWindowDimensions,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import Svg, { Rect, Text as SvgText, Path, G, Line, Circle } from "react-native-svg";
 import { ChineseFrame } from "../components/ChineseFrame";
 import { FeedbackModal } from "../components/FeedbackModal";
+import { FaceRating } from "../components/FaceRating";
+import { RatingSlider } from "../components/RatingSlider";
 import {
   verificarEncuestaCompletada,
   guardarEncuestaApi,
@@ -26,6 +29,9 @@ interface Props {
   onVolver: () => void;
 }
 
+const ESTRELLA_LLENA = require("../../assets/images/star-v.png");
+const ESTRELLA_VACIA = require("../../assets/images/empty-star-v.png");
+
 export function EncuestaScreen({ pedidoId, userId, userRole = "cliente_registrado", onVolver }: Props) {
   const [cargando, setCargando] = useState(true);
   const [yaRespondio, setYaRespondio] = useState(false);
@@ -37,6 +43,14 @@ export function EncuestaScreen({ pedidoId, userId, userRole = "cliente_registrad
   const [ratingComodidad, setRatingComodidad] = useState(5);
   const [comentario, setComentario] = useState("");
   const [enviando, setEnviando] = useState(false);
+
+  // Carrusel horizontal del formulario (0: calificaciones, 1: comentario y envío)
+  const carouselRef = useRef<ScrollView>(null);
+  const [paso, setPaso] = useState(0);
+  // Se bloquea el deslizamiento del carrusel mientras se arrastra el slider
+  // de comodidad, para que el gesto no cambie de página.
+  const [carruselBloqueado, setCarruselBloqueado] = useState(false);
+  const { width: screenWidth } = useWindowDimensions();
 
   // Estadísticas
   const [encuestas, setEncuestas] = useState<EncuestaData[]>([]);
@@ -104,7 +118,11 @@ export function EncuestaScreen({ pedidoId, userId, userRole = "cliente_registrad
         tipo: "exito",
         titulo: "¡Muchas Gracias!",
         mensaje: "Tu encuesta fue registrada. Ya puedes ver los resultados generales.",
-        onCloseCustom: () => setVista("graficos"),
+        onCloseCustom: () => {
+          setPaso(0);
+          carouselRef.current?.scrollTo({ x: 0, animated: false });
+          setVista("graficos");
+        },
       });
     } catch (err: any) {
       setFeedback({
@@ -150,17 +168,27 @@ export function EncuestaScreen({ pedidoId, userId, userRole = "cliente_registrad
           activeOpacity={0.7}
           className="p-1"
         >
-          <Text className={`text-2xl ${estrella <= valor ? "text-mostaza" : "text-stone-300"}`}>
-            ★
-          </Text>
+          <Image
+            source={estrella <= valor ? ESTRELLA_LLENA : ESTRELLA_VACIA}
+            className="h-8 w-8"
+            resizeMode="contain"
+          />
         </TouchableOpacity>
+      ))}
+    </View>
+  );
+
+  const renderPaginacion = () => (
+    <View className="flex-row items-center justify-center gap-2 py-1 my-2">
+      {[0, 1].map((i) => (
+        <View key={i} className={`h-2 w-2 rotate-45 ${paso === i ? "bg-vino" : "bg-mostaza/30"}`} />
       ))}
     </View>
   );
 
   if (cargando) {
     return (
-      <View className="flex-1 items-center justify-center bg-amber-50">
+      <View className="flex-1 items-center justify-center">
         <ActivityIndicator size="large" color="#800020" />
         <Text className="mt-3 text-xs font-bold text-vino">Cargando encuesta...</Text>
       </View>
@@ -168,26 +196,49 @@ export function EncuestaScreen({ pedidoId, userId, userRole = "cliente_registrad
   }
 
   return (
-    <View className="flex-1 bg-amber-50">
-      <StatusBar style="light" />
+    <View className="flex-1">
 
+      
       {/* Header */}
       <View className="px-5 pt-4">
-        <Image
-          source={require("../../assets/images/logo-name.png")}
-          className="h-14 w-auto self-center"
-          resizeMode="contain"
-        />
-        <ChineseFrame className="mt-2 bg-vino">
-          <View className="items-center rounded-xl bg-mostaza/15 px-4 py-3">
-            <Text style={{ fontFamily: "LaOriental" }} className="text-xl text-mostaza uppercase text-center">
-              Encuesta de Satisfacción
-            </Text>
-            <Text className="text-[11px] font-semibold text-amber-100">
-              {vista === "formulario" ? "Tu experiencia en Jardín Imperial" : "Resultados y Estadísticas"}
-            </Text>
+        <View className="absolute left-5 z-10"
+            style={{ top: 30 }}>
+            <TouchableOpacity
+              onPress={onVolver}
+              accessibilityRole="button"
+              accessibilityLabel="Volver"
+              className="items-center justify-center rounded-xl border-2 border-mostaza bg-vino px-2 py-1 active:bg-terracota/70"
+            >
+              <Image
+                source={require("../../assets/images/left-arrow-y.png")}
+                className="h-6 w-6 mr-1 my-1"
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
           </View>
-        </ChineseFrame>
+            <Image
+              source={require("../../assets/images/logo-name.png")}
+              className="h-20 w-auto self-center"
+              resizeMode="contain"
+            />
+            <Image
+              source={require("../../assets/images/separator.png")}
+              className="my-2 h-8 w-full"
+              resizeMode="contain"
+            />
+            <ChineseFrame className="mt-2 bg-vino">
+              <View className="items-center rounded-xl bg-mostaza/15 px-4 py-3">
+                <Text style={{ fontFamily: "LaOriental" }} className="text-xl text-mostaza uppercase text-center">
+                  Encuesta
+                </Text>
+                <Text style={{ fontFamily: "LaOriental" }} className="text-xl text-mostaza uppercase text-center">
+                  de Satisfacción
+                </Text>
+                <Text className="text-[11px] font-semibold text-amber-100">
+                  {vista === "formulario" ? "Tus comentarios nos ayudan a mejorar" : "Reseñas de clientes anteriores"}
+                </Text>
+              </View>
+            </ChineseFrame>
       </View>
 
       {/* Selector de Solapa si ya respondió */}
@@ -224,87 +275,148 @@ export function EncuestaScreen({ pedidoId, userId, userRole = "cliente_registrad
         </View>
       )}
 
-      {/* CONTENIDO 1: FORMULARIO */}
-      {vista === "formulario" && (
+      {/* CONTENIDO 1: FORMULARIO EN DOS PÁGINAS (CARRUSEL) */}
+      {!yaRespondio && vista === "formulario" && (
         <ScrollView
-          className="flex-1 px-5 pt-3"
-          contentContainerStyle={{ paddingBottom: 30 }}
-          showsVerticalScrollIndicator={false}
+          ref={carouselRef}
+          horizontal
+          pagingEnabled
+          scrollEnabled={!carruselBloqueado}
+          nestedScrollEnabled
+          keyboardShouldPersistTaps="handled"
+          showsHorizontalScrollIndicator={false}
+          style={{ flex: 1 }}
+          contentContainerStyle={{ flexGrow: 1 }}
+          onMomentumScrollEnd={(e) => {
+            const step = Math.round(e.nativeEvent.contentOffset.x / screenWidth);
+            setPaso(step === 1 ? 1 : 0);
+          }}
         >
-          <View className="rounded-2xl border border-mostaza/30 bg-white p-4 shadow-sm mb-4">
-            {/* 1. Sabor de la comida */}
-            <Text style={{ fontFamily: "LaOriental" }} className="text-sm uppercase text-vino mb-1 text-center">
-              Sabor de la Comida
-            </Text>
-            <Text className="text-[11px] text-stone-500 text-center mb-1">
-              ¿Qué te pareció el sabor y elaboración de los platos?
-            </Text>
-            {renderSelectorEstrellas(ratingComida, setRatingComida)}
+          {/* PÁGINA 1/2: Calificaciones */}
+          <View style={{ width: screenWidth }} className="flex-1 px-5 pt-3">
+            <ScrollView
+              className="flex-1"
+              nestedScrollEnabled
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              contentContainerStyle={{ paddingBottom: 12 }}
+            >
+              <View className="rounded-2xl border border-mostaza/30 bg-white p-4">
+                {/* 1. Sabor de la comida */}
+                <Text style={{ fontFamily: "LaOriental" }} className="text-xl uppercase text-vino mb-1 text-center">
+                  Sabor de la Comida
+                </Text>
+                <Text className="text-sm text-stone-500 text-center mb-1">
+                  ¿Qué te pareció el sabor y elaboración de los platos?
+                </Text>
+                {renderSelectorEstrellas(ratingComida, setRatingComida)}
 
-            <View className="my-2 border-t border-stone-200" />
+                <View className="my-2 border-t border-stone-200" />
 
-            {/* 2. Calidad de la atención */}
-            <Text style={{ fontFamily: "LaOriental" }} className="text-sm uppercase text-vino mb-1 text-center">
-              Calidad de la Atención
-            </Text>
-            <Text className="text-[11px] text-stone-500 text-center mb-1">
-              ¿Cómo fue el trato y predisposición del personal?
-            </Text>
-            {renderSelectorEstrellas(ratingAtencion, setRatingAtencion)}
+                {/* 2. Calidad de la atención */}
+                <Text style={{ fontFamily: "LaOriental" }} className="text-xl uppercase text-vino mb-1 text-center">
+                  Calidad de la Atención
+                </Text>
+                <Text className="text-sm text-stone-500 text-center mb-1">
+                  ¿Cómo fue el trato y predisposición del personal?
+                </Text>
+                <FaceRating value={ratingAtencion} onChange={setRatingAtencion} />
 
-            <View className="my-2 border-t border-stone-200" />
+                <View className="my-2 border-t border-stone-200" />
 
-            {/* 3. Comodidad del salón */}
-            <Text style={{ fontFamily: "LaOriental" }} className="text-sm uppercase text-vino mb-1 text-center">
-              Comodidad del Salón
-            </Text>
-            <Text className="text-[11px] text-stone-500 text-center mb-1">
-              ¿Cómo calificarías el ambiente, la mesa y la comodidad?
-            </Text>
-            {renderSelectorEstrellas(ratingComodidad, setRatingComodidad)}
-          </View>
+                {/* 3. Comodidad del salón */}
+                <Text style={{ fontFamily: "LaOriental" }} className="text-xl uppercase text-vino mb-1 text-center">
+                  Comodidad del Salón
+                </Text>
+                <Text className="text-sm text-stone-500 text-center mb-1">
+                  ¿Cómo calificarías el ambiente, la mesa y la comodidad?
+                </Text>
+                <RatingSlider
+                  value={ratingComodidad}
+                  onChange={setRatingComodidad}
+                  onSlidingStart={() => setCarruselBloqueado(true)}
+                  onSlidingEnd={() => setCarruselBloqueado(false)}
+                />
+              </View>
+            </ScrollView>
 
-          {/* Comentario */}
-          <View className="rounded-2xl border border-mostaza/30 bg-white p-4 shadow-sm mb-4">
-            <Text style={{ fontFamily: "LaOriental" }} className="text-sm uppercase text-vino mb-2">
-              Déjanos tu comentario
-            </Text>
-            <TextInput
-              multiline
-              numberOfLines={4}
-              value={comentario}
-              onChangeText={setComentario}
-              placeholder="Cuéntanos qué platos te gustaron más, sugerencias de mejora o felicitaciones al equipo..."
-              placeholderTextColor="#9ca3af"
-              textAlignVertical="top"
-              className="w-full rounded-xl border border-stone-300 p-3 text-xs text-stone-800 bg-amber-50/40"
-              style={{ minHeight: 80 }}
-            />
-          </View>
-
-          {/* Botón de Enviar */}
-          <TouchableOpacity
-            onPress={enviarEncuesta}
-            disabled={enviando}
-            className={`w-full rounded-2xl bg-emerald-600 py-3.5 shadow-md active:bg-emerald-700 ${
-              enviando ? "opacity-50" : ""
-            }`}
-          >
-            {enviando ? (
-              <ActivityIndicator color="#FFF" size="small" />
-            ) : (
-              <Text
-                style={{ fontFamily: "LaOriental" }}
-                className="text-center text-sm uppercase tracking-wider text-white"
+            {/* Paginación + Siguiente */}
+            <View className="pb-4">
+              {renderPaginacion()}
+              <TouchableOpacity
+                onPress={() => carouselRef.current?.scrollTo({ x: screenWidth, animated: true })}
+                className="w-full flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
               >
-                Enviar Encuesta
-              </Text>
-            )}
-          </TouchableOpacity>
+                <Text style={{ fontFamily: "LaOriental" }} className="text-s text-calabaza">
+                  Siguiente
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
 
-          <TouchableOpacity onPress={onVolver} className="mt-3 py-2 items-center">
-            <Text className="text-xs font-bold text-stone-500">Volver sin enviar</Text>
-          </TouchableOpacity>
+          {/* PÁGINA 2/2: Comentario y envío */}
+          <View style={{ width: screenWidth }} className="flex-1 px-5 pt-3">
+            <ScrollView
+              className="flex-1"
+              nestedScrollEnabled
+              showsVerticalScrollIndicator={false}
+              keyboardShouldPersistTaps="handled"
+              automaticallyAdjustKeyboardInsets
+              contentContainerStyle={{ paddingBottom: 12 }}
+            >
+              {/* Comentario */}
+              <View className="rounded-2xl border border-mostaza/30 bg-white p-4">
+                <Text style={{ fontFamily: "LaOriental" }} className="text-sm uppercase text-vino mb-2">
+                  Déjanos tu comentario
+                </Text>
+                <TextInput
+                  multiline
+                  numberOfLines={4}
+                  value={comentario}
+                  onChangeText={setComentario}
+                  placeholder="Cuéntanos qué platos te gustaron más, sugerencias de mejora o felicitaciones al equipo..."
+                  placeholderTextColor="#9ca3af"
+                  textAlignVertical="top"
+                  className="w-full rounded-xl border border-stone-300 p-3 text-xs text-stone-800 bg-amber-50/40"
+                  style={{ minHeight: 80 }}
+                />
+              </View>
+            </ScrollView>
+
+            {/* Paginación + Botón de Enviar */}
+            <View className="pb-4">
+              
+              <TouchableOpacity
+                onPress={enviarEncuesta}
+                disabled={enviando}
+                className={`w-full rounded-2xl bg-emerald-600 py-3.5 active:bg-emerald-700 ${
+                  enviando ? "opacity-50" : ""
+                }`}
+              >
+                {enviando ? (
+                  <ActivityIndicator color="#FFF" size="small" />
+                ) : (
+                  <Text
+                    style={{ fontFamily: "LaOriental" }}
+                    className="text-center text-sm uppercase tracking-wider text-white"
+                  >
+                    Enviar Encuesta
+                  </Text>
+                )}
+              </TouchableOpacity>
+                {renderPaginacion()}
+              <View className="pb-4">
+                <TouchableOpacity
+                  onPress={() => carouselRef.current?.scrollTo({ x: 0, animated: true })}
+                  className="w-full flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
+                >
+                  <Text style={{ fontFamily: "LaOriental" }} className="text-s text-calabaza">
+                    Volver
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
         </ScrollView>
       )}
 
@@ -361,7 +473,7 @@ export function EncuestaScreen({ pedidoId, userId, userRole = "cliente_registrad
           </View>
 
           {/* Tarjeta del Gráfico Activo */}
-          <View className="rounded-2xl border-2 border-mostaza/40 bg-white p-4 shadow-sm items-center">
+          <View className="rounded-2xl border-2 border-mostaza/40 bg-white p-4 items-center">
             {totalRespuestas === 0 ? (
               <View className="py-12 items-center">
                 <Text className="text-3xl mb-2">📊</Text>
