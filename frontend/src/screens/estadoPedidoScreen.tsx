@@ -331,7 +331,7 @@ export function EstadoPedidoScreen({
                 estaEntregado ? "text-white" : "text-stone-500"
               }`}
             >
-              {estaEntregado ? "Pasar a pagar" : "Esperando Entrega..."}
+              {estaEntregado ? "Pedir cuenta" : "Esperando Entrega..."}
             </Text>
           </TouchableOpacity>
         )}

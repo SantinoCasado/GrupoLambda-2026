@@ -77,14 +77,14 @@ export function PedidoRecibidoScreen({
   };
 
   return (
-    <View className="flex-1 bg-amber-50">
+    <View className="flex-1">
       <StatusBar style="light" />
 
       {/* Cabecera */}
       <View className="px-5 pt-4">
         <Image
           source={require("../../assets/images/logo-name.png")}
-          className="h-16 w-auto self-center"
+          className="h-20 w-auto self-center"
           resizeMode="contain"
         />
         <Image
@@ -100,56 +100,19 @@ export function PedidoRecibidoScreen({
             >
               Mesa #{numeroMesa}
             </Text>
-            <Text className="mt-1 text-xs font-semibold text-amber-100">
-              ¡Pedido entregado con éxito!
+            <Text className="mt-1 text-xs text-center font-semibold text-amber-100">
+              ¡Esperamos que haya disfrutado su estadía! 
+            </Text>
+            <Text className="mt-1 text-xs text-center font-semibold text-amber-100">
+              No olvide dejarnos una reseña.
             </Text>
           </View>
         </ChineseFrame>
       </View>
 
-      <ScrollView
+      <View
         className="flex-1 px-5 pt-6"
-        contentContainerStyle={{ paddingBottom: 30 }}
-        showsVerticalScrollIndicator={false}
       >
-        <Text
-          style={{ fontFamily: "LaOriental" }}
-          className="text-center text-lg uppercase text-vino mb-2"
-        >
-          ¿Qué deseas hacer ahora?
-        </Text>
-        <Text className="text-center text-xs text-stone-600 mb-6 px-4">
-          Esperamos que haya disfrutado su comida. Puede divertirse con nuestros juegos, dejarnos su opinión o solicitar la cuenta cuando esté listo.
-        </Text>
-
-        {/* BOTÓN 1: JUEGOS */}
-        <TouchableOpacity
-          onPress={onIrAJuegos}
-          activeOpacity={0.85}
-          className="mb-4 flex-row items-center justify-between rounded-2xl border-2 border-caramelo bg-calabaza p-4 shadow-md active:bg-terracota"
-        >
-          <View className="flex-row items-center flex-1 pr-2">
-            <View className="h-12 w-12 items-center justify-center rounded-xl bg-white/20 mr-3">
-              <Text className="text-2xl">🎮</Text>
-            </View>
-            <View className="flex-1">
-              <Text
-                style={{ fontFamily: "LaOriental" }}
-                className="text-lg uppercase text-white"
-              >
-                Juegos
-              </Text>
-              <Text className="text-xs text-amber-100">
-                Diviértase y gane descuentos exclusivos
-              </Text>
-            </View>
-          </View>
-          <Image
-            source={require("../../assets/images/right-arrow-y.png")}
-            className="h-6 w-6"
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
 
         {/* BOTÓN 2: ENCUESTA */}
         <TouchableOpacity
@@ -208,7 +171,7 @@ export function PedidoRecibidoScreen({
             resizeMode="contain"
           />
         </TouchableOpacity>
-      </ScrollView>
+      </View>
 
       {/* MODAL CÁMARA QR DE PROPINA */}
       <Modal
