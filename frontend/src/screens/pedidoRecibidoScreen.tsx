@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -12,6 +12,9 @@ import { StatusBar } from "expo-status-bar";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Haptics from "expo-haptics";
 import { ChineseFrame } from "../components/ChineseFrame";
+import { DetallePedidoCard } from "../components/DetallePedidoCard";
+import { supabase } from "../config/supabase";
+import { obtenerJugadasPedido } from "../services/juegosService";
 
 interface Props {
   pedidoId: string;
@@ -41,6 +44,62 @@ export function PedidoRecibidoScreen({
   const [modalQrVisible, setModalQrVisible] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
   const [escaneado, setEscaneado] = useState(false);
+  const [pedido, setPedido] = useState<any>(null);
+  const [cargandoPedido, setCargandoPedido] = useState(true);
+  const [descuentoPct, setDescuentoPct] = useState(0);
+
+  useEffect(() => {
+    let activo = true;
+
+    const cargarDetalle = async () => {
+      try {
+        const [{ data, error }, jugadas] = await Promise.all([
+          supabase
+            .from("orders")
+            .select(`
+              id,
+              total_amount,
+              discount_amount,
+              tip_amount,
+              order_items (
+                id,
+                quantity,
+                unit_price,
+                products (id, name)
+              )
+            `)
+            .eq("id", pedidoId)
+            .single(),
+          obtenerJugadasPedido(pedidoId),
+        ]);
+
+        if (!activo) return;
+        if (error) console.warn("Error cargando detalle del pedido:", error.message);
+
+        const ganadora = jugadas.find(
+          (j) =>
+            Number(j.discount_percentage || 0) > 0 &&
+            Boolean(j.won_on_first_try)
+        );
+        setDescuentoPct(Number(ganadora?.discount_percentage || 0));
+        setPedido(error ? null : data);
+      } catch (e: any) {
+        if (activo) {
+          console.warn("Error cargando detalle del pedido:", e?.message);
+          setPedido(null);
+        }
+      } finally {
+        if (activo) setCargandoPedido(false);
+      }
+    };
+
+    if (pedidoId) cargarDetalle();
+    else setCargandoPedido(false);
+
+    return () => {
+      activo = false;
+    };
+  }, [pedidoId]);
 
   const abrirEscanerPropina = async () => {
     if (!permission?.granted) {
@@ -110,68 +169,66 @@ export function PedidoRecibidoScreen({
         </ChineseFrame>
       </View>
 
-      <View
-        className="flex-1 px-5 pt-6"
+      <ScrollView
+        className="flex-1"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingHorizontal: 20,
+          paddingTop: 12,
+        }}
       >
+        {/* Resumen del pedido */}
+        <DetallePedidoCard
+          pedido={pedido}
+          descuentoPct={descuentoPct}
+          cargando={cargandoPedido}
+          className="mb-4"
+        />
 
-        {/* BOTÓN 2: ENCUESTA */}
-        <TouchableOpacity
-          onPress={() => onIrAEncuesta(pedidoId)}
-          activeOpacity={0.85}
-          className="mb-4 flex-row items-center justify-between rounded-2xl border-2 border-vino bg-mostaza p-4 shadow-md active:bg-mostaza/80"
-        >
-          <View className="flex-row items-center flex-1 pr-2">
-            <View className="h-12 w-12 items-center justify-center rounded-xl bg-vino/15 mr-3">
-              <Text className="text-2xl">📋</Text>
-            </View>
-            <View className="flex-1">
-              <Text
-                style={{ fontFamily: "LaOriental" }}
-                className="text-lg uppercase text-vino"
-              >
-                Encuesta de Satisfacción
-              </Text>
-              <Text className="text-xs text-stone-700">
-                Su opinión nos ayuda a seguir mejorando
-              </Text>
-            </View>
-          </View>
-          <Image
-            source={require("../../assets/images/right-arrow-y.png")}
-            className="h-6 w-6 tint-vino"
-            resizeMode="contain"
-          />
-        </TouchableOpacity>
-
-        {/* BOTÓN 3: PEDIR LA CUENTA (Abre escaneo de propina) */}
+        {/* BOTÓN 1: DEJAR PROPINA (Abre escaneo de propina) */}
         <TouchableOpacity
           onPress={abrirEscanerPropina}
           activeOpacity={0.85}
           className="mb-4 flex-row items-center justify-between rounded-2xl border-2 border-mostaza bg-vino p-4 shadow-md active:bg-vino/80"
         >
-          <View className="flex-row items-center flex-1 pr-2">
-            <View className="h-12 w-12 items-center justify-center rounded-xl bg-mostaza/20 mr-3">
-              <Text className="text-2xl">💵</Text>
-            </View>
-            <View className="flex-1">
-              <Text
-                style={{ fontFamily: "LaOriental" }}
-                className="text-lg uppercase text-mostaza"
-              >
-                Pedir la Cuenta
-              </Text>
-              <Text className="text-xs text-amber-100">
-                Escanear QR de satisfacción y ver el total
-              </Text>
-            </View>
+          <View className="items-center flex-1">
+            <Image
+              source={require("../../assets/images/money-y.png")}
+              className="h-20 w-20"
+              resizeMode="contain"
+            />
+            <Text
+              style={{ fontFamily: "LaOriental" }}
+              className="text-lg uppercase text-mostaza"
+            >
+              Dejar propina
+            </Text>
           </View>
-          <Image
-            source={require("../../assets/images/right-arrow-y.png")}
-            className="h-6 w-6"
-            resizeMode="contain"
-          />
         </TouchableOpacity>
-      </View>
+
+        {/* BOTÓN 2: ENCUESTA */}
+        <TouchableOpacity
+          onPress={() => onIrAEncuesta(pedidoId)}
+          activeOpacity={0.85}
+          className="items-center rounded-2xl border-2 border-vino bg-mostaza p-4 active:bg-mostaza/80"
+        >
+          <View className="items-center flex-1">
+            <Image
+              source={require("../../assets/images/audit-v.png")}
+              className="h-10 w-10"
+              resizeMode="contain"
+            />
+            <Text
+              style={{ fontFamily: "LaOriental" }}
+              className="text-lg uppercase text-vino"
+            >
+              Dejar reseña
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        
+      </ScrollView>
 
       {/* MODAL CÁMARA QR DE PROPINA */}
       <Modal
