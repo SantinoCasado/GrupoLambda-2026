@@ -242,38 +242,7 @@ export function EncuestaScreen({ pedidoId, userId, userRole = "cliente_registrad
       </View>
 
       {/* Selector de Solapa si ya respondió */}
-      {yaRespondio && (
-        <View className="flex-row px-5 mt-3 gap-2">
-          <TouchableOpacity
-            onPress={() => setVista("graficos")}
-            className={`flex-1 py-2.5 rounded-xl border-2 items-center ${
-              vista === "graficos" ? "bg-vino border-mostaza" : "bg-amber-100 border-amber-300"
-            }`}
-          >
-            <Text
-              style={{ fontFamily: "LaOriental" }}
-              className={`text-xs uppercase ${vista === "graficos" ? "text-mostaza" : "text-stone-600"}`}
-            >
-              📊 Ver Resultados
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => {
-              setFeedback({
-                visible: true,
-                tipo: "informacion",
-                titulo: "Encuesta completada",
-                mensaje: "Solo se permite una encuesta por estadía. Aquí puedes revisar las opiniones generales.",
-              });
-            }}
-            className="flex-1 py-2.5 rounded-xl border-2 border-stone-300 bg-stone-200/60 items-center"
-          >
-            <Text style={{ fontFamily: "LaOriental" }} className="text-xs uppercase text-stone-500">
-              ✓ Encuesta Enviada
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      
 
       {/* CONTENIDO 1: FORMULARIO EN DOS PÁGINAS (CARRUSEL) */}
       {!yaRespondio && vista === "formulario" && (
@@ -373,7 +342,7 @@ export function EncuestaScreen({ pedidoId, userId, userRole = "cliente_registrad
                   multiline
                   value={comentario}
                   onChangeText={setComentario}
-                  placeholder="Contános qué platos te gustaron más, sugerinos mejoras o felicitá al equipo..."
+                  placeholder="Contanos qué platos te gustaron más, sugerinos mejoras o felicitá al equipo..."
                   placeholderTextColor="#9ca3af"
                   textAlignVertical="top"
                   className="w-full rounded-xl border border-stone-300 p-3 text-sm text-stone-800 bg-amber-50/40"
@@ -445,7 +414,7 @@ export function EncuestaScreen({ pedidoId, userId, userRole = "cliente_registrad
                 style={{ fontFamily: "LaOriental" }}
                 className={`text-xs uppercase ${tipoGrafico === "barras" ? "text-white" : "text-stone-700"}`}
               >
-                Barras
+                General
               </Text>
             </TouchableOpacity>
 
@@ -491,7 +460,7 @@ export function EncuestaScreen({ pedidoId, userId, userRole = "cliente_registrad
               /* GRÁFICO 1: BARRAS - Sabor, Atención, Comodidad */
               <View className="w-full items-center">
                 <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase text-vino mb-1">
-                  Promedios por Aspecto (1 a 5)
+                  Promedio general de valoraciones
                 </Text>
                 <Text className="text-[10px] text-stone-500 mb-4">Total de encuestas: {totalRespuestas}</Text>
 
@@ -720,15 +689,6 @@ export function EncuestaScreen({ pedidoId, userId, userRole = "cliente_registrad
               </View>
             )}
           </View>
-
-          <TouchableOpacity
-            onPress={onVolver}
-            className="mt-6 w-full rounded-2xl border-2 border-mostaza bg-vino py-3.5 items-center active:bg-vino/80"
-          >
-            <Text style={{ fontFamily: "LaOriental" }} className="text-sm uppercase text-mostaza">
-              Volver al Menú
-            </Text>
-          </TouchableOpacity>
         </ScrollView>
       )}
 
