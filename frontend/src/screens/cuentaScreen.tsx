@@ -130,7 +130,7 @@ export function CuentaScreen({
 
   if (cargando || !detalle) {
     return (
-      <View className="flex-1 items-center justify-center bg-amber-50">
+      <View className="flex-1 items-center justify-center">
         <ActivityIndicator size="large" color="#800020" />
         <Text className="mt-3 text-xs font-bold text-vino">
           Calculando cuenta y propina...
@@ -208,8 +208,8 @@ export function CuentaScreen({
 
           {/* Propina Escaneada */}
           <View className="flex-row justify-between py-1.5">
-            <Text className="text-amber-700 text-sm">
-              Propina por QR ({detalle.porcentajePropina}%)
+            <Text className="text-amber-700 text-sm font-semibold">
+              Propina ({detalle.porcentajePropina}%)
             </Text>
             <Text className="text-amber-700 font-semibold text-sm">
               +${detalle.montoPropina.toFixed(2)}
