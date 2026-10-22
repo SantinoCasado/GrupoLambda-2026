@@ -2,18 +2,18 @@ import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
-  SafeAreaView,
   useWindowDimensions,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ChineseFrame } from "../components/ChineseFrame";
 import { GraficoBarras } from "../components/charts/GraficoBarras";
 import { GraficoTorta } from "../components/charts/GraficoTorta";
 import { GraficoLineal } from "../components/charts/GraficoLineal";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { obtenerEstadisticasEncuestasApi } from "../services/encuestasService";
 import { calcularResumenEncuestas } from "../utils/encuestasStats";
 import type { ResumenEncuestas } from "../utils/encuestasStats";
@@ -25,39 +25,28 @@ interface Props {
 
 type TipoGrafico = "torta" | "barras" | "lineal";
 
-// Paleta para el fondo vino de esta pantalla (los gráficos vienen del tema claro)
-const PALETA_TORTA = ["#ef4444", "#f97316", "#eab308", "#84cc16", "#22c55e"];
-const EJE = "rgba(234,179,8,0.45)";
-const GRILLA = "rgba(234,179,8,0.15)";
-const TEXTO_GRAFICO = "#fde68a";
-const DESTACADO = "#eab308";
+const OPCIONES_GRAFICO: { tipo: TipoGrafico; label: string }[] = [
+  { tipo: "barras", label: "Individual" },
+  { tipo: "torta", label: "General" },
+  { tipo: "lineal", label: "Reciente" },
+];
 
-const estiloTitulo = {
-  fontFamily: "LaOriental",
-  fontSize: 20,
-  color: DESTACADO,
-  textTransform: "uppercase" as const,
-  marginBottom: 6,
-  textAlign: "center" as const,
-};
-
-const estiloSubtitulo = {
-  fontSize: 12,
-  color: "#fef3c7",
-  textAlign: "center" as const,
-  marginBottom: 16,
-};
+// Misma paleta que usa encuestaScreen para los gráficos sobre fondo claro.
+const COLORES_TORTA = ["#ef4444", "#f97316", "#eab308", "#10b981", "#780116"];
 
 export function EstadisticasScreen({ onVolver, esModal = false }: Props) {
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
-  const [tipoGrafico, setTipoGrafico] = useState<TipoGrafico>("torta");
+  const [tipoGrafico, setTipoGrafico] = useState<TipoGrafico>("barras");
   const [cargando, setCargando] = useState(true);
   const [resumen, setResumen] = useState<ResumenEncuestas>(() => calcularResumenEncuestas([]));
 
-  // Los SVG se ajustan al ancho interno del card (pantalla - padding - gutter)
-  const anchoGrafico = Math.min(300, screenWidth - 100);
+  // Los SVG se ajustan al ancho interno del card (pantalla - padding - bordes)
+  const anchoGrafico = Math.min(300, screenWidth - 80);
   const tamanoTorta = Math.min(210, anchoGrafico);
+
+  // En el modal no hay SafeAreaView que cubra el notch: lo compensamos acá.
+  const margenSuperior = esModal ? Math.max(insets.top, 8) : 0;
 
   const cargarDatos = async () => {
     try {
@@ -76,177 +65,147 @@ export function EstadisticasScreen({ onVolver, esModal = false }: Props) {
   }, []);
 
   const barrasPromedios = [
-    { label: "Sabor", value: resumen.promedios.sabor, color: "#f59e0b" },
-    { label: "Atención", value: resumen.promedios.atencion, color: "#38bdf8" },
-    { label: "Comodidad", value: resumen.promedios.comodidad, color: "#34d399" },
+    { label: "Sabor", value: resumen.promedios.sabor, color: "#f97316" },
+    { label: "Atención", value: resumen.promedios.atencion, color: "#eab308" },
+    { label: "Comodidad", value: resumen.promedios.comodidad, color: "#780116" },
   ];
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: "#500724" }}>
+    <View className="flex-1">
       <StatusBar style="light" />
 
-      {/* Header: si es modal le da padding para el notch; si es pantalla normal queda al ras */}
+      {/* Cabecera (mismo estilo que pedidoRecibidoScreen) */}
       <View
-        style={{
-          paddingHorizontal: 20,
-          paddingTop: esModal ? Math.max(insets.top + 10, 24) : 8,
-          paddingBottom: 12,
-        }}
+        className="px-5 pt-4"
+        style={esModal ? { paddingTop: margenSuperior + 16 } : undefined}
       >
-        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-          <View>
+        
+
+        <Image
+          source={require("../../assets/images/logo-name.png")}
+          className="h-20 w-auto self-center"
+          resizeMode="contain"
+        />
+        <Image
+          source={require("../../assets/images/separator.png")}
+          className="mt-2 h-8 w-full"
+          resizeMode="contain"
+        />
+        <ChineseFrame className="mt-1 bg-vino">
+          <View className="items-center rounded-xl bg-mostaza/15 px-4 py-4">
             <Text
-              style={{
-                fontSize: 11,
-                fontWeight: "800",
-                color: "#fde68a",
-                textTransform: "uppercase",
-                letterSpacing: 1.5,
-              }}
-            >
-              Métricas & Encuestas
-            </Text>
-            <Text
-              style={{
-                fontFamily: "LaOriental",
-                fontSize: 26,
-                color: "#eab308",
-                textTransform: "uppercase",
-                marginTop: 2,
-              }}
+              style={{ fontFamily: "LaOriental" }}
+              className="text-2xl text-mostaza uppercase text-center"
             >
               Estadísticas
             </Text>
+            <Text className="mt-1 text-xs text-center font-semibold text-amber-100">
+              Métricas y reseñas del restaurante
+            </Text>
           </View>
-
-          <TouchableOpacity
-            onPress={onVolver}
-            style={{
-              backgroundColor: "rgba(234,88,12,0.35)",
-              paddingHorizontal: 16,
-              paddingVertical: 8,
-              borderRadius: 14,
-              borderWidth: 1,
-              borderColor: "rgba(234,179,8,0.5)",
-            }}
-          >
-            <Text style={{ color: "#eab308", fontSize: 13, fontWeight: "800" }}>Volver</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Selector de gráficos */}
-        <View
-          style={{
-            flexDirection: "row",
-            marginTop: 18,
-            backgroundColor: "rgba(0,0,0,0.45)",
-            padding: 5,
-            borderRadius: 14,
-            borderWidth: 1,
-            borderColor: "rgba(234,179,8,0.3)",
-          }}
-        >
-          {(["torta", "barras", "lineal"] as TipoGrafico[]).map((tipo) => (
-            <TouchableOpacity
-              key={tipo}
-              onPress={() => setTipoGrafico(tipo)}
-              style={{
-                flex: 1,
-                paddingVertical: 10,
-                borderRadius: 10,
-                alignItems: "center",
-                backgroundColor: tipoGrafico === tipo ? "#eab308" : "transparent",
-              }}
-            >
-              <Text
-                style={{
-                  fontSize: 12,
-                  fontWeight: "800",
-                  textTransform: "uppercase",
-                  color: tipoGrafico === tipo ? "#500724" : "#fef3c7",
-                }}
-              >
-                {tipo}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        </ChineseFrame>
       </View>
 
-      {/* Contenido */}
+      {/* Selector de gráficos */}
+      <View className="mt-4 px-5">
+        <ChineseFrame color="#8f0018" className="bg-mostaza px-2">
+          <View className="flex-row px-2 py-1.5 rounded-2xl m-2 gap-2">
+            {OPCIONES_GRAFICO.map(({ tipo, label }, index) => (
+              <React.Fragment key={tipo}>
+                {index > 0 && (
+                  <View style={{ width: 2 }} className="self-stretch my-1 bg-vino rounded-full" />
+                )}
+                <TouchableOpacity
+                  onPress={() => setTipoGrafico(tipo)}
+                  className={`flex-1 py-2.5 items-center border ${
+                    tipoGrafico === tipo
+                      ? "bg-vino rounded-xl border-mostaza"
+                      : "bg-mostaza border-transparent"
+                  }`}
+                >
+                  <Text
+                    className={`text-xs uppercase font-black ${
+                      tipoGrafico === tipo ? "text-mostaza" : "text-vino"
+                    }`}
+                  >
+                    {label}
+                  </Text>
+                </TouchableOpacity>
+              </React.Fragment>
+            ))}
+          </View>
+        </ChineseFrame>
+      </View>
+
+      {/* Contenido: solo gráficos */}
       <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{
-          paddingHorizontal: 20,
-          paddingTop: 16,
-          paddingBottom: 60,
-        }}
+        className="flex-1 px-5 pt-3"
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}
         showsVerticalScrollIndicator={false}
       >
-        <ChineseFrame className="bg-vino/95 p-5 border border-mostaza/40 rounded-2xl shadow-xl">
+        <View className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza/70 bg-amber-50 p-4">
           {cargando ? (
-            <View style={{ paddingVertical: 60, alignItems: "center", justifyContent: "center" }}>
-              <ActivityIndicator size="large" color="#eab308" />
-              <Text style={{ marginTop: 12, fontSize: 12, fontWeight: "700", color: "#fde68a" }}>
-                Cargando encuestas...
-              </Text>
+            <View className="items-center py-16">
+              <ActivityIndicator size="large" color="#8f0018" />
+              <Text className="mt-3 text-xs font-bold text-vino">Cargando encuestas...</Text>
             </View>
           ) : resumen.total === 0 ? (
-            <View style={{ paddingVertical: 60, alignItems: "center" }}>
-              <Text style={{ fontSize: 30, marginBottom: 8 }}>📊</Text>
-              <Text style={{ ...estiloTitulo, fontSize: 14, marginBottom: 0 }}>
+            <View className="items-center py-16">
+              <Text className="mb-2 text-3xl">📊</Text>
+              <Text
+                style={{ fontFamily: "LaOriental" }}
+                className="text-center text-sm uppercase text-vino"
+              >
                 Aún no hay encuestas registradas
               </Text>
             </View>
+          ) : tipoGrafico === "barras" ? (
+            <View className="w-full items-center">
+              <Text
+                style={{ fontFamily: "LaOriental" }}
+                className="mb-1 text-center text-2xl uppercase text-vino"
+              >
+                Promedio individual
+              </Text>
+              <Text className="mb-4 text-center text-base text-stone-500">
+                Total de encuestas: {resumen.total}
+              </Text>
+              <GraficoBarras data={barrasPromedios} width={anchoGrafico} />
+            </View>
           ) : tipoGrafico === "torta" ? (
-            <View style={{ alignItems: "center", width: "100%" }}>
-              <Text style={estiloTitulo}>Nivel de Satisfacción General</Text>
-              <Text style={estiloSubtitulo}>Distribución de las opiniones según estrellas</Text>
+            <View className="w-full items-center">
+              <Text
+                style={{ fontFamily: "LaOriental" }}
+                className="mb-1 text-center text-2xl uppercase text-vino"
+              >
+                Distribución de Satisfacción
+              </Text>
+              <Text className="text-center text-base text-stone-500">
+                Promedio general de valoracion
+              </Text>
               <GraficoTorta
                 valores={resumen.distribucionSatisfaccion}
-                colores={PALETA_TORTA}
-                legendColor={TEXTO_GRAFICO}
-                sliceStrokeColor="#500724"
-                emptyTextColor={TEXTO_GRAFICO}
+                colores={COLORES_TORTA}
                 size={tamanoTorta}
               />
             </View>
-          ) : tipoGrafico === "barras" ? (
-            <View style={{ alignItems: "center", width: "100%" }}>
-              <Text style={estiloTitulo}>Desempeño por Área</Text>
-              <Text style={estiloSubtitulo}>Promedio de estrellas sobre 5 en cada rubro</Text>
-              <GraficoBarras
-                data={barrasPromedios}
-                axisColor={EJE}
-                gridColor={GRILLA}
-                tickColor={TEXTO_GRAFICO}
-                categoryColor={TEXTO_GRAFICO}
-                emptyTextColor={TEXTO_GRAFICO}
-                width={anchoGrafico}
-              />
-            </View>
           ) : (
-            <View style={{ alignItems: "center", width: "100%" }}>
-              <Text style={estiloTitulo}>Tendencia del Servicio</Text>
-              <Text style={estiloSubtitulo}>Promedio diario (1 a 5) · un punto por día</Text>
-              <GraficoLineal
-                puntos={resumen.dias}
-                axisColor={EJE}
-                gridColor={GRILLA}
-                tickColor={TEXTO_GRAFICO}
-                dateColor={TEXTO_GRAFICO}
-                valueColor={DESTACADO}
-                lineColor={DESTACADO}
-                dotFill={DESTACADO}
-                dotStroke="#500724"
-                emptyTextColor={TEXTO_GRAFICO}
-                width={anchoGrafico}
-              />
+            <View className="w-full items-center">
+              <Text
+                style={{ fontFamily: "LaOriental" }}
+                className="mb-1 text-center text-2xl uppercase text-vino"
+              >
+                Evolución Reciente
+              </Text>
+              <Text className="mb-12 text-center text-base text-stone-500">
+                Promedio diario (1 a 5) · un punto por día
+              </Text>
+              <GraficoLineal puntos={resumen.dias} width={anchoGrafico} />
             </View>
           )}
-        </ChineseFrame>
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 }
 
