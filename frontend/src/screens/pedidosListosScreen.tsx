@@ -142,7 +142,6 @@ export default function PedidosListosScreen() {
 
   return (
     <View className="flex-1">
-      <StatusBar style="light" />
 
       <View className="px-5 pt-4">
         <View className="mb-4">

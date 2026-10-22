@@ -31,6 +31,37 @@ export interface EstadoSesionCliente {
   pantallaDestino: "inicio" | "menu" | "estado_pedido" | "pedido_recibido" | "cuenta";
 }
 
+/**
+ * Convierte el `tip_amount` guardado en el pedido al porcentaje de propina
+ * permitido por la app. Normalmente `tip_amount` es un monto en pesos, aunque
+ * datos viejos pueden tener guardado directamente el porcentaje (0, 5, 10...).
+ */
+function normalizarPorcentajePropina(
+  tipGuardada: number,
+  totalBase: number,
+  baseIncluyePropina = true
+): number {
+  if (tipGuardada <= 0) return 0;
+
+  // Si el valor guardado es menor o igual a 20, ya es el porcentaje (ej: 5, 10, 15, 20)
+  if (tipGuardada <= 20) return tipGuardada;
+
+  // Si es un monto en pesos, calculamos a qué porcentaje correspondía.
+  // Cuando total_amount ya incluía la propina, la base era (total - propina).
+  const baseAprox = baseIncluyePropina
+    ? Math.max(1, totalBase - tipGuardada)
+    : Math.max(1, totalBase);
+  const porcentajeCalculado = Math.round((tipGuardada / baseAprox) * 100);
+
+  // Normalizamos a los valores permitidos de propina de la app
+  const opciones = [0, 5, 10, 15, 20];
+  return opciones.reduce((prev, curr) =>
+    Math.abs(curr - porcentajeCalculado) < Math.abs(prev - porcentajeCalculado)
+      ? curr
+      : prev
+  );
+}
+
 export async function recuperarEstadoActivoCliente(
   userId: string
 ): Promise<EstadoSesionCliente> {
@@ -71,29 +102,10 @@ export async function recuperarEstadoActivoCliente(
 
       // Si pidió la cuenta -> Directo a CuentaScreen
       if (pedido.status === "bill_requested") {
-        let porcentajePropina = 0;
-        const tipGuardada = Number(pedido.tip_amount || 0);
-        const totalBase = Number(pedido.total_amount || 0);
-
-        if (tipGuardada > 0) {
-          // Si el valor guardado es menor o igual a 20, ya es el porcentaje (ej: 5, 10, 15, 20)
-          if (tipGuardada <= 20) {
-            porcentajePropina = tipGuardada;
-          } else {
-            // Si es un monto en pesos, calculamos a qué porcentaje correspondía:
-            // Si total_amount incluía la propina, la base era (total - propina)
-            const baseAprox = Math.max(1, totalBase - tipGuardada);
-            const porcentajeCalculado = Math.round((tipGuardada / baseAprox) * 100);
-
-            // Normalizamos a los valores permitidos de propina de la app
-            const opciones = [0, 5, 10, 15, 20];
-            porcentajePropina = opciones.reduce((prev, curr) =>
-              Math.abs(curr - porcentajeCalculado) < Math.abs(prev - porcentajeCalculado)
-                ? curr
-                : prev
-            );
-          }
-        }
+        const porcentajePropina = normalizarPorcentajePropina(
+          Number(pedido.tip_amount || 0),
+          Number(pedido.total_amount || 0)
+        );
 
         return {
           mesaId: pedido.table_id,
@@ -107,11 +119,20 @@ export async function recuperarEstadoActivoCliente(
 
       // Si el pedido ya fue entregado -> Pantalla de post-entrega (juegos, encuesta, pedir cuenta)
       if (pedido.status === "delivered") {
+        // Si ya escaneó el QR de propina, la recuperamos para que la pantalla
+        // muestre directamente el botón "Pagar cuenta" con la propina incluida.
+        const porcentajePropina = normalizarPorcentajePropina(
+          Number(pedido.tip_amount || 0),
+          Number(pedido.total_amount || 0) - Number(pedido.discount_amount || 0),
+          false
+        );
+
         return {
           mesaId: pedido.table_id,
           numeroMesa: numMesa,
           pedidoId: pedido.id,
           pedidoStatus: pedido.status,
+          ...(porcentajePropina > 0 ? { propina: porcentajePropina } : {}),
           pantallaDestino: "pedido_recibido",
         };
       }
@@ -286,6 +307,41 @@ export async function obtenerDetalleCuenta(
     totalFinal,
     estado: pedido.status,
   };
+}
+
+/**
+ * Guarda la propina elegida por QR en el pedido, sin solicitar todavía la
+ * cuenta (el estado sigue siendo 'delivered'). Así la propina ya se ve en el
+ * detalle del pedido y sobrevive a recargas/remontajes de la pantalla.
+ * Devuelve el monto de propina guardado.
+ */
+export async function guardarPropinaPedido(
+  pedidoId: string,
+  porcentajePropina: number
+): Promise<number> {
+  if (!pedidoId) {
+    throw new Error("No hay un pedido activo para registrar la propina.");
+  }
+
+  // Reutilizamos el mismo cálculo que CuentaScreen para que el monto mostrado
+  // en el detalle coincida exactamente con el que se va a cobrar.
+  const detalle = await obtenerDetalleCuenta(pedidoId, porcentajePropina);
+
+  const { error } = await supabase
+    .from("orders")
+    .update({
+      tip_amount: detalle.montoPropina,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", pedidoId);
+
+  if (error) {
+    console.error("❌ Error en guardarPropinaPedido:", error.message);
+    throw error;
+  }
+
+  console.log("✅ Propina guardada:", detalle.montoPropina);
+  return detalle.montoPropina;
 }
 
 /** Pone el pedido en 'bill_requested' y actualiza montos */

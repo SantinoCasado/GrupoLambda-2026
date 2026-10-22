@@ -17,6 +17,8 @@ interface DetallePedidoCardProps {
   } | null;
   /** Porcentaje de descuento ganado en juegos. 0 = sin descuento (o desconocido). */
   descuentoPct?: number;
+  /** Porcentaje de propina elegido por QR. Solo se usa para la etiqueta. */
+  propinaPct?: number | null;
   cargando?: boolean;
   /** Estilos de layout del contenedor (por ejemplo, el margen inferior). */
   className?: string;
@@ -31,6 +33,7 @@ interface DetallePedidoCardProps {
 export function DetallePedidoCard({
   pedido,
   descuentoPct = 0,
+  propinaPct = null,
   cargando = false,
   className = "",
 }: DetallePedidoCardProps) {
@@ -118,12 +121,12 @@ export function DetallePedidoCard({
             </View>
           )}
 
-          {propina > 0 && (
+          {(propina > 0 || propinaPct !== null) && (
             <View className="flex-row justify-between pt-0.5">
-              <Text className="text-xs font-semibold text-stone-600">
-                Propina
+              <Text className="text-xs font-semibold text-caramelo">
+                Propina{propinaPct !== null ? ` (${propinaPct}%)` : ""}
               </Text>
-              <Text className="text-xs font-bold text-stone-700">
+              <Text className="text-xs font-bold text-caramelo">
                 +{formatear(propina)}
               </Text>
             </View>
