@@ -1,5 +1,7 @@
 import { supabase } from '../../config/supabase';
 import { enviarPushNotification } from '../../services/pushNotifications.service';
+import { enviarFacturaPorEmail } from '../../services/email.service';
+import { generarYSubirFactura } from '../../services/factura.service';
 
 interface ProductoItem {
   id_producto: string;
@@ -696,80 +698,106 @@ export const cobrarPedidoService = async (pedidoId: string, porcentajePropina: n
         throw new Error('Debe seleccionar un porcentaje de propina válido.');
     }
 
-    // Obtener el pedido actual y la relación con la mesa para la Notificación Push
+    // CORRECCIÓN: Select con relaciones explícitas (!client_id) y trayendo los ítems con el nombre del producto
     const { data: pedido, error: errorPedido } = await supabase
         .from('orders')
-        .select('*, restaurant_tables(table_number)')
+        .select(`
+            *,
+            restaurant_tables(table_number),
+            client:users!client_id(first_name, last_name, dni, email, role, push_token),
+            items:order_items(quantity, unit_price, product:products(name))
+        `)
         .eq('id', pedidoId)
         .single();
 
-    if (errorPedido || !pedido) throw new Error('Pedido no encontrado.');
-    
-    if (pedido.status === 'paid') throw new Error('El pedido ya está cobrado.');
+    if (errorPedido || !pedido) throw new Error('Pedido no encontrado');
+    if (pedido.status === 'paid') throw new Error('El pedido ya está pagado');
     if (pedido.status === 'cancelled') throw new Error('No se puede cobrar un pedido cancelado.');
-  
+
     // El total ya quedó cerrado cuando el cliente solicitó la cuenta:
     // solicitarCuentaApi guarda en `total_amount` el subtotal - descuento + propina.
     // No se vuelve a aplicar el descuento ni la propina para no duplicarlos.
     const totalFinal = Number(pedido.total_amount || 0);
-    const descuentoJuego = Number(pedido.discount_amount || 0);
+    const descuento = Number(pedido.discount_amount || 0);
     const montoPropina = Number(pedido.tip_amount || 0);
-    const subtotal = totalFinal - montoPropina + descuentoJuego;
+    const subtotal = totalFinal - montoPropina + descuento;
 
-    // Marca como pagado
-    const { error: errorUpdatePedido } = await supabase
+    // Actualiza el pedido y cobramos la mesa
+    const { error: errorUpdate } = await supabase
         .from('orders')
-        .update({ 
-            status: 'paid', 
-            tip_amount: montoPropina,
-            final_total: totalFinal 
+        .update({
+            status: 'paid',
+            final_total: totalFinal
         })
         .eq('id', pedidoId);
 
-    if (errorUpdatePedido) throw new Error(`Error al cobrar: ${errorUpdatePedido.message}`);
+    if (errorUpdate) throw new Error(`Error al actualizar el pago: ${errorUpdate.message}`);
 
-    // Libera la mesa 
-    await supabase
-        .from('restaurant_tables') 
-        .update({ availability: 'free' })
-        .eq('id', pedido.table_id);
-
-    // Aviso del supervisor y dueño por Push que la mesa pagó y se liberó
-    try {
-      const numeroMesa = (pedido.restaurant_tables as any)?.table_number || 'S/N';
-
-      // Buscamos solo a los dueños y supervisores
-      const { data: administradores, error: errorAdmins } = await supabase
-          .from('users')
-          .select('push_token')
-          .in('role', ['owner', 'supervisor'])
-          .not('push_token', 'is', null);
-
-      if (errorAdmins) {
-          console.error('⚠️ Error al buscar administradores para la push:', errorAdmins.message);
-      } else if (administradores && administradores.length > 0) {
-          for (const admin of administradores) {
-              if (admin.push_token) {
-                  await enviarPushNotification(
-                      admin.push_token,
-                      '💳 Pago Confirmado y Mesa Liberada',
-                      `El mozo confirmó el pago de la Mesa #${numeroMesa}. Mesa liberada.`,
-                      { orderId: pedidoId, tipo: 'payment_confirmed', table_id: pedido.table_id }
-                  );
-              }
-          }
-      }
-    } catch (pushError) {
-        console.error('⚠️ Error al enviar las push de confirmación de pago:', pushError);
+    // Libera la mesa automáticamente
+    if (pedido.table_id) {
+        await supabase
+            .from('restaurant_tables')
+            .update({ availability: 'free' }) 
+            .eq('id', pedido.table_id);
     }
 
-    return {
-        items: pedido.items, 
-        subtotal,
-        descuento_juego: descuentoJuego,
-        porcentaje_propina: porcentajePropina,
-        monto_propina: montoPropina,
-        total_a_abonar: totalFinal 
+    // Notifica a Dueños y Supervisores del cobro
+    const { data: administradores } = await supabase
+        .from('users')
+        .select('push_token')
+        .in('role', ['owner', 'supervisor'])
+        .not('push_token', 'is', null);
+
+    if (administradores && administradores.length > 0) {
+        const tokensAdmin = administradores.map((admin: any) => admin.push_token);
+        
+        // Dispara todas las notificaciones en paralelo, pasándole un string a la vez
+        await Promise.all(
+            tokensAdmin.map(token => 
+                enviarPushNotification(
+                    token, 
+                    '💳 Pago Confirmado y Mesa Libre',
+                    `La mesa ${pedido.restaurant_tables?.table_number || 'sin asignar'} pagó $${totalFinal.toFixed(2)}.`
+                )
+            )
+        );
+    }
+
+    // Generamos el PDF sin bloquear el flujo principal
+    const cliente = pedido.client;
+    
+    // Lo envouelvo en un try/catch para que un fallo del PDF no tire atrás el cobro
+    try {
+        const invoiceUrl = await generarYSubirFactura(pedidoId, cliente, {
+            precioBase: subtotal,
+            descuento: descuento,
+            propina: montoPropina,
+            precioFinal: totalFinal,
+            porcentajePropina: porcentajePropina
+        }, pedido.items || []); // Pasa los ítems
+
+        // Guardamos la URL del PDF generado
+        await supabase.from('orders').update({ invoice_pdf_url: invoiceUrl }).eq('id', pedidoId);
+
+        if (cliente.role === 'registered_client') {
+            await enviarFacturaPorEmail(cliente.email, cliente.first_name, invoiceUrl);
+        } else if (cliente.role === 'anonymous_client' || cliente.role === 'client_anonymous') {
+            if (cliente.push_token) {
+                await enviarPushNotification(
+                    cliente.push_token,
+                    '🧾 ¡Tu factura está lista!',
+                    'Gracias por visitarnos. Tocá acá para descargar tu comprobante.',
+                    { tipo: 'factura', urlFactura: invoiceUrl } // App.tsx navega según `tipo`
+                );
+            }
+        }
+    } catch (pdfError: any) {
+        console.error('❌ Error generando PDF, pero el cobro se completó:', pdfError.message);
+    }
+
+    return { 
+        success: true, 
+        total_pagado: totalFinal 
     };
 };
 
@@ -793,7 +821,7 @@ export const obtenerResumenPreciosService = async (pedidoId: string) => {
         ? Number(pedido.final_total) 
         : (precioBase - descuento + propina);
 
-    // JSON con la estructura exacta que pidieron
+    // JSON con la estructura exacta que pidieron en las consignas
     return {
         precio_pedido: precioBase,
         descuento: -descuento, 

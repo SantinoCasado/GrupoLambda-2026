@@ -1,7 +1,7 @@
 import "./global.css";
 import React, { useState, useEffect, useRef } from "react";
 import { registrarPushToken } from "./src/services/pushNotificationClientService";
-import { View, Text, Image, TouchableOpacity, Vibration } from "react-native";
+import { View, Text, Image, TouchableOpacity, Vibration, Linking } from "react-native";
 import { SafeAreaView} from "react-native-safe-area-context";
 import type {NotificationResponse } from "expo-notifications";
 import { UsuarioSeed } from "./src/data/usuariosPrecargados";
@@ -432,6 +432,23 @@ function AppInterna() {
           setEnEsperaRegistrado(false);
           setVistaPrivada("home");
         }
+        return;
+      }
+
+      // Factura del cliente anonimo: abre el PDF para descargarlo
+      case "factura": {
+        const urlFactura = typeof datos.urlFactura === "string" ? datos.urlFactura : null;
+        if (!urlFactura) return;
+
+        Linking.openURL(urlFactura).catch(() => {
+          Vibration.vibrate([0, 100, 50, 100, 50, 200]);
+          setAvisoNotif({
+            visible: true,
+            tipo: "error",
+            titulo: "Factura no disponible",
+            mensaje: "No se pudo abrir la factura. Intentá nuevamente en unos minutos.",
+          });
+        });
         return;
       }
     }
