@@ -5,6 +5,7 @@ export interface FormErrors {
   cuil?: string;
   email?: string;
   password?: string;
+  confirmarPassword?: string;
   fotoUri?: string;
 }
 
@@ -54,6 +55,7 @@ export function validarFormEmpleado(values: {
   cuil: string;
   email: string;
   password: string;
+  confirmarPassword: string;
   fotoUri: string | null;
 }): FormErrors {
   const errors: FormErrors = {};
@@ -102,6 +104,13 @@ export function validarFormEmpleado(values: {
     errors.password = "La contraseña es obligatoria.";
   } else if (values.password.length < 6) {
     errors.password = "La contraseña debe tener al menos 6 caracteres.";
+  }
+
+  // Confirmación de contraseña
+  if (!values.confirmarPassword) {
+    errors.confirmarPassword = "Debe confirmar la contraseña.";
+  } else if (values.confirmarPassword !== values.password) {
+    errors.confirmarPassword = "Las contraseñas no coinciden.";
   }
 
   // Foto obligatoria

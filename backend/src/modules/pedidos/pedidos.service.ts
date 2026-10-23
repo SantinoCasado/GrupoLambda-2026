@@ -694,33 +694,39 @@ export const solicitarCuentaService = async (pedidoId: string) => {
 };
 
 export const cobrarPedidoService = async (pedidoId: string, porcentajePropina: number) => {
-    // CORRECCIÓN: Select con relaciones explícitas (!client_id) y trayendo los ítems
+    if (porcentajePropina === undefined || porcentajePropina === null || isNaN(porcentajePropina)) {
+        throw new Error('Debe seleccionar un porcentaje de propina válido.');
+    }
+
+    // CORRECCIÓN: Select con relaciones explícitas (!client_id) y trayendo los ítems con el nombre del producto
     const { data: pedido, error: errorPedido } = await supabase
         .from('orders')
         .select(`
             *,
             restaurant_tables(table_number),
             client:users!client_id(first_name, last_name, dni, email, role, push_token),
-            items:order_items(*) 
+            items:order_items(quantity, unit_price, product:products(name))
         `)
         .eq('id', pedidoId)
         .single();
 
     if (errorPedido || !pedido) throw new Error('Pedido no encontrado');
     if (pedido.status === 'paid') throw new Error('El pedido ya está pagado');
+    if (pedido.status === 'cancelled') throw new Error('No se puede cobrar un pedido cancelado.');
 
-    const subtotal = Number(pedido.total_amount || 0);
+    // El total ya quedó cerrado cuando el cliente solicitó la cuenta:
+    // solicitarCuentaApi guarda en `total_amount` el subtotal - descuento + propina.
+    // No se vuelve a aplicar el descuento ni la propina para no duplicarlos.
+    const totalFinal = Number(pedido.total_amount || 0);
     const descuento = Number(pedido.discount_amount || 0);
-    const subtotalConDescuento = subtotal - descuento;
-    const montoPropina = subtotal * (porcentajePropina / 100);
-    const totalFinal = subtotalConDescuento + montoPropina;
+    const montoPropina = Number(pedido.tip_amount || 0);
+    const subtotal = totalFinal - montoPropina + descuento;
 
     // Actualiza el pedido y cobramos la mesa
     const { error: errorUpdate } = await supabase
         .from('orders')
-        .update({ 
-            status: 'paid', 
-            tip_amount: montoPropina, 
+        .update({
+            status: 'paid',
             final_total: totalFinal
         })
         .eq('id', pedidoId);
@@ -781,7 +787,7 @@ export const cobrarPedidoService = async (pedidoId: string, porcentajePropina: n
                     cliente.push_token,
                     '🧾 ¡Tu factura está lista!',
                     'Gracias por visitarnos. Tocá acá para descargar tu comprobante.',
-                    { type: 'factura', urlFactura: invoiceUrl } // Agregado el type para App.tsx
+                    { tipo: 'factura', urlFactura: invoiceUrl } // App.tsx navega según `tipo`
                 );
             }
         }

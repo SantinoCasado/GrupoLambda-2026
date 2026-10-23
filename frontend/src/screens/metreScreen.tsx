@@ -11,7 +11,6 @@ import {
 } from "react-native";
 import { supabase } from "../config/supabase";
 import { ChineseFrame } from "../components/ChineseFrame";
-import { TeamNames } from "../components/TeamNames";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { CompanySpinner } from "../components/CompanySpinner";
 import { FeedbackModal } from "../components/FeedbackModal";
@@ -162,11 +161,7 @@ export function MetreScreen({ onCerrarSesion }: Props) {
       mostrarMensaje(
         "exito",
         "¡Mesa Asignada!",
-        `Mesa #${numMesa} asignada a ${cliente.client_name}. ${
-          res.notificacionEnviada
-            ? "Expo aceptó el envío del push; la entrega al cliente no queda confirmada."
-            : "No se pudo enviar la notificación: el token del cliente está ausente o fue rechazado."
-        }`
+        `Mesa #${numMesa} asignada a ${cliente.client_name}.`
       );
       setClienteSeleccionado(null);
       cargarDatos();
@@ -184,8 +179,6 @@ export function MetreScreen({ onCerrarSesion }: Props) {
 
   return (
     <View className="flex-1">
-      {/* Nombres del equipo */}
-      <TeamNames className="absolute right-4 z-10" style={{ top: 16 }} />
 
       {/* Cabecera */}
       <View className="px-5 pt-4">

@@ -66,11 +66,15 @@ export const registrarJugadaService = async (datos: RegistrarJugadaDTO) => {
     throw new Error(`Error al registrar jugada: ${insertError.message}`);
   }
 
-  // 5. Guardar el porcentaje en la tabla orders (SIN ACUMULAR, porque es el único que va a tener)
+  // 5. Guardar el MONTO del descuento (en pesos, no el porcentaje) en la tabla orders.
+  //    Sin acumular, porque es el único descuento que puede ganar el pedido.
   if (porcentajeAplicable > 0) {
+    const montoDescuento =
+      Math.round(Number(pedido.total_amount || 0) * (porcentajeAplicable / 100) * 100) / 100;
+
     const { error: updateOrderError } = await supabase
       .from('orders')
-      .update({ discount_amount: porcentajeAplicable }) // Pone el 15 y listo
+      .update({ discount_amount: montoDescuento })
       .eq('id', order_id);
 
     if (updateOrderError) {

@@ -9,7 +9,6 @@ import {
   Image,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { TeamNames } from "../components/TeamNames";
 import { obtenerMesas, Mesa } from "../services/mesasService";
 
 interface Props {
@@ -43,9 +42,6 @@ export function ChatMesasScreen({
   return (
     <View className="flex-1">
       <StatusBar style="light" />
-
-      {/* Nombres del equipo */}
-      <TeamNames className="absolute right-4 z-10" style={{ top: 16 }} />
 
       {/* Cabecera */}
       <View className="px-5 pt-4">

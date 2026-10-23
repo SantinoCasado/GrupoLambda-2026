@@ -10,9 +10,8 @@ import {
   Modal,
 } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { StatusBar } from "expo-status-bar";
 import { UsuarioSeed, ACCESOS_RAPIDOS, AccesoRapido } from "../data/usuariosPrecargados";
-import { login } from "../services/authService";
+import { login, loginConGoogle } from "../services/authService";
 import { FeedbackModal } from "../components/FeedbackModal";
 import { CompanySpinner } from "../components/CompanySpinner";
 import { ChineseFrame } from "../components/ChineseFrame";
@@ -26,12 +25,13 @@ interface LoginScreenProps {
 export function LoginScreen({
   onLoginSuccess,
   onNavigateRegistroCliente,
-  onNavigateRegistroAnonimo 
+  onNavigateRegistroAnonimo,
 }: LoginScreenProps) {
   const insets = useSafeAreaInsets();
   const [email, setEmail] = useState("");
   const [clave, setClave] = useState("");
   const [cargando, setCargando] = useState(false);
+  const [textoCargando, setTextoCargando] = useState("Iniciando sesión...");
   const [errors, setErrors] = useState<{ email?: string; clave?: string }>({});
 
   const [modalAccesosVisible, setModalAccesosVisible] = useState(false);
@@ -56,7 +56,6 @@ export function LoginScreen({
     else Vibration.vibrate([0, 40]);
   };
 
-  // Limpieza de error de campo cuando el valor se corrige
   const clearFieldError = (field: "email" | "clave", value: string) => {
     if (!errors[field]) return;
 
@@ -99,6 +98,7 @@ export function LoginScreen({
     }
 
     try {
+      setTextoCargando("Iniciando sesión...");
       setCargando(true);
       const usuario = await login(correoAUsar, claveAUsar);
       vibrar("exito");
@@ -116,7 +116,27 @@ export function LoginScreen({
     }
   };
 
-  // Autocompletar el formulario con el botón rápido
+  const ejecutarLoginGoogle = async () => {
+    vibrar("toque");
+    try {
+      setTextoCargando("Autenticando con Google...");
+      setCargando(true);
+      const usuario = await loginConGoogle();
+      vibrar("exito");
+      onLoginSuccess(usuario);
+    } catch (error: any) {
+      vibrar("error");
+      setModalFeedback({
+        visible: true,
+        tipo: "error",
+        titulo: "Ingreso con Google",
+        mensaje: error.message || "No se pudo completar el acceso con Google.",
+      });
+    } finally {
+      setCargando(false);
+    }
+  };
+
   const seleccionarAccesoRapido = (acceso: AccesoRapido) => {
     vibrar("toque");
     setEmail(acceso.email);
@@ -124,7 +144,6 @@ export function LoginScreen({
     setErrors({});
   };
 
-  // Toque rápido: 3 toques sobre el logo abren el modal de accesos rápidos
   const manejarToqueLogo = () => {
     vibrar("toque");
     if (tapTimerRef.current) clearTimeout(tapTimerRef.current);
@@ -139,81 +158,106 @@ export function LoginScreen({
   };
 
   return (
-    <>
-      <SafeAreaView className="flex-1">
-        <StatusBar style="light" />
+    <SafeAreaView className="flex-1">
+      <View
+        pointerEvents="none"
+        style={{
+          position: "absolute",
+          top: insets.top + 8,
+          right: -12,
+          width: 132,
+          height: 165,
+        }}
+      >
+        <Image
+          source={require("../../assets/images/background-tree.png")}
+          style={{ width: "100%", height: "100%" }}
+          resizeMode="contain"
+        />
+      </View>
 
-        <View className="absolute right-4 z-10 items-end" style={{ top: insets.top + 16 }}>
-          <Text className="text-[10px] text-vino/70">Rocío Sanchez</Text>
-          <Text className="text-[10px] text-vino/70">Santino Casado</Text>
-          <Text className="text-[10px] text-vino/70">Sebastián Andreozzi</Text>
-          <Text className="text-[10px] text-vino/70">Valentín Brazanovich</Text>
-        </View>
-
-      <ScrollView className="flex-1 px-5 pt-20" contentContainerStyle={{ paddingBottom: 50 }}>
+      <ScrollView className="flex-1 px-5 pt-12" contentContainerStyle={{ paddingBottom: 50 }}>
         {/* Encabezado */}
-        <View className="mb-5 items-center">
+        <View className="mb-4 items-center">
           <TouchableOpacity onPress={manejarToqueLogo} activeOpacity={0.8}>
             <Image
               source={require("../../assets/images/logo-name2.png")}
-              className="mt-6 h-48 w-auto self-center"
+              className="mt-4 h-40 w-auto self-center"
               resizeMode="contain"
             />
           </TouchableOpacity>
           <Image
             source={require("../../assets/images/separator.png")}
-            className="mt-3 h-7 w-full"
+            className="mt-2 h-6 w-full"
             resizeMode="contain"
           />
         </View>
 
-        {/* Formulario tradicional */}
-          <Text style={{ fontFamily: "LaOriental" }} className="text-center text-2xl uppercase tracking-wider text-vino mt-1 mb-3">
-            Iniciar Sesión
-          </Text>
-        <View className="gap-y-4 p-5">
-          <View>  
-            <Text className="mb-1 text-s font-bold text-vino">Correo Electrónico *</Text>
+        {/* Formulario */}
+        <Text
+          style={{ fontFamily: "LaOriental" }}
+          className="text-center text-2xl uppercase tracking-wider text-vino mt-1 mb-2"
+        >
+          Iniciar Sesión
+        </Text>
+
+        <View className="gap-y-3 p-4">
+          <View>
+            <Text className="mb-1 text-sm font-bold text-vino">Correo Electrónico</Text>
             <TextInput
               value={email}
-              onChangeText={(v) => { setEmail(v); clearFieldError("email", v); }}
+              onChangeText={(v) => {
+                setEmail(v);
+                clearFieldError("email", v);
+              }}
               keyboardType="email-address"
               autoCapitalize="none"
               placeholder="ejemplo@restaurante.com"
               placeholderTextColor="#a37e1f"
-              className={`rounded-2xl border px-4 py-3 text-stone-700 ${
+              className={`rounded-2xl border px-4 py-3 text-stone-700 bg-[#FFF8EA] pl-3 ${
                 errors.email ? "border-terracota" : "border-mostaza"
               }`}
             />
-            {errors.email && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.email}</Text>}
+            {errors.email && (
+              <Text className="mt-1 text-xs font-medium text-rose-400">{errors.email}</Text>
+            )}
           </View>
 
           <View>
-            <Text className="mb-1 text-s font-bold text-vino">Contraseña *</Text>
+            <Text className="mb-1 text-sm font-bold text-vino">Contraseña</Text>
             <TextInput
               value={clave}
-              onChangeText={(v) => { setClave(v); clearFieldError("clave", v); }}
+              onChangeText={(v) => {
+                setClave(v);
+                clearFieldError("clave", v);
+              }}
               secureTextEntry
               placeholder="••••••••"
               placeholderTextColor="#a37e1f"
-              className={`rounded-xl border px-4 py-3 text-stone-700 ${
+              className={`rounded-xl border px-4 py-3 text-stone-700 bg-[#FFF8EA] pl-3 ${
                 errors.clave ? "border-terracota" : "border-mostaza"
               }`}
             />
-            {errors.clave && <Text className="mt-1 text-xs font-medium text-rose-400">{errors.clave}</Text>}
+            {errors.clave && (
+              <Text className="mt-1 text-xs font-medium text-rose-400">{errors.clave}</Text>
+            )}
           </View>
 
+          {/* Botón Ingresar Tradicional */}
           <TouchableOpacity
             onPress={() => ejecutarLogin(email, clave)}
             disabled={cargando}
-            className="mt-6 flex-row items-center justify-center rounded-2xl bg-vino py-3 active:bg-terracota"
+            className="mt-3 flex-row items-center justify-center rounded-2xl bg-vino py-3 active:bg-terracota"
           >
             <Image
               source={require("../../assets/images/sello.png")}
               className="h-7 w-7"
               resizeMode="contain"
             />
-            <Text style={{ fontFamily: "LaOriental" }} className="text-center mx-10 uppercase tracking-wider text-mostaza">
+            <Text
+              style={{ fontFamily: "LaOriental" }}
+              className="text-center mx-6 uppercase tracking-wider text-mostaza"
+            >
               Ingresar
             </Text>
             <Image
@@ -222,34 +266,63 @@ export function LoginScreen({
               resizeMode="contain"
             />
           </TouchableOpacity>
-          {/* Botón de acceso para Cliente Anónimo / Invitado */}
+
+          {/* Separador "O" */}
+          <View className="my-1 flex-row items-center justify-center">
+            <View className="h-[1px] flex-1 bg-mostaza/40" />
+            <Text className="mx-3 text-xs font-bold uppercase text-stone-400">o continuar con</Text>
+            <View className="h-[1px] flex-1 bg-mostaza/40" />
+          </View>
+
+          {/* Botón Ingresar con Google */}
+          <TouchableOpacity
+            onPress={ejecutarLoginGoogle}
+            disabled={cargando}
+            activeOpacity={0.8}
+            className="w-full flex-row items-center justify-center rounded-2xl border-2 border-mostaza bg-[#FFF8EA] py-3 shadow-sm active:bg-amber-100"
+          >
+            <Image
+              source={{ uri: "https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" }}
+              className="h-6 w-6 mr-3"
+              resizeMode="contain"
+            />
+            <Text
+              style={{ fontFamily: "LaOriental" }}
+              className="text-center text-sm uppercase tracking-wider text-vino"
+            >
+              Ingresar con Google
+            </Text>
+          </TouchableOpacity>
+
+          {/* Botón de Invitado */}
           <TouchableOpacity
             onPress={() => {
               vibrar("toque");
               onNavigateRegistroAnonimo();
             }}
             activeOpacity={0.8}
-            className="mt-3 self-center px-6 flex-row items-center justify-center rounded-2xl border-2 border-dashed border-calabaza/70 bg-calabaza/20 py-3 active:bg-calabaza/40"
+            className="mt-2 self-center px-6 flex-row items-center justify-center rounded-2xl border-2 border-dashed border-calabaza/70 bg-calabaza/20 py-2.5 active:bg-calabaza/40"
           >
             <Image
               source={require("../../assets/images/guest-c.png")}
-              className="mr-2 h-6 w-6"
+              className="mr-2 h-5 w-5"
               resizeMode="contain"
             />
             <Text
               style={{ fontFamily: "LaOriental" }}
-              className="text-center uppercase tracking-wider text-calabaza"
+              className="text-center text-xs uppercase tracking-wider text-calabaza"
             >
               Ingresar como Invitado
             </Text>
           </TouchableOpacity>
-          {/* Enlace para nuevo cliente */}
+
+          {/* Registro Cliente */}
           <TouchableOpacity
             onPress={() => {
               vibrar("toque");
               onNavigateRegistroCliente();
             }}
-            className="mt-2 items-center py-2"
+            className="mt-1 items-center py-2"
           >
             <Text className="text-xs font-bold text-calabaza underline">
               ¿No tienes cuenta? Regístrate como cliente aquí
@@ -258,54 +331,61 @@ export function LoginScreen({
         </View>
       </ScrollView>
 
-      {/* MODAL DE ACCESOS RÁPIDOS (tocar el logo 3 veces) */}
-      <Modal visible={modalAccesosVisible} transparent animationType="fade">
-        <View className="flex-1 items-center justify-center bg-black/50 px-6">
-          <ChineseFrame className="w-full max-w-sm bg-vino shadow-2xl p-3">
-          <View className="px-2 pb-3 pt-5">
-          <Text style={{ fontFamily: "LaOriental" }} className="mb-1 text-s uppercase tracking-wider text-mostaza">
-            Accesos Rápidos de Prueba
-          </Text>
-            <Text className="mb-4 text-xs font-semibold text-amber-100">
-              Toque un perfil para completar el formulario:
-            </Text>
-
-            <View className="flex-row flex-wrap justify-between gap-y-3">
-              {ACCESOS_RAPIDOS.map((acceso) => (
-                <TouchableOpacity
-                  key={acceso.id}
-                  onPress={() => {
-                    seleccionarAccesoRapido(acceso);
-                    setModalAccesosVisible(false);
-                  }}
-                  disabled={cargando}
-                  className="w-[48%] flex-row items-center rounded-2xl border-2 border-mostaza/70 bg-calabaza/30 p-3 active:bg-calabaza/60"
+      {/* Modal Accesos Rápidos */}
+      {modalAccesosVisible && (
+        <Modal visible transparent animationType="fade">
+          <View className="flex-1 items-center justify-center bg-black/50 px-6">
+            <ChineseFrame className="w-full max-w-sm bg-vino shadow-2xl p-3">
+              <View className="px-2 pb-3 pt-5">
+                <Text
+                  style={{ fontFamily: "LaOriental" }}
+                  className="mb-1 text-s uppercase tracking-wider text-mostaza"
                 >
-                  <Text className="text-xl mr-2">{acceso.icono}</Text>
-                  <View className="flex-1">
-                    <Text className="text-xs font-black text-mostaza">{acceso.tituloVisual}</Text>
-                    <Text className="text-[10px] text-amber-100" numberOfLines={1}>
-                      {acceso.email}
-                    </Text>
-                  </View>
+                  Accesos Rápidos de Prueba
+                </Text>
+                <Text className="mb-4 text-xs font-semibold text-amber-100">
+                  Toque un perfil para completar el formulario:
+                </Text>
+
+                <View className="flex-row flex-wrap justify-between gap-y-3">
+                  {ACCESOS_RAPIDOS.map((acceso) => (
+                    <TouchableOpacity
+                      key={acceso.id}
+                      onPress={() => {
+                        seleccionarAccesoRapido(acceso);
+                        setModalAccesosVisible(false);
+                      }}
+                      disabled={cargando}
+                      className="w-[48%] flex-row items-center rounded-2xl border-2 border-mostaza/70 bg-calabaza/30 p-3 active:bg-calabaza/60"
+                    >
+                      <Text className="text-xl mr-2">{acceso.icono}</Text>
+                      <View className="flex-1">
+                        <Text className="text-xs font-black text-mostaza uppercase text-center">
+                          {acceso.tituloVisual}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <TouchableOpacity
+                  onPress={() => setModalAccesosVisible(false)}
+                  className="mt-5 rounded-2xl bg-mostaza py-2.5 active:bg-calabaza/60"
+                >
+                  <Text
+                    style={{ fontFamily: "LaOriental" }}
+                    className="text-center uppercase tracking-wider text-vino"
+                  >
+                    Cerrar
+                  </Text>
                 </TouchableOpacity>
-              ))}
-            </View>
-
-            <TouchableOpacity
-              onPress={() => setModalAccesosVisible(false)}
-              className="mt-5 rounded-2xl  bg-mostaza py-2.5 active:bg-calabaza/60"
-            >
-              <Text style={{ fontFamily: "LaOriental" }} className="text-center uppercase tracking-wider text-vino">
-                Cerrar
-              </Text>
-            </TouchableOpacity>
-            </View>
+              </View>
             </ChineseFrame>
-        </View>
-      </Modal>
+          </View>
+        </Modal>
+      )}
 
-      <CompanySpinner visible={cargando} mensaje="Autenticando credenciales..." />
+      <CompanySpinner visible={cargando} mensaje={textoCargando} />
 
       <FeedbackModal
         visible={modalFeedback.visible}
@@ -314,7 +394,6 @@ export function LoginScreen({
         mensaje={modalFeedback.mensaje}
         onClose={() => setModalFeedback((prev) => ({ ...prev, visible: false }))}
       />
-      </SafeAreaView>
-    </>
+    </SafeAreaView>
   );
 }

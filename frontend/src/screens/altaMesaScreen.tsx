@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ChineseFrame } from "../components/ChineseFrame";
-import { TeamNames } from "../components/TeamNames";
 import { StatusBar } from "expo-status-bar";
 
 import {
@@ -308,9 +307,6 @@ export default function AltaMesaScreen() {
       <View className="flex-1">
         <StatusBar style="light" />
 
-        {/* Nombres del equipo */}
-        <TeamNames className="absolute right-4 z-10" style={{ top: 16 }} />
-
         {/* Cabecera idéntica a Alta Empleados */}
         <View className="px-5 pt-4">
           <View className="mb-4">
@@ -418,7 +414,7 @@ export default function AltaMesaScreen() {
                       keyboardType="number-pad"
                       placeholder="Ej: 5"
                       placeholderTextColor="#a37e1f"
-                      className={`rounded-xl border px-4 py-3 text-stone-700 ${
+                      className={`rounded-xl border px-4 py-3 text-stone-700 bg-[#FFF8EA] ${
                         errors.numero ? "border-terracota" : "border-mostaza"
                       }`}
                     />
@@ -429,14 +425,14 @@ export default function AltaMesaScreen() {
 
                   {/* Comensales */}
                   <View>
-                    <Text className="mb-1 text-s font-bold text-vino">Cantidad de Comensales (Máx. 8) *</Text>
+                    <Text className="mb-1 text-s font-bold text-vino">Cantidad de Comensales (Máximo 8) *</Text>
                     <TextInput
                       value={comensales}
                       onChangeText={(v) => { setComensales(v); clearFieldError("comensales", v); }}
                       keyboardType="number-pad"
                       placeholder="Ej: 4"
                       placeholderTextColor="#a37e1f"
-                      className={`rounded-xl border px-4 py-3 text-stone-700 ${
+                      className={`rounded-xl border px-4 py-3 text-stone-700 bg-[#FFF8EA] ${
                         errors.comensales ? "border-terracota" : "border-mostaza"
                       }`}
                     />
@@ -474,13 +470,13 @@ export default function AltaMesaScreen() {
                         <TouchableOpacity
                           key={item.key}
                           onPress={() => setTipo(item.key)}
-                          className={`flex-1 items-center rounded-xl border px-2 py-3 ${
+                          className={`flex-1 items-center rounded-xl border px-2 py-3 mt-5 ${
                             tipo === item.key ? "border-vino bg-mostaza" : "border-transparent bg-caramelo/10"
                           }`}
                         >
                           <Image
                             source={tipo === item.key ? item.iconoActivo : item.icono}
-                            className="h-8 w-8"
+                            className="h-14 w-14"
                             resizeMode="contain"
                           />
                           <Text
@@ -523,12 +519,13 @@ export default function AltaMesaScreen() {
                 nestedScrollEnabled
                 contentContainerStyle={{ paddingBottom: 40 }}
               >
-                <View className="rounded-2xl border border-mostaza p-4">
-                  <Text className="mb-2 text-s font-bold text-vino">Foto de la Mesa *</Text>
+                <Text className="mb-2 text-s ml-7 font-bold text-vino">Foto de la Mesa *</Text>
                   {errors.foto && (
                     <Text className="mb-2 text-xs font-medium text-rose-400">{errors.foto}</Text>
                   )}
 
+                <View className="w-[86%] h-[80%] bg-[#FFF8EA] self-center rounded-2xl border border-mostaza p-4">
+                  
                   {foto ? (
                     <View className="items-center">
                       <Image source={{ uri: foto }} className="h-44 w-44 rounded-2xl border border-calabaza" />
@@ -542,7 +539,7 @@ export default function AltaMesaScreen() {
                   ) : (
                     <TouchableOpacity
                       onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setModalFoto(true); }}
-                      className="h-36 items-center justify-center rounded-xl border border-dashed border-amber-600/50"
+                      className="h-[100%] items-center justify-center rounded-xl border border-dashed border-amber-600/50"
                     >
                       <Image source={require("../../assets/images/camera.png")} className="mb-1 h-9 w-9" />
                       <Text className="text-xs font-bold text-terracota">Cargar Foto de la Mesa</Text>
@@ -674,7 +671,7 @@ export default function AltaMesaScreen() {
                 </ScrollView>
 
                 {agrupadas.length > 1 && (
-                  <View className="flex-row items-center justify-center gap-2 py-2">
+                  <View className="flex-row items-center justify-center gap-2 py-2 my-3">
                     {agrupadas.map((_, i) => (
                       <View
                         key={i}
@@ -684,23 +681,25 @@ export default function AltaMesaScreen() {
                   </View>
                 )}
 
-                {listaPage < agrupadas.length - 1 && (
-                  <TouchableOpacity
-                    onPress={irSiguienteLista}
-                    className="mx-5 my-1 flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
-                  >
-                    <Text style={{ fontFamily: "LaOriental" }} className="text-s text-calabaza">Siguiente</Text>
-                  </TouchableOpacity>
-                )}
+                <View className="mx-5 my-1 flex-row gap-2">
+                  {listaPage > 0 && (
+                    <TouchableOpacity
+                      onPress={irVolverLista}
+                      className="flex-1 flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
+                    >
+                      <Text style={{ fontFamily: "LaOriental" }} className="text-s text-calabaza">Volver</Text>
+                    </TouchableOpacity>
+                  )}
 
-                {listaPage > 0 && (
-                  <TouchableOpacity
-                    onPress={irVolverLista}
-                    className="mx-5 mt-1 flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
-                  >
-                    <Text style={{ fontFamily: "LaOriental" }} className="text-s text-calabaza">Volver</Text>
-                  </TouchableOpacity>
-                )}
+                  {listaPage < agrupadas.length - 1 && (
+                    <TouchableOpacity
+                      onPress={irSiguienteLista}
+                      className="flex-1 flex-row items-center justify-center rounded-2xl border border-calabaza bg-[#FBE9DF] py-3 active:bg-[#f5dccb]"
+                    >
+                      <Text style={{ fontFamily: "LaOriental" }} className="text-s text-calabaza">Siguiente</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
               </>
             )}
           </View>

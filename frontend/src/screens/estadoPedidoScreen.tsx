@@ -1,58 +1,111 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   View,
   Text,
+  Image,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Modal,
 } from "react-native";
 import { supabase } from "../config/supabase";
 import { useCart, ItemCarrito } from "../context/carritoContext";
-import { ChineseFrame } from "../components/ChineseFrame";
+import { FeedbackModal } from "../components/FeedbackModal";
+import { DetallePedidoCard } from "../components/DetallePedidoCard";
+import { obtenerJugadasPedido } from "../services/juegosService";
 
 interface Props {
   pedidoId: string;
   onVolver: () => void;
   onIrAJuegos?: () => void;
+  onConfirmarRecepcion: (pedidoId: string, numMesa: string | number) => void;
   onEditarComanda?: (motivo: string | null) => void;
 }
 
 const ETAPAS = [
-  { clave: "pending", titulo: "Recibido", icono: "📝", descripcion: "Esperando confirmación del mozo" },
-  { clave: "in_preparation", titulo: "En Cocina", icono: "👨‍🍳", descripcion: "Preparando tus platos y bebidas" },
-  { clave: "ready", titulo: "Listo", icono: "✨", descripcion: "Tu pedido está listo para ser servido" },
-  { clave: "delivered", titulo: "Servido", icono: "🍽️", descripcion: "¡A disfrutar tu comida!" },
+  { clave: "pending", titulo: "Recibido", iconoActivo: require("../../assets/images/audit-y.png"), iconoPendiente: require("../../assets/images/audit-g.png"), descripcion: "Esperando confirmación del mozo" },
+  { clave: "in_preparation", titulo: "En Cocina", iconoActivo: require("../../assets/images/chef-y.png"), iconoPendiente: require("../../assets/images/chef-g.png"), descripcion: "Preparando sus platos y bebidas" },
+  { clave: "ready", titulo: "Listo", iconoActivo: require("../../assets/images/serving-y.png"), iconoPendiente: require("../../assets/images/serving-g.png"), descripcion: "Su pedido está listo para ser servido" },
+  { clave: "delivered", titulo: "Servido", iconoActivo: require("../../assets/images/dish-y.png"), iconoPendiente: require("../../assets/images/dish-g.png"), descripcion: "¡A disfrutar su comida!" },
 ];
 
-export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos, onEditarComanda }: Props) {
+export function EstadoPedidoScreen({
+  pedidoId,
+  onVolver,
+  onIrAJuegos,
+  onConfirmarRecepcion,
+  onEditarComanda,
+}: Props) {
   const { reemplazarCarrito } = useCart();
   const [pedido, setPedido] = useState<any | null>(null);
   const [cargando, setCargando] = useState(true);
+  const [descuentoPct, setDescuentoPct] = useState(0);
+  const [modalRechazoVisible, setModalRechazoVisible] = useState(false);
+  const [motivoRechazo, setMotivoRechazo] = useState<string>("");
+  const yaNotificoRechazoRef = useRef(false);
+
+  const [feedback, setFeedback] = useState<{
+    visible: boolean;
+    tipo: "exito" | "error" | "informacion";
+    titulo: string;
+    mensaje: string;
+  }>({ visible: false, tipo: "exito", titulo: "", mensaje: "" });
+
+  const verificarEstadoYNotificar = (datosPedido: any) => {
+    if (!datosPedido) return;
+
+    const st = String(datosPedido.status || "").toLowerCase();
+    const esRechazado = st === "rejected" || st === "cancelled" || st === "rechazado";
+
+    if (esRechazado && !yaNotificoRechazoRef.current) {
+      yaNotificoRechazoRef.current = true;
+      const motivo =
+        datosPedido.rejection_reason ||
+        datosPedido.motivo_rechazo ||
+        datosPedido.reason ||
+        "El mozo rechazó la comanda. Por favor, revise y ajuste su pedido.";
+
+      setMotivoRechazo(motivo);
+      setModalRechazoVisible(true);
+    }
+  };
 
   const cargarPedido = async () => {
     try {
-      const { data, error } = await supabase
-        .from("orders")
-        .select(`
-           id,
-           status,
-           rejection_reason,
-           total_amount,
-          estimated_delivery_time,
-          created_at,
-          restaurant_tables (table_number),
-          order_items (
-            id,
-            quantity,
-            unit_price,
-            products (id, name, description, price, prep_time, photos, category)
-          )
-        `)
-        .eq("id", pedidoId)
-        .single();
+      const [{ data, error }, jugadas] = await Promise.all([
+        supabase
+          .from("orders")
+          .select(`
+             id,
+             status,
+             rejection_reason,
+             total_amount,
+             discount_amount,
+             tip_amount,
+             estimated_delivery_time,
+             created_at,
+             restaurant_tables (table_number),
+             order_items (
+               id,
+               quantity,
+               unit_price,
+               products (id, name, description, price, prep_time, photos, category)
+             )
+          `)
+          .eq("id", pedidoId)
+          .single(),
+        obtenerJugadasPedido(pedidoId),
+      ]);
 
       if (!error && data) {
+        const ganadora = jugadas.find(
+          (j) =>
+            Number(j.discount_percentage || 0) > 0 &&
+            Boolean(j.won_on_first_try)
+        );
+        setDescuentoPct(Number(ganadora?.discount_percentage || 0));
         setPedido(data);
+        verificarEstadoYNotificar(data);
       }
     } catch (e: any) {
       console.warn("Error cargando estado:", e.message);
@@ -64,7 +117,6 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos, onEditarCo
   useEffect(() => {
     cargarPedido();
 
-    // Actualización en tiempo real del estado de la orden
     const canal = supabase
       .channel(`seguimiento_${pedidoId}`)
       .on(
@@ -75,7 +127,13 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos, onEditarCo
           table: "orders",
           filter: `id=eq.${pedidoId}`,
         },
-        () => cargarPedido()
+        (payload: any) => {
+          const nuevo = payload.new;
+          if (nuevo) {
+            verificarEstadoYNotificar(nuevo);
+          }
+          cargarPedido();
+        }
       )
       .subscribe();
 
@@ -86,24 +144,22 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos, onEditarCo
 
   if (cargando) {
     return (
-      <View className="flex-1 items-center justify-center bg-amber-50">
+      <View className="flex-1 items-center justify-center bg-[#FCE7CB]">
         <ActivityIndicator size="large" color="#800020" />
       </View>
     );
   }
 
-  const estadoActual = pedido?.status || "pending";
+  const estadoActual = String(pedido?.status || "pending").toLowerCase();
   const numMesa = pedido?.restaurant_tables?.table_number ?? "S/N";
+  const estaRechazado = estadoActual === "rejected" || estadoActual === "cancelled" || estadoActual === "rechazado";
+  const estaEntregado = estadoActual === "delivered";
   const indiceActual = ETAPAS.findIndex((e) => e.clave === estadoActual);
-  const estaCancelado = estadoActual === "cancelled";
 
-  /**
-   * El carrito se vació al enviar la comanda original, así que los ítems del
-   * pedido rechazado se reconstruyen desde order_items para poder editarlos.
-   * El precio se toma del producto actual (el backend recalcula el total con
-   * ese mismo valor) y se cae a unit_price como respaldo.
-   */
   const manejarEditarComanda = () => {
+    setModalRechazoVisible(false);
+
+    // Reconstruimos los ítems para volver al carrito tal cual estaban
     const items: ItemCarrito[] = (pedido?.order_items || [])
       .filter((it: any) => it?.products?.id)
       .map((it: any) => ({
@@ -117,92 +173,86 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos, onEditarCo
         cantidad: Number(it.quantity) || 1,
       }));
 
-    if (items.length === 0) return;
+    if (items.length > 0) {
+      reemplazarCarrito(items);
+    }
 
-    reemplazarCarrito(items);
-    onEditarComanda?.(pedido?.rejection_reason ?? null);
+    if (onEditarComanda) {
+      onEditarComanda(motivoRechazo || pedido?.rejection_reason || null);
+    } else {
+      onVolver();
+    }
   };
 
   return (
-    <View className="flex-1 bg-amber-50 px-4 pt-2">
+    <View className="flex-1 bg-[#FCE7CB]">
       {/* Header */}
-      <View className="mb-4 flex-row items-center justify-between border-b border-mostaza/30 pb-3">
-        <TouchableOpacity onPress={onVolver} className="px-2 py-1">
-          <Text className="font-bold text-vino">← Volver</Text>
-        </TouchableOpacity>
-
-        <View className="items-center">
-          <Text style={{ fontFamily: "LaOriental" }} className="text-xl uppercase text-vino">
+      <View className="my-3 flex-row items-center justify-center border-b border-mostaza/70 pb-3 px-4 pt-2">
+        <View className="items-center w-full justify-center flex-col">
+          <Text
+            style={{ fontFamily: "LaOriental" }}
+            className="text-2xl uppercase text-vino text-center w-full"
+          >
             Mesa #{numMesa}
           </Text>
-          <Text className="text-[10px] font-bold text-stone-500">
-            Seguimiento en Vivo
+          <Text className="text-sm font-bold text-stone-500">
+            Seguimiento del pedido
           </Text>
         </View>
-
-        <View className="w-12" />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {!estaCancelado && (
-          <View className="mb-5 rounded-2xl border-2 border-mostaza bg-vino p-4 shadow-md">
-            <View className="flex-row items-center justify-between">
-              <View>
-                <Text className="text-xs text-amber-200/80 uppercase font-semibold">
-                  Tiempo estimado de cocina
-                </Text>
-                <Text className="text-2xl font-black text-mostaza">
-                  ⏱ ~{pedido?.estimated_delivery_time || 15} minutos
-                </Text>
-              </View>
-              <Text className="text-4xl">🍲</Text>
-            </View>
-            <Text className="mt-2 text-xs text-amber-100/70">
-              El tiempo corre desde que el mozo confirmó la comanda.
+      <ScrollView
+        className="flex-1 h-full"
+        showsVerticalScrollIndicator={false}
+        contentContainerClassName="flex-grow px-4"
+      >
+        {/* Banner de Rechazo (si está rechazado) */}
+        {estaRechazado ? (
+          <View className="mb-4 rounded-2xl border-2 border-red-500 bg-red-950/80 p-4 shadow-md">
+            <Text className="text-xs font-bold uppercase tracking-wider text-red-300">
+              ⚠️ Pedido rechazado por el mozo
             </Text>
+            <Text className="mt-1 text-sm font-semibold text-white">
+              Motivo: "{pedido?.rejection_reason || motivoRechazo || "Sin especificar"}"
+            </Text>
+            <TouchableOpacity
+              onPress={manejarEditarComanda}
+              className="mt-3 rounded-xl bg-mostaza py-2.5 px-4 items-center"
+            >
+              <Text style={{ fontFamily: "LaOriental" }} className="text-xs uppercase text-vino font-black">
+                Modificar Comanda y Reenviar
+              </Text>
+            </TouchableOpacity>
           </View>
-        )}
-
-        {estaCancelado && (
-          <View className="mb-5 rounded-2xl border-2 border-red-300 bg-red-50 p-4">
-            <Text className="text-lg font-black text-red-800">Pedido rechazado</Text>
-            <Text className="mt-1 text-sm text-red-700">
-              {pedido?.rejection_reason || "El mozo no especificó un motivo."}
-            </Text>
-
-            {onEditarComanda && (pedido?.order_items?.length ?? 0) > 0 && (
-              <ChineseFrame className="mt-4 w-full" color="#c32f27">
-                <TouchableOpacity
-                  onPress={manejarEditarComanda}
-                  className="w-full items-center rounded-xl bg-vino px-4 py-3 active:bg-terracota"
-                >
-                  <Text className="text-sm font-black uppercase tracking-wider text-mostaza">
-                    Modificar comanda
-                  </Text>
-                  <Text className="mt-0.5 text-center text-[11px] text-amber-100">
-                    Volvé a armarla y reenviala al mozo
-                  </Text>
-                </TouchableOpacity>
-              </ChineseFrame>
-            )}
+        ) : (
+          /* Banner Normal de Tiempo Estimado */
+          <View className="mb-4 rounded-2xl border-2 border-mostaza bg-vino p-4">
+            <View className="flex-row items-center justify-between">
+              <Text className="text-sm text-amber-200/80 uppercase font-semibold">
+                {estaEntregado ? "¡Pedido servido!" : "Tiempo estimado"}
+              </Text>
+              <Text className="text-3xl font-black text-mostaza">
+                {estaEntregado ? "¡En tu mesa!" : `⏱ ~${pedido?.estimated_delivery_time || 15} min`}
+              </Text>
+            </View>
           </View>
         )}
 
         {/* Línea de Etapas / Progreso */}
-        <View className="mb-5 rounded-2xl border border-mostaza/30 bg-white p-4 shadow-sm">
-          <Text style={{ fontFamily: "LaOriental" }} className="mb-4 text-base uppercase text-vino">
+        <View className="mb-4 rounded-2xl border border-mostaza/70 bg-amber-50 p-4 shadow-sm">
+          <Text style={{ fontFamily: "LaOriental" }} className="mb-3 text-xl uppercase text-vino">
             Estado de Preparación
           </Text>
 
-          <View className="gap-y-4">
+          <View className="gap-y-3">
             {ETAPAS.map((etapa, idx) => {
-              const completado = !estaCancelado && idx <= (indiceActual >= 0 ? indiceActual : 0);
-              const activo = !estaCancelado && idx === indiceActual;
+              const completado = !estaRechazado && indiceActual >= 0 && idx <= indiceActual;
+              const activo = !estaRechazado && indiceActual >= 0 && idx === indiceActual;
 
               return (
                 <View key={etapa.clave} className="flex-row items-center">
                   <View
-                    className={`h-9 w-9 items-center justify-center rounded-full border-2 ${
+                    className={`h-10 w-10 items-center justify-center rounded-full border-2 ${
                       activo
                         ? "border-mostaza bg-vino"
                         : completado
@@ -210,18 +260,26 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos, onEditarCo
                         : "border-stone-300 bg-stone-100"
                     }`}
                   >
-                    <Text className="text-sm">{completado && !activo ? "✓" : etapa.icono}</Text>
+                    {completado && !activo ? (
+                      <Text className="text-lg text-white font-bold">✓</Text>
+                    ) : (
+                      <Image
+                        source={activo ? etapa.iconoActivo : etapa.iconoPendiente}
+                        className="h-6 w-6"
+                        resizeMode="contain"
+                      />
+                    )}
                   </View>
 
                   <View className="ml-3 flex-1">
                     <Text
-                      className={`text-sm font-bold ${
+                      className={`text-s font-bold ${
                         activo ? "text-vino" : completado ? "text-emerald-700" : "text-stone-400"
                       }`}
                     >
                       {etapa.titulo}
                     </Text>
-                    <Text className="text-[11px] text-stone-500">{etapa.descripcion}</Text>
+                    <Text className="text-sm text-stone-500">{etapa.descripcion}</Text>
                   </View>
                 </View>
               );
@@ -229,50 +287,96 @@ export function EstadoPedidoScreen({ pedidoId, onVolver, onIrAJuegos, onEditarCo
           </View>
         </View>
 
-        {/* Resumen de la Comanda */}
-        <View className="mb-5 rounded-2xl border border-mostaza/30 bg-white p-4 shadow-sm">
-          <Text style={{ fontFamily: "LaOriental" }} className="mb-2 text-base uppercase text-vino">
-            Detalle del Pedido
-          </Text>
+        {/* Resumen del pedido */}
+        <DetallePedidoCard
+          pedido={pedido}
+          descuentoPct={descuentoPct}
+          className="mb-2"
+        />
+      </ScrollView>
 
-          {(pedido?.order_items || []).map((it: any) => (
-            <View key={it.id} className="flex-row justify-between border-b border-stone-100 py-2">
-              <Text className="text-xs font-semibold text-stone-800">
-                {it.quantity}x {it.products?.name}
-              </Text>
-              <Text className="text-xs font-bold text-calabaza">
-                ${Number(it.unit_price) * it.quantity}
-              </Text>
-            </View>
-          ))}
-
-          <View className="mt-3 flex-row justify-between pt-2 border-t border-mostaza/20">
-            <Text className="text-sm font-bold text-stone-800">Total Abonado / A Pagar:</Text>
-            <Text className="text-lg font-black text-calabaza">
-              ${Number(pedido?.total_amount || 0).toLocaleString("es-AR")}
-            </Text>
-          </View>
-        </View>
-
-        {/* Acceso a Juegos mientras espera */}
-        {onIrAJuegos && !estaCancelado && (
+      {/* BOTÓN AL PIE DE LA PÁGINA */}
+      <View className="py-3 border-t border-mostaza/70 px-4">
+        {estaRechazado ? (
           <TouchableOpacity
-            onPress={onIrAJuegos}
-            className="mb-6 flex-row items-center rounded-2xl border-2 border-mostaza bg-calabaza p-4 shadow-md active:bg-vino"
+            onPress={manejarEditarComanda}
+            className="w-full rounded-2xl py-3.5 shadow-sm items-center justify-center bg-calabaza active:bg-terracota"
           >
-            <Text className="text-3xl mr-3">🎮</Text>
-            <View className="flex-1">
-              <Text style={{ fontFamily: "LaOriental" }} className="text-base uppercase text-white font-bold">
-                Jugar en la Mesa
-              </Text>
-              <Text className="text-xs text-amber-100">
-                Jugá mientras esperás la comida y ganá descuentos en tu cuenta.
-              </Text>
-            </View>
-            <Text className="text-lg font-bold text-mostaza">→</Text>
+            <Text
+              style={{ fontFamily: "LaOriental" }}
+              className="text-center text-sm uppercase tracking-wider text-white"
+            >
+              Editar Pedido Rechazado
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity
+            onPress={() => onConfirmarRecepcion(pedidoId, numMesa)}
+            disabled={!estaEntregado}
+            className={`w-full rounded-2xl py-3.5 shadow-sm items-center justify-center ${
+              estaEntregado
+                ? "bg-emerald-600 active:bg-emerald-700"
+                : "bg-stone-300 opacity-60"
+            }`}
+          >
+            <Text
+              style={{ fontFamily: "LaOriental" }}
+              className={`text-center text-lg uppercase tracking-wider ${
+                estaEntregado ? "text-white" : "text-stone-500"
+              }`}
+            >
+              {estaEntregado ? "Pagar cuenta" : "Esperando Entrega..."}
+            </Text>
           </TouchableOpacity>
         )}
-      </ScrollView>
+      </View>
+
+      {/* MODAL EMERGENTE DE RECHAZO CON MOTIVO */}
+      <Modal visible={modalRechazoVisible} transparent animationType="fade">
+        <View className="flex-1 items-center justify-center bg-black/80 px-6">
+          <View className="w-full max-w-sm rounded-3xl border border-red-500 bg-vino p-6 shadow-2xl">
+            <Text
+              style={{ fontFamily: "LaOriental" }}
+              className="text-center text-2xl text-red-400 uppercase"
+            >
+              Comanda Rechazada
+            </Text>
+
+            <View className="my-4 rounded-xl bg-black/40 p-4 border border-red-500/30">
+              <Text className="text-xs uppercase text-amber-200/70 font-bold mb-1">
+                Motivo del mozo:
+              </Text>
+              <Text className="text-sm font-semibold text-white leading-relaxed">
+                "{motivoRechazo}"
+              </Text>
+            </View>
+
+            <Text className="text-center text-xs text-amber-100/90 mb-5">
+              Su carrito se conservó con todos los productos para que pueda realizar las modificaciones solicitadas.
+            </Text>
+
+            <TouchableOpacity
+              onPress={manejarEditarComanda}
+              className="w-full items-center rounded-xl bg-mostaza py-3.5 shadow active:bg-mostaza/80"
+            >
+              <Text
+                style={{ fontFamily: "LaOriental" }}
+                className="text-center text-sm uppercase text-vino font-black"
+              >
+                Modificar Pedido
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      <FeedbackModal
+        visible={feedback.visible}
+        tipo={feedback.tipo}
+        titulo={feedback.titulo}
+        mensaje={feedback.mensaje}
+        onClose={() => setFeedback((prev) => ({ ...prev, visible: false }))}
+      />
     </View>
   );
 }

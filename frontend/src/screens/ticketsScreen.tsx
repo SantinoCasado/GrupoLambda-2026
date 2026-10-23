@@ -10,7 +10,6 @@ import {
 import { StatusBar } from "expo-status-bar";
 import { supabase } from "../config/supabase";
 import { ChineseFrame } from "../components/ChineseFrame";
-import { TeamNames } from "../components/TeamNames";
 import {
   obtenerTicketsCocinaApi,
   obtenerTicketsBarApi,
@@ -65,9 +64,6 @@ export function TicketsScreen({ rol }: Props) {
   return (
     <View className="flex-1">
       <StatusBar style="light" />
-
-      {/* Nombres del equipo */}
-      <TeamNames className="absolute right-4 z-10" style={{ top: 16 }} />
 
       {/* Cabecera */}
       <View className="px-5 pt-4">

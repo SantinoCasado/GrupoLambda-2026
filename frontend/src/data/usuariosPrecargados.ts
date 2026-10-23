@@ -51,7 +51,7 @@ export const ACCESOS_RAPIDOS: AccesoRapido[] = [
     id: "acceso_metre",
     tituloVisual: "Metre",
     icono: "🛎️",
-    email: "nalvarez@restaurante.com",
+    email: "metre@restaurante.com",
     clave: "123456",
   },
   {
@@ -79,7 +79,7 @@ export const ACCESOS_RAPIDOS: AccesoRapido[] = [
     id: "acceso_cliente",
     tituloVisual: "Cliente Registrado",
     icono: "👤",
-    email: "expo@go.com",
+    email: "nvarga@restaurant.com",
     clave: "123456",
   },
 ];
