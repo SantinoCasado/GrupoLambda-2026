@@ -187,6 +187,12 @@ export async function obtenerDetalleCuenta(
 ): Promise<DetalleCuenta> {
   console.log("👉 Iniciando obtenerDetalleCuenta para:", pedidoId);
 
+  // Guarda de seguridad contra UUIDs vacíos
+  if (!pedidoId || pedidoId.trim() === "") {
+    console.warn("⚠️ [obtenerDetalleCuenta] pedidoId inválido o vacío. Abortando consulta.");
+    throw new Error("ID de pedido no proporcionado.");
+  }
+  
   // 1. Obtener pedido
   const { data: pedido, error: errPedido } = await supabase
     .from("orders")
