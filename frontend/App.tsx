@@ -106,7 +106,7 @@ function AppInterna() {
   const [motivoRechazoEdicion, setMotivoRechazoEdicion] = useState<string | null>(null);
   const [notifNuevoClientePendiente, setNotifNuevoClientePendiente] = useState(false);
   const [rolTickets, setRolTickets] = useState<"cocinero" | "cantinero">("cocinero");
-  const [propinaSeleccionada, setPropinaSeleccionada] = useState<number>(0);
+  const [propinaSeleccionada, setPropinaSeleccionada] = useState<number | null>(null);
   // Pantalla desde la que se abrió el chat del mozo, para que el botón
   // "volver" del header regrese al origen real (carta, chat_mesas, etc.)
   const [vistaOrigenChat, setVistaOrigenChat] = useState<VistaPrivada | null>(null);
@@ -579,6 +579,7 @@ function AppInterna() {
       setIdPedidoActivo(null);
       setIdPedidoEnEdicion(null);
       setMotivoRechazoEdicion(null);
+      setPropinaSeleccionada(null);
       setVistaPrivada("home");
       setVistaPublica("login");
     }
@@ -985,6 +986,7 @@ function AppInterna() {
               setIdPedidoActivo(pedido.id);
               setIdPedidoEnEdicion(null);
               setMotivoRechazoEdicion(null);
+              setPropinaSeleccionada(null);
               setVistaPrivada("estado_pedido");
             }}
           />
@@ -1015,6 +1017,8 @@ function AppInterna() {
           <PedidoRecibidoScreen
             pedidoId={idPedidoActivo || ""}
             numeroMesa={mesaCliente}
+            propinaPorcentaje={propinaSeleccionada}
+            onPropinaSeleccionada={setPropinaSeleccionada}
             onIrAJuegos={() => abrirJuegos("pedido_recibido")}
             onIrAEncuesta={() => setVistaPrivada("encuesta" as any)}
             onPedirCuenta={(_id, porcentaje) => {
@@ -1037,7 +1041,7 @@ function AppInterna() {
         {vistaPrivada === "cuenta" && (
           <CuentaScreen
             pedidoId={idPedidoActivo || ""}
-            propinaPorcentaje={propinaSeleccionada}
+            propinaPorcentaje={propinaSeleccionada ?? 0}
             onPagoCompletado={async () => {
               // Limpia los identificadores de la estadía
               setIdPedidoActivo(null);

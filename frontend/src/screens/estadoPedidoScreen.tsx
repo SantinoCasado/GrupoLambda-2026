@@ -11,6 +11,8 @@ import {
 import { supabase } from "../config/supabase";
 import { useCart, ItemCarrito } from "../context/carritoContext";
 import { FeedbackModal } from "../components/FeedbackModal";
+import { DetallePedidoCard } from "../components/DetallePedidoCard";
+import { obtenerJugadasPedido } from "../services/juegosService";
 
 interface Props {
   pedidoId: string;
@@ -37,6 +39,7 @@ export function EstadoPedidoScreen({
   const { reemplazarCarrito } = useCart();
   const [pedido, setPedido] = useState<any | null>(null);
   const [cargando, setCargando] = useState(true);
+  const [descuentoPct, setDescuentoPct] = useState(0);
   const [modalRechazoVisible, setModalRechazoVisible] = useState(false);
   const [motivoRechazo, setMotivoRechazo] = useState<string>("");
   const yaNotificoRechazoRef = useRef(false);
@@ -69,27 +72,38 @@ export function EstadoPedidoScreen({
 
   const cargarPedido = async () => {
     try {
-      const { data, error } = await supabase
-        .from("orders")
-        .select(`
-           id,
-           status,
-           rejection_reason,
-           total_amount,
-           estimated_delivery_time,
-           created_at,
-           restaurant_tables (table_number),
-           order_items (
+      const [{ data, error }, jugadas] = await Promise.all([
+        supabase
+          .from("orders")
+          .select(`
              id,
-             quantity,
-             unit_price,
-             products (id, name, description, price, prep_time, photos, category)
-           )
-        `)
-        .eq("id", pedidoId)
-        .single();
+             status,
+             rejection_reason,
+             total_amount,
+             discount_amount,
+             tip_amount,
+             estimated_delivery_time,
+             created_at,
+             restaurant_tables (table_number),
+             order_items (
+               id,
+               quantity,
+               unit_price,
+               products (id, name, description, price, prep_time, photos, category)
+             )
+          `)
+          .eq("id", pedidoId)
+          .single(),
+        obtenerJugadasPedido(pedidoId),
+      ]);
 
       if (!error && data) {
+        const ganadora = jugadas.find(
+          (j) =>
+            Number(j.discount_percentage || 0) > 0 &&
+            Boolean(j.won_on_first_try)
+        );
+        setDescuentoPct(Number(ganadora?.discount_percentage || 0));
         setPedido(data);
         verificarEstadoYNotificar(data);
       }
@@ -130,7 +144,7 @@ export function EstadoPedidoScreen({
 
   if (cargando) {
     return (
-      <View className="flex-1 items-center justify-center bg-amber-50">
+      <View className="flex-1 items-center justify-center bg-[#FCE7CB]">
         <ActivityIndicator size="large" color="#800020" />
       </View>
     );
@@ -274,31 +288,11 @@ export function EstadoPedidoScreen({
         </View>
 
         {/* Resumen del pedido */}
-        <View style={{ height: 215 }} className="mb-2 rounded-2xl border border-mostaza/70 bg-amber-50 p-4">
-          <Text style={{ fontFamily: "LaOriental" }} className="mb-2 text-xl uppercase text-vino">
-            Detalle del Pedido
-          </Text>
-
-          <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-            {(pedido?.order_items || []).map((it: any) => (
-              <View key={it.id} className="flex-row justify-between border-b border-stone-200 py-1.5">
-                <Text className="text-sm font-semibold text-stone-800">
-                  {it.quantity}x {it.products?.name}
-                </Text>
-                <Text className="text-sm font-bold text-calabaza">
-                  ${Number(it.unit_price) * it.quantity}
-                </Text>
-              </View>
-            ))}
-          </ScrollView>
-
-          <View className="mt-2 flex-row justify-between pt-2 border-t border-mostaza/40">
-            <Text className="text-lg font-bold text-vino">TOTAL</Text>
-            <Text className="text-lg font-black text-calabaza">
-              ${Number(pedido?.total_amount || 0).toLocaleString("es-AR")}
-            </Text>
-          </View>
-        </View>
+        <DetallePedidoCard
+          pedido={pedido}
+          descuentoPct={descuentoPct}
+          className="mb-2"
+        />
       </ScrollView>
 
       {/* BOTÓN AL PIE DE LA PÁGINA */}
@@ -331,7 +325,7 @@ export function EstadoPedidoScreen({
                 estaEntregado ? "text-white" : "text-stone-500"
               }`}
             >
-              {estaEntregado ? "Pasar a pagar" : "Esperando Entrega..."}
+              {estaEntregado ? "Pagar cuenta" : "Esperando Entrega..."}
             </Text>
           </TouchableOpacity>
         )}

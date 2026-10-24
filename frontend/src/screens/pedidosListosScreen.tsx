@@ -12,10 +12,30 @@ import { supabase } from "../config/supabase";
 import { ChineseFrame } from "../components/ChineseFrame";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { FeedbackModal } from "../components/FeedbackModal";
-import { marcarPedidoEntregadoApi } from "../services/pedidosService";
+import { CompanySpinner } from "../components/CompanySpinner";
+import {
+  marcarPedidoEntregadoApi,
+  obtenerMetadatosProductosApi,
+  ProductoMetadatos,
+} from "../services/pedidosService";
+
+const ORDEN_CATEGORIA: Record<string, number> = {
+  dish: 0,
+  drink: 1,
+  dessert: 2,
+};
+
+const ICONO_CATEGORIA: Record<string, string> = {
+  dish: "🍲",
+  drink: "🍹",
+  dessert: "🍮",
+};
 
 export default function PedidosListosScreen() {
   const [pedidosListos, setPedidosListos] = useState<any[]>([]);
+  const [metadatos, setMetadatos] = useState<Record<string, ProductoMetadatos>>({});
+  const [pagina, setPagina] = useState(0);
+  const [altoPagina, setAltoPagina] = useState(0);
   const [cargando, setCargando] = useState(true);
   const [procesandoId, setProcesandoId] = useState<string | null>(null);
   const [confirmando, setConfirmando] = useState<any>(null);
@@ -37,24 +57,32 @@ export default function PedidosListosScreen() {
   const cargarPedidos = useCallback(async () => {
     try {
       setCargando(true);
-      const { data, error } = await supabase
-        .from("orders")
-        .select(`
-          id,
-          created_at,
-          status,
-          restaurant_tables (table_number),
-          order_items (
+      // Al recargar, el carrusel vuelve a la primera página.
+      setPagina(0);
+      const [{ data, error }, mapa] = await Promise.all([
+        supabase
+          .from("orders")
+          .select(`
             id,
-            quantity,
-            products (id, name, category)
-          )
-        `)
-        .eq("status", "ready")
-        .order("created_at", { ascending: true });
+            created_at,
+            status,
+            restaurant_tables (table_number),
+            order_items (
+              id,
+              quantity,
+              products (id, name, category)
+            )
+          `)
+          .eq("status", "ready")
+          .order("created_at", { ascending: true }),
+        obtenerMetadatosProductosApi().catch(
+          () => ({}) as Record<string, ProductoMetadatos>
+        ),
+      ]);
 
       if (error) console.warn("Error cargando pedidos listos:", error.message);
       setPedidosListos(data || []);
+      setMetadatos(mapa);
     } catch (err: any) {
       console.warn("Error cargando pedidos listos:", err?.message);
     } finally {
@@ -79,22 +107,29 @@ export default function PedidosListosScreen() {
     };
   }, [cargarPedidos]);
 
+  useEffect(() => {
+    if (pedidosListos.length > 0 && pagina >= pedidosListos.length) {
+      setPagina(pedidosListos.length - 1);
+    }
+  }, [pedidosListos.length, pagina]);
+
   const ejecutarEntrega = async () => {
     if (!confirmando) return;
-    setProcesandoId(confirmando.id);
+    const pedido = confirmando;
+    setConfirmando(null);
+    setProcesandoId(pedido.id);
+
     try {
-      await marcarPedidoEntregadoApi(confirmando.id);
-      setConfirmando(null);
+      await marcarPedidoEntregadoApi(pedido.id);
       abrirAviso(
         "¡Pedido Entregado!",
         `El pedido de la Mesa #${
-          confirmando.restaurant_tables?.table_number ?? "S/N"
+          pedido.restaurant_tables?.table_number ?? "S/N"
         } fue marcado como entregado.`,
         "exito"
       );
       cargarPedidos();
     } catch (err: any) {
-      setConfirmando(null);
       abrirAviso(
         "No se pudo entregar",
         err?.message || "Ocurrió un error al marcar el pedido como entregado.",
@@ -107,7 +142,6 @@ export default function PedidosListosScreen() {
 
   return (
     <View className="flex-1">
-      <StatusBar style="light" />
 
       <View className="px-5 pt-4">
         <View className="mb-4">
@@ -137,7 +171,10 @@ export default function PedidosListosScreen() {
         </View>
       </View>
 
-      <View className="flex-1">
+      <View
+        className="flex-1"
+        onLayout={(e) => setAltoPagina(Math.round(e.nativeEvent.layout.height))}
+      >
         {cargando ? (
           <View className="items-center justify-center py-20">
             <ActivityIndicator size="large" color="#8B1A1A" />
@@ -166,78 +203,121 @@ export default function PedidosListosScreen() {
               <Text className="text-xs font-bold text-calabaza">Actualizar Lista</Text>
             </TouchableOpacity>
           </View>
-        ) : (
+        ) : !altoPagina ? null : (
           <ScrollView
+            pagingEnabled
+            directionalLockEnabled
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ padding: 16, gap: 12 }}
+            style={{ flex: 1 }}
+            onMomentumScrollEnd={(e) =>
+              setPagina(
+                Math.round(e.nativeEvent.contentOffset.y / (altoPagina || 1))
+              )
+            }
           >
             {pedidosListos.map((pedido) => {
               const numMesa = pedido.restaurant_tables?.table_number ?? "S/N";
-              const items = pedido.order_items || [];
+              // Platos primero, luego bebidas y al final los postres.
+              const items = [...(pedido.order_items || [])].sort(
+                (a: any, b: any) =>
+                  (ORDEN_CATEGORIA[a.products?.category] ?? 99) -
+                  (ORDEN_CATEGORIA[b.products?.category] ?? 99)
+              );
               return (
                 <View
                   key={pedido.id}
-                  className="rounded-2xl border-2 border-caramelo bg-[#FFFDF9] p-4"
+                  style={{ height: altoPagina }}
+                  className="px-4 py-2"
                 >
-                  <View className="mb-2 flex-row items-center justify-between">
-                    <Text
-                      className="text-2xl text-vino"
-                      style={{ fontFamily: "LaOriental" }}
-                    >
-                      Mesa #{numMesa}
-                    </Text>
-                    <Text className="text-sm font-semibold text-stone-500">
-                      {pedido.created_at
-                        ? `${new Date(pedido.created_at).toLocaleDateString([], {
-                            day: "2-digit",
-                            month: "2-digit",
-                          })} ${new Date(pedido.created_at).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}`
-                        : ""}
-                    </Text>
-                  </View>
+                  <View className="flex-1 rounded-2xl border-2 border-caramelo bg-[#FFFDF9] p-4">
+                    <View className="mb-2 flex-row items-center justify-between">
+                      <Text
+                        className="text-2xl text-vino"
+                        style={{ fontFamily: "LaOriental" }}
+                      >
+                        Mesa #{numMesa}
+                      </Text>
+                      <Text className="text-sm font-semibold text-stone-500">
+                        {pedido.created_at
+                          ? `${new Date(pedido.created_at).toLocaleDateString([], {
+                              day: "2-digit",
+                              month: "2-digit",
+                            })} ${new Date(pedido.created_at).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}`
+                          : ""}
+                      </Text>
+                    </View>
 
-                  <View className="mt-2 border-b border-calabaza border-dashed pb-3">
-                    {items.map((it: any) => {
-                      const cat = it.products?.category;
-                      const icono = cat === "drink" ? "🍹" : "🍲";
-                      return (
-                        <View
-                          key={it.id}
-                          className="mt-1.5 flex-row items-center gap-2"
+                    <ScrollView
+                      className="mt-2 flex-1"
+                      nestedScrollEnabled
+                      showsVerticalScrollIndicator={false}
+                      contentContainerStyle={{ paddingBottom: 12 }}
+                    >
+                      <View className="border-b border-calabaza border-dashed pb-3">
+                        {items.map((it: any) => {
+                          const icono =
+                            ICONO_CATEGORIA[it.products?.category] ?? "🍽️";
+                          const foto =
+                            metadatos[it.products?.id ?? ""]?.fotos[0];
+                          return (
+                            <View
+                              key={it.id}
+                              className="mt-1.5 flex-row items-center"
+                            >
+                              <View className="h-2.5 w-2.5 rounded-full bg-calabaza" />
+                              <Text
+                                className="ml-3 text-2xl text-calabaza"
+                                style={{ fontFamily: "LaOriental" }}
+                                numberOfLines={1}
+                              >
+                                {it.quantity}x
+                              </Text>
+                              {foto ? (
+                                <Image
+                                  source={{ uri: foto }}
+                                  className="h-20 w-20 mx-4 rounded-lg border-2 border-calabaza bg-stone-100"
+                                  resizeMode="cover"
+                                />
+                              ) : (
+                                <View className="h-20 w-20 items-center justify-center rounded-lg bg-stone-100 mx-4">
+                                  <Text className="text-base">{icono}</Text>
+                                </View>
+                              )}
+                              <Text
+                                className="min-w-0 flex-1 text-lg text-stone-700"
+                                numberOfLines={2}
+                                ellipsizeMode="tail"
+                              >
+                                {it.products?.name || "Producto"}
+                              </Text>
+                            </View>
+                          );
+                        })}
+                      </View>
+                    </ScrollView>
+
+                    <View className="mt-auto pt-3">
+                      <TouchableOpacity
+                        onPress={() => setConfirmando(pedido)}
+                        disabled={procesandoId !== null}
+                        className={`w-full rounded-2xl bg-emerald-600 py-2.5 active:bg-emerald-700 ${
+                          procesandoId !== null ? "opacity-50" : ""
+                        }`}
+                      >
+                        <Text
+                          style={{ fontFamily: "LaOriental" }}
+                          className="text-center text-sm uppercase tracking-wide text-white"
                         >
-                          <Text className="w-6 text-center">{icono}</Text>
-                          <Text className="text-lg font-semibold text-calabaza">
-                            {it.quantity}x
-                          </Text>
-                          <Text
-                            className="min-w-0 flex-1 text-base text-stone-700"
-                            numberOfLines={2}
-                            ellipsizeMode="tail"
-                          >
-                            {it.products?.name || "Producto"}
-                          </Text>
-                        </View>
-                      );
-                    })}
+                          {procesandoId === pedido.id
+                            ? "Entregando..."
+                            : "Entregar"}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
-
-                  <TouchableOpacity
-                    onPress={() => setConfirmando(pedido)}
-                    disabled={procesandoId !== null}
-                    className={`mt-3 w-full rounded-2xl bg-emerald-600 py-2.5 active:bg-emerald-700 ${
-                      procesandoId !== null ? "opacity-50" : ""
-                    }`}
-                  >
-                    <Text
-                      style={{ fontFamily: "LaOriental" }}
-                      className="text-center text-sm uppercase tracking-wide text-white"
-                    >
-                      {procesandoId === pedido.id ? "Entregando..." : "Entregar"}
-                    </Text>
-                  </TouchableOpacity>
                 </View>
               );
             })}
@@ -251,11 +331,10 @@ export default function PedidosListosScreen() {
         titulo="Entregar Pedido"
         mensaje={
           <>
-            ¿Confirmar que el pedido de la{" "}
+            Entregar pedido de la {" "}
             <Text className="font-bold text-mostaza">
               Mesa #{confirmando?.restaurant_tables?.table_number}
             </Text>{" "}
-            fue entregado?
           </>
         }
         textoConfirmar="Entregar"
@@ -263,6 +342,12 @@ export default function PedidosListosScreen() {
         cargando={procesandoId !== null}
         onConfirm={ejecutarEntrega}
         onCancel={() => setConfirmando(null)}
+      />
+
+      {/* Spinner mientras se entrega el pedido */}
+      <CompanySpinner
+        visible={procesandoId !== null}
+        mensaje="Entregando pedido..."
       />
 
       {/* Modal Feedback */}

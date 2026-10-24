@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { BackHandler } from "react-native";
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
-  Image,
   ActivityIndicator,
+  BackHandler,
 } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import {
@@ -42,11 +41,14 @@ export function CuentaScreen({
     mensaje: string;
   }>({ visible: false, tipo: "exito", titulo: "", mensaje: "" });
 
+  // Unificamos el manejo del botón físico de Atrás
   useEffect(() => {
     const retrocederSeguro = () => {
-      // Si intenta volver atrás (botón físico de Android), cierra sesión
+      if (esperandoMozo) {
+        return true;
+      }
       onVolver();
-      return true; // Evita que el sistema operativo vuelva a la pantalla anterior
+      return true;
     };
 
     const subscription = BackHandler.addEventListener(
@@ -55,33 +57,20 @@ export function CuentaScreen({
     );
 
     return () => subscription.remove();
-  }, [onVolver]);
+  }, [esperandoMozo, onVolver]);
 
-  useEffect(() => {
-    const backAction = () => {
-        // Si ya pagó y está esperando al mozo, bloqueamos el botón "Atrás" de Android
-        if (esperandoMozo) {
-        return true; // true previene la acción por defecto
-        }
-        return false;
-    };
-
-    const backHandler = BackHandler.addEventListener(
-        "hardwareBackPress",
-        backAction
-    );
-
-    return () => backHandler.remove();
-    }, [esperandoMozo]);
-
+  // Carga inicial del detalle
   useEffect(() => {
     async function cargar() {
+      if (!pedidoId || pedidoId.trim() === "") {
+        return;
+      }
+
       try {
         setCargando(true);
         const data = await obtenerDetalleCuenta(pedidoId, propinaPorcentaje);
         setDetalle(data);
 
-        // Notificar en la base de datos la solicitud de cuenta
         await solicitarCuentaApi(
           pedidoId,
           data.totalFinal,
@@ -104,6 +93,8 @@ export function CuentaScreen({
 
   // Escuchar cuando el mozo confirma el pago
   useEffect(() => {
+    if (!pedidoId || pedidoId.trim() === "") return;
+
     const desuscribir = escucharPagoConfirmado(pedidoId, () => {
       setEsperandoMozo(false);
       setFeedback({
@@ -117,7 +108,11 @@ export function CuentaScreen({
       }, 2000);
     });
 
-    return () => desuscribir();
+    return () => {
+      if (typeof desuscribir === "function") {
+        desuscribir();
+      }
+    };
   }, [pedidoId, onPagoCompletado]);
 
   const simularPago = () => {
@@ -130,7 +125,7 @@ export function CuentaScreen({
 
   if (cargando || !detalle) {
     return (
-      <View className="flex-1 items-center justify-center bg-amber-50">
+      <View className="flex-1 items-center justify-center">
         <ActivityIndicator size="large" color="#800020" />
         <Text className="mt-3 text-xs font-bold text-vino">
           Calculando cuenta y propina...
@@ -208,8 +203,8 @@ export function CuentaScreen({
 
           {/* Propina Escaneada */}
           <View className="flex-row justify-between py-1.5">
-            <Text className="text-amber-700 text-sm">
-              Propina por QR ({detalle.porcentajePropina}%)
+            <Text className="text-amber-700 text-sm font-semibold">
+              Propina ({detalle.porcentajePropina}%)
             </Text>
             <Text className="text-amber-700 font-semibold text-sm">
               +${detalle.montoPropina.toFixed(2)}
