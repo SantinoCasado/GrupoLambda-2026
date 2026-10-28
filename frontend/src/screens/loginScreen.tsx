@@ -182,7 +182,7 @@ export function LoginScreen({
           <TouchableOpacity onPress={manejarToqueLogo} activeOpacity={0.8}>
             <Image
               source={require("../../assets/images/logo-name2.png")}
-              className="mt-4 h-40 w-auto self-center"
+              className="mt-4 h-48 w-auto self-center"
               resizeMode="contain"
             />
           </TouchableOpacity>
