@@ -3,7 +3,8 @@ import { enviarPushNotification } from '../../services/pushNotifications.service
 import { enviarReservaConfirmada, enviarReservaRechazada } from '../../services/email.service';
 import { CrearReservaDTO } from './schema/reservas.schema';
 
-// Estados: pending -> confirmed | rejected ; confirmed -> completed (check-in) | expired (45 min sin llegar)
+// Estados (reservations_status_check): pending -> approved | rejected ;
+// approved -> completed (check-in) | cancelled (vencida a los 45 min, con el motivo en rejection_reason)
 
 // Tiempo máximo de espera desde la hora reservada (punto 26)
 export const MINUTOS_TOLERANCIA = 45;
@@ -56,8 +57,11 @@ export const procesarReservasService = async () => {
     // 1. Confirmadas que superaron los 45 minutos sin que el cliente llegue -> se libera la mesa
     const { data: vencidas, error: errorVencidas } = await supabase
         .from('reservations')
-        .update({ status: 'expired' })
-        .eq('status', 'confirmed')
+        .update({
+            status: 'cancelled',
+            rejection_reason: `Vencida: el cliente no llegó dentro de los ${MINUTOS_TOLERANCIA} minutos de tolerancia.`
+        })
+        .eq('status', 'approved')
         .lt('reservation_date', limiteTolerancia)
         .select('id, table_id');
 
@@ -77,7 +81,10 @@ export const procesarReservasService = async () => {
     // 2. Pendientes cuyo horario ya pasó sin que nadie las apruebe
     await supabase
         .from('reservations')
-        .update({ status: 'expired' })
+        .update({
+            status: 'cancelled',
+            rejection_reason: 'Vencida: no fue aprobada antes del horario solicitado.'
+        })
         .eq('status', 'pending')
         .lt('reservation_date', new Date(ahora).toISOString());
 
@@ -86,7 +93,7 @@ export const procesarReservasService = async () => {
     const { data: proximas } = await supabase
         .from('reservations')
         .select('table_id')
-        .eq('status', 'confirmed')
+        .eq('status', 'approved')
         .lte('reservation_date', inicioBloqueo)
         .gte('reservation_date', limiteTolerancia);
 
@@ -106,9 +113,9 @@ export const obtenerReservaQueBloqueaMesa = async (tableId: string) => {
     const ahora = Date.now();
     const { data } = await supabase
         .from('reservations')
-        .select('id, reservation_date')
+        .select('id, client_id, reservation_date')
         .eq('table_id', tableId)
-        .eq('status', 'confirmed')
+        .eq('status', 'approved')
         .lte('reservation_date', new Date(ahora + MINUTOS_BLOQUEO_PREVIO * MINUTO).toISOString())
         .gte('reservation_date', new Date(ahora - MINUTOS_TOLERANCIA * MINUTO).toISOString())
         .limit(1)
@@ -237,7 +244,7 @@ const elegirMesaParaReserva = async (fecha: Date, comensales: number) => {
     const { data: reservasCercanas } = await supabase
         .from('reservations')
         .select('table_id')
-        .eq('status', 'confirmed')
+        .eq('status', 'approved')
         .gte('reservation_date', new Date(fecha.getTime() - MINUTOS_SEPARACION_RESERVAS * MINUTO).toISOString())
         .lte('reservation_date', new Date(fecha.getTime() + MINUTOS_SEPARACION_RESERVAS * MINUTO).toISOString());
 
@@ -268,7 +275,7 @@ export const aprobarReservaService = async (reservaId: string) => {
 
     const { data: actualizada, error } = await supabase
         .from('reservations')
-        .update({ status: 'confirmed', table_id: mesa.id })
+        .update({ status: 'approved', table_id: mesa.id })
         .eq('id', reservaId)
         .eq('status', 'pending')
         .select(SELECT_RESERVA)
@@ -339,7 +346,7 @@ export const checkInReservaService = async (clienteId: string, tableId: string) 
         .from('reservations')
         .select(SELECT_RESERVA)
         .eq('client_id', clienteId)
-        .eq('status', 'confirmed')
+        .eq('status', 'approved')
         .order('reservation_date', { ascending: true });
 
     if (error) {

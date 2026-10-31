@@ -31,4 +31,4 @@ export const checkInReservaSchema = z.object({
 
 export type CheckInReservaDTO = z.infer<typeof checkInReservaSchema>;
 
-export const ESTADOS_RESERVA = ['pending', 'confirmed', 'rejected', 'expired', 'completed'] as const;
+export const ESTADOS_RESERVA = ['pending', 'approved', 'rejected', 'cancelled', 'completed'] as const;

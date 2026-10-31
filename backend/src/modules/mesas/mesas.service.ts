@@ -1,5 +1,6 @@
 import { supabase } from '../../config/supabase'; 
 import { DatosAsignacion } from './interfaces/datosAsignacion';
+import { obtenerReservaQueBloqueaMesa } from '../reservas/reservas.service';
 
 export const insertarMesaService = async (
     table_number: number, 
@@ -95,6 +96,23 @@ export const asignarMesaService = async (datos: DatosAsignacion) => {
 
     if (!table) {
         throw new Error('La mesa seleccionada no existe');
+    }
+
+    // Punto 26: una mesa con reserva confirmada no se le puede asignar a otro cliente
+    const reservaVigente = await obtenerReservaQueBloqueaMesa(datos.table_id);
+
+    if (reservaVigente) {
+        const hora = new Date(reservaVigente.reservation_date).toLocaleTimeString('es-AR', {
+            timeZone: 'America/Argentina/Buenos_Aires',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+
+        if (reservaVigente.client_id === waitingRecord.user_id) {
+            throw new Error(`El cliente tiene reservada la mesa #${table.table_number} para las ${hora}. Puede ingresar escaneando el QR de la mesa.`);
+        }
+
+        throw new Error(`La mesa #${table.table_number} está reservada para las ${hora}.`);
     }
 
     if (table.availability !== 'free') {
