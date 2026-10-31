@@ -212,7 +212,8 @@ Pendiente de agregar: pedido listo, entrega, solicitud de cuenta y confirmación
 | Carrito post rechazo del mozo          | ![Carrito del cliente luego del rechazo del mozo](./assets/mapeo/registro_inicio_clientes/cliente_carrito_postRechazo.jpg) |
 | Dashboard post pedido                  | ![Dashboard del cliente con pedido en curso](./assets/mapeo/registro_inicio_clientes/cliente_dashboard_postPedido.jpg)     |
 | Detalle del pedido en curso            | ![Detalle del pedido en curso](./assets/mapeo/registro_inicio_clientes/cliente_verEstadoPedido.jpg)                        |
-| Detalle del Pago                       | ![Detalle del pago del pedido](./assets/mapeo/registro_inicio_clientes/cliente_pago_detalle.jpeg)                          |
+| Detalle del Pago sin Propina           | ![Detalle del pago del pedido](./assets/mapeo/registro_inicio_clientes/cliente_pago_detalle_sinPropina.jpeg)               |
+| Detalle del Pago con Propina           | ![Detalle del pago del pedido](./assets/mapeo/registro_inicio_clientes/cliente_pago_detalle_postPropina.jpeg)              |
 
 ##### Chat con el mozo
 
@@ -235,7 +236,11 @@ Pendiente de agregar: pedido listo, entrega, solicitud de cuenta y confirmación
 
 ##### Reseñas y encuestas
 
-![Resultados de reseñas visibles para el cliente](./assets/mapeo/registro_inicio_clientes/cliente_verReseñas.jpeg)
+![Dejar reseña de satifaccion](./assets/mapeo/registro_inicio_clientes/cliente_reseña_satifaccion.jpeg)
+![Dejar comentario de reseña](./assets/mapeo/registro_inicio_clientes/cliente_reseña_comentario.jpeg)
+![Grafico de Barras](./assets/mapeo/registro_inicio_clientes/cliente_verReseñas_barras.jpeg)
+![Grafico de Lineas](./assets/mapeo/registro_inicio_clientes/cliente_verReseñas_lineas.jpeg)
+![Grafico de Torta](./assets/mapeo/registro_inicio_clientes/cliente_verReseñas_torta.jpeg)
 
 Pendiente de agregar: espera de aprobación, aviso de aprobación/rechazo, login aceptado y denegado, estado del pedido, cuenta y pago.
 
