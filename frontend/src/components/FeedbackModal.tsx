@@ -13,6 +13,10 @@ interface FeedbackModalProps {
 }
 
 export function FeedbackModal({ visible, tipo, titulo, mensaje, onClose, iconoImagen }: FeedbackModalProps) {
+  // No montar el <Modal> cuando está oculto: en Android cada Modal crea una
+  // ventana nativa aunque visible={false}.
+  if (!visible) return null;
+
   const estilos = {
   exito: {
     marco: "#10b981",
@@ -50,7 +54,7 @@ informacion: {
 }[tipo];
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
+    <Modal visible transparent animationType="fade">
       <View className="flex-1 items-center justify-center  px-6">
         <ChineseFrame color={estilos.marco} className={`w-full max-w-sm ${estilos.fondo} shadow-2xl`}>
           <View className={`w-full p-6`}>

@@ -56,8 +56,6 @@ async function loginConSupabase(email: string, clave: string): Promise<UsuarioSe
     }
   }
 
-  const esSinFoto = perfilUsuario === "dueño" || perfilUsuario === "supervisor";
-
   return {
     id: perfil.id || data.user.id,
     email: perfil.email || email,
@@ -67,7 +65,7 @@ async function loginConSupabase(email: string, clave: string): Promise<UsuarioSe
     nombres: perfil.first_name || "Usuario",
     apellidos: perfil.last_name || "",
     documento: perfil.dni || "00000000",
-    foto: esSinFoto ? "" : perfil.photo_url || "",
+    foto: perfil.photo_url || "",
     icono: "👤",
   };
 }

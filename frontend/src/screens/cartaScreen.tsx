@@ -13,12 +13,180 @@ import {
 } from "react-native";
 import { useCart, ItemMenu } from "../context/carritoContext";
 import { supabase } from "../config/supabase";
+import { PerfilUsuario } from "../data/usuariosPrecargados";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { FeedbackModal } from "../components/FeedbackModal";
 
+// Únicos autorizados a dar de baja productos: cozinero y cantinero, cada uno
+// sobre su propia sección (el cocinero solo ve comidas, el cantinero solo bebidas).
+const ROLES_DAR_DE_BAJA: PerfilUsuario[] = ["cocinero", "cantinero"];
+
+// Clientes (registrado o anónimo). Son los únicos con mesa y comanda, así que
+// son los únicos que ven el CTA de agregar, la barra de importe y el chat.
+const ROLES_CLIENTE: PerfilUsuario[] = ["cliente_registrado", "cliente_anonimo"];
+
+type Categoria = "dish" | "drink" | "dessert";
+
+const CATEGORIAS: { id: Categoria; etiqueta: string }[] = [
+  { id: "dish", etiqueta: "🍲 Comidas" },
+  { id: "drink", etiqueta: "🍹 Bebidas" },
+  { id: "dessert", etiqueta: "🍰 Postres" },
+];
+
+// El cocinero solo trabaja con comidas y el cantinero solo con bebidas, así que
+// no se les ofrecen las secciones que no les corresponden. Los demás roles
+// (clientes y personal jerárquico) ven la carta completa.
+const CATEGORIAS_POR_ROL: Partial<Record<PerfilUsuario, Categoria[]>> = {
+  cocinero: ["dish", "dessert"],
+  cantinero: ["drink"],
+};
+
+const ICONO_CATEGORIA: Record<Categoria, string> = {
+  dish: "🍲",
+  drink: "🍹",
+  dessert: "🍰",
+};
+
+// Título del header según la categoría que se está viendo.
+const TITULO_CATEGORIA: Record<Categoria, string> = {
+  dish: "Carta de Platos",
+  drink: "Carta de Bebidas",
+  dessert: "Carta de Postres",
+};
+
+const ETIQUETA_FILTRO: Record<Categoria, string> = {
+  dish: "Platos",
+  drink: "Bebidas",
+  dessert: "Postres",
+};
+
+// El filtro en pantalla solo ofrece comidas y postres; las bebidas se navegan
+// desde el inicio y no se mezclan en el mismo selector.
+type CategoriaFiltro = "dish" | "dessert";
+
+const CATEGORIAS_FILTRO: CategoriaFiltro[] = ["dish", "dessert"];
+
+// Íconos de cada botón de filtro: variante vino (activo) sobre fondo mostaza y
+// variante mostaza (inactivo) sobre fondo vino.
+const ICONO_FILTRO: Record<CategoriaFiltro, { activo: any; inactivo: any }> = {
+  dish: {
+    activo: require("../../assets/images/food-v.png"),
+    inactivo: require("../../assets/images/food-y.png"),
+  },
+  dessert: {
+    activo: require("../../assets/images/cake-v.png"),
+    inactivo: require("../../assets/images/cake-y.png"),
+  },
+};
+
+// Carrusel de fotos de un producto. Es un componente propio porque la carta
+// muestra una tarjeta por página y cada una necesita su posición de foto y su
+// referencia de scroll independientes. Mide su propio tamaño para que la foto
+// ocupe el espacio disponible y cada slide llene el contenedor exacto.
+function CarruselFotos({ fotos, iconoRespaldo }: { fotos: string[]; iconoRespaldo: string }) {
+  const [fotoActiva, setFotoActiva] = useState(0);
+  const [ancho, setAncho] = useState(0);
+  const [alto, setAlto] = useState(0);
+  const scrollRef = useRef<ScrollView>(null);
+
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    if (ancho <= 0) return;
+    const slide = Math.round(event.nativeEvent.contentOffset.x / ancho);
+    if (slide !== fotoActiva) setFotoActiva(slide);
+  };
+
+  const irAFoto = (indice: number) => {
+    if (ancho <= 0) return;
+    scrollRef.current?.scrollTo({ x: indice * ancho, animated: true });
+    setFotoActiva(indice);
+  };
+
+  const onLayout = (event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    if (width > 0) setAncho(width);
+    if (height > 0) setAlto(height);
+  };
+
+  return (
+    <View
+      onLayout={onLayout}
+      className="relative w-full flex-1 overflow-hidden rounded-2xl bg-stone-100"
+    >
+      {fotos.length > 0 && ancho > 0 && alto > 0 ? (
+        <>
+          <ScrollView
+            ref={scrollRef}
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            className="h-full w-full"
+          >
+            {fotos.map((url, index) => (
+              <View
+                key={`${url}-${index}`}
+                style={{ width: ancho, height: alto }}
+                className="items-center justify-center bg-stone-900/5"
+              >
+                <Image
+                  source={{ uri: url }}
+                  style={{ width: "100%", height: "100%" }}
+                  resizeMode="cover"
+                />
+              </View>
+            ))}
+          </ScrollView>
+
+          {fotos.length > 1 && (
+            <>
+              {fotoActiva > 0 && (
+                <TouchableOpacity
+                  onPress={() => irAFoto(fotoActiva - 1)}
+                  className="absolute left-2 top-1/2 -mt-4 h-8 w-8 items-center justify-center rounded-full bg-black/50"
+                >
+                  <Text className="text-base font-bold text-white">‹</Text>
+                </TouchableOpacity>
+              )}
+              {fotoActiva < fotos.length - 1 && (
+                <TouchableOpacity
+                  onPress={() => irAFoto(fotoActiva + 1)}
+                  className="absolute right-2 top-1/2 -mt-4 h-8 w-8 items-center justify-center rounded-full bg-black/50"
+                >
+                  <Text className="text-base font-bold text-white">›</Text>
+                </TouchableOpacity>
+              )}
+
+              {/* Paginación de fotos */}
+              <View className="absolute bottom-3 left-0 right-0 flex-row items-center justify-center gap-1.5">
+                {fotos.map((_, indice) => (
+                  <TouchableOpacity
+                    key={`dot-${indice}`}
+                    onPress={() => irAFoto(indice)}
+                    hitSlop={{ top: 10, bottom: 10, left: 6, right: 6 }}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Ver foto ${indice + 1} de ${fotos.length}`}
+                    className={`h-2.5 rounded-full ${
+                      fotoActiva === indice ? "w-4 bg-mostaza" : "w-2 bg-mostaza/40"
+                    }`}
+                  />
+                ))}
+              </View>
+            </>
+          )}
+        </>
+      ) : (
+        <View className="h-full w-full items-center justify-center">
+          <Text className="text-6xl">{iconoRespaldo}</Text>
+        </View>
+      )}
+    </View>
+  );
+}
+
 interface CartaScreenProps {
   tipo?: "comida" | "bebida" | "postre" | "todo";
-  rolUsuario: "cocinero" | "cantinero" | "cliente_registrado" | "cliente_anonimo" | string;
+  rolUsuario: PerfilUsuario;
   numeroMesa?: number;
   onVolver?: () => void;
   onIrAlCarrito?: () => void;
@@ -33,15 +201,14 @@ export function CartaScreen({
   onIrAlCarrito,
   onAbrirChatMozo,
 }: CartaScreenProps) {
-  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<"dish" | "drink" | "dessert">(
+  const [categoriaSeleccionada, setCategoriaSeleccionada] = useState<Categoria>(
     tipo === "bebida" ? "drink" : tipo === "postre" ? "dessert" : "dish"
   );
   const [items, setItems] = useState<ItemMenu[]>([]);
   const [cargando, setCargando] = useState(true);
-  const [indiceActual, setIndiceActual] = useState(0);
-  const [fotoActiva, setFotoActiva] = useState(0);
-  const [anchoContenedorFoto, setAnchoContenedorFoto] = useState(0);
   const [itemAEliminar, setItemAEliminar] = useState<ItemMenu | null>(null);
+  const [altoPagina, setAltoPagina] = useState(0);
+  const [altoBarra, setAltoBarra] = useState(0);
   const [eliminando, setEliminando] = useState(false);
   const [modalFeedback, setModalFeedback] = useState<{
     visible: boolean;
@@ -56,10 +223,56 @@ export function CartaScreen({
   });
 
   const { agregarAlCarrito, carrito } = useCart();
-  const scrollFotosRef = useRef<ScrollView>(null);
 
-  const esStaff = rolUsuario === "cocinero" || rolUsuario === "cantinero";
-  const esCliente = !esStaff;
+  // Todos los roles comparten la misma vista de carta. Lo único que cambia es
+  // qué acciones se ofrecen: el personal de cocina/barra puede dar de baja
+  // productos y los clientes pueden armar su comanda.
+  const puedeDarDeBaja = ROLES_DAR_DE_BAJA.includes(rolUsuario);
+  const esCliente = ROLES_CLIENTE.includes(rolUsuario);
+
+  // Secciones que el rol puede ver. Si el rol no tiene restricción, ve todas.
+  const categoriasVisibles = CATEGORIAS_POR_ROL[rolUsuario] ?? CATEGORIAS.map((c) => c.id);
+
+  // Botones de filtro que efectivamente se muestran: intersección entre las
+  // secciones del rol y las que el selector ofrece (comidas y postres).
+  const categoriasFiltro = CATEGORIAS_FILTRO.filter((cat) => categoriasVisibles.includes(cat));
+
+  // Si la categoría inicial no está permitida para el rol (por ejemplo, el
+  // cantinero entra con "comida"), se usa la primera disponible. Se resuelve
+  // durante el render para no llegar a consultar una sección prohibida.
+  const categoriaActiva = categoriasVisibles.includes(categoriaSeleccionada)
+    ? categoriaSeleccionada
+    : categoriasVisibles[0];
+
+  // Cocinero y clientes pueden alternar de sección dentro de la carta; el
+  // cantinero solo tiene una sección y el resto del personal navega por separado.
+  // El selector solo ofrece Platos y Postres, así que se oculta cuando la sección
+  // activa es Bebidas (se navega desde el inicio y no se mezcla en el selector).
+  const esCategoriaFiltro = (cat: Categoria): cat is CategoriaFiltro =>
+    CATEGORIAS_FILTRO.includes(cat as CategoriaFiltro);
+
+  const muestraFiltrosCategoria =
+    (rolUsuario === "cocinero" || esCliente) && esCategoriaFiltro(categoriaActiva);
+
+  const iconoCategoria = ICONO_CATEGORIA[categoriaActiva];
+
+  // La barra de importe se superpone al final de la lista, así que la lista
+  // necesita padding extra solo cuando la barra está visible.
+  const muestraBarraInferior = esCliente && carrito.length > 0 && !!onIrAlCarrito;
+
+  // Cada producto ocupa una página completa, así que hay que conocer el alto
+  // disponible para que el scroll vertical pagee de a un producto.
+  const onLayoutPagina = (event: LayoutChangeEvent) => {
+    const { height } = event.nativeEvent.layout;
+    if (height > 0 && height !== altoPagina) setAltoPagina(height);
+  };
+
+  // La barra inferior es absolute y se superpone a la lista, así que su alto
+  // real hay que medirlo: el importe y el conteo de ítems cambian con el carrito.
+  const onLayoutBarra = (event: LayoutChangeEvent) => {
+    const { height } = event.nativeEvent.layout;
+    if (height > 0 && height !== altoBarra) setAltoBarra(height);
+  };
 
   // Cálculo del total acumulado y tiempo acumulado para mostrar siempre visible (Punto 12)
   const importeAcumulado = carrito.reduce(
@@ -72,22 +285,17 @@ export function CartaScreen({
   );
 
   useEffect(() => {
-    cargarProductos();
-  }, [categoriaSeleccionada]);
+    cargarProductos(categoriaActiva);
+  }, [categoriaActiva]);
 
-  useEffect(() => {
-    setFotoActiva(0);
-    scrollFotosRef.current?.scrollTo({ x: 0, animated: false });
-  }, [indiceActual]);
-
-  const cargarProductos = async () => {
+  const cargarProductos = async (categoria: Categoria) => {
     try {
       setCargando(true);
       let query = supabase
         .from("products")
         .select("id, name, description, prep_time, price, photos, category, status")
         .eq("status", "active")
-        .eq("category", categoriaSeleccionada);
+        .eq("category", categoria);
 
       const { data, error } = await query;
 
@@ -108,7 +316,6 @@ export function CartaScreen({
       }));
 
       setItems(formateados);
-      setIndiceActual(0);
     } catch (err: any) {
       console.warn("⚠️ [Carta] Falló la carga de productos:", err.message);
       setItems([]);
@@ -162,347 +369,175 @@ export function CartaScreen({
 
   const cancelarEliminacion = () => setItemAEliminar(null);
 
-  const platoAnterior = () => {
-    if (items.length === 0) return;
-    setIndiceActual((prev) => (prev === 0 ? items.length - 1 : prev - 1));
-  };
-
-  const platoSiguiente = () => {
-    if (items.length === 0) return;
-    setIndiceActual((prev) => (prev === items.length - 1 ? 0 : prev + 1));
-  };
-
-  const handleScrollFotos = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    if (anchoContenedorFoto <= 0) return;
-    const slide = Math.round(event.nativeEvent.contentOffset.x / anchoContenedorFoto);
-    if (slide !== fotoActiva) {
-      setFotoActiva(slide);
-    }
-  };
-
-  const cambiarFotoDirecta = (nuevaFotoIndex: number) => {
-    if (anchoContenedorFoto > 0) {
-      scrollFotosRef.current?.scrollTo({
-        x: nuevaFotoIndex * anchoContenedorFoto,
-        animated: true,
-      });
-      setFotoActiva(nuevaFotoIndex);
-    }
-  };
-
-  const onLayoutContenedorFoto = (event: LayoutChangeEvent) => {
-    const { width } = event.nativeEvent.layout;
-    if (width > 0 && width !== anchoContenedorFoto) {
-      setAnchoContenedorFoto(width);
-    }
-  };
-
-  const itemActual = items[indiceActual];
-
   return (
     <View className="flex-1 bg-amber-50/40">
       {/* 1. Header con Mesa y Consulta al Mozo */}
-      <View className="flex-row items-center justify-between border-b border-mostaza/20 bg-vino px-5 py-3 shadow-md">
-        {onVolver ? (
-          <TouchableOpacity onPress={onVolver} className="py-1 pr-3">
-            <Text className="text-sm font-bold text-amber-100">← Volver</Text>
-          </TouchableOpacity>
-        ) : (
-          <View className="w-10" />
-        )}
-
-        <View className="items-center">
-          <Text style={{ fontFamily: "LaOriental" }} className="text-xl uppercase text-mostaza">
-            Carta Digital
-          </Text>
-          {numeroMesa ? (
-            <Text className="text-[11px] font-bold text-amber-200">
-              Mesa #{numeroMesa}
+      <View className="border-b border-mostaza/20 bg-vino px-5 py-3 items-center">
+        <View className="flex-row items-center">
+          <View className="items-center justify-center w-full border-b border-mostaza/70 py-2">
+            <Text style={{ fontFamily: "LaOriental" }} className="text-3xl uppercase text-mostaza">
+              {TITULO_CATEGORIA[categoriaActiva]}
             </Text>
-          ) : null}
+          </View>
         </View>
-
-        {/* Botón Consulta al Mozo (Punto 11) */}
-        {esCliente && onAbrirChatMozo ? (
-          <TouchableOpacity
-            onPress={onAbrirChatMozo}
-            className="flex-row items-center rounded-xl border border-mostaza/60 bg-calabaza/90 px-2.5 py-1.5 active:bg-calabaza"
-          >
-            <Text className="mr-1 text-sm">💬</Text>
-            <Text className="text-[11px] font-extrabold text-white uppercase">Mozo</Text>
-          </TouchableOpacity>
-        ) : (
-          <View className="w-10" />
+      {/* Filtros de categoría: cocinero y clientes alternan entre Platos y Postres */}
+        {muestraFiltrosCategoria && categoriasFiltro.length > 1 && (
+          <View className="mt-3 flex-row justify-center gap-3">
+            {categoriasFiltro.map((cat) => {
+              const activa = cat === categoriaActiva;
+              const icono = ICONO_FILTRO[cat];
+              return (
+                <TouchableOpacity
+                  key={cat}
+                  onPress={() => setCategoriaSeleccionada(cat)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Ver ${ETIQUETA_FILTRO[cat]}`}
+                  className={`rounded-full border px-4 py-2 ${
+                    activa
+                      ? "border-mostaza bg-mostaza"
+                      : "border-mostaza/50 bg-transparent active:bg-mostaza/20"
+                  }`}
+                >
+                  <Image
+                    source={activa ? icono.activo : icono.inactivo}
+                    className="h-7 w-7"
+                    resizeMode="contain"
+                  />
+                </TouchableOpacity>
+              );
+            })}
+          </View>
         )}
       </View>
 
-      {/* 2. Pestañas de Categoría (Platos, Bebidas, Postres) */}
-      {esCliente && (
-        <View className="flex-row border-b border-mostaza/20 bg-vino/95 px-4 py-2 justify-around">
-          <TouchableOpacity
-            onPress={() => setCategoriaSeleccionada("dish")}
-            className={`rounded-xl px-4 py-1.5 ${
-              categoriaSeleccionada === "dish" ? "bg-mostaza" : "bg-black/20"
-            }`}
-          >
-            <Text
-              className={`text-xs font-bold ${
-                categoriaSeleccionada === "dish" ? "text-vino" : "text-amber-100/70"
-              }`}
-            >
-              🍲 Comidas
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setCategoriaSeleccionada("drink")}
-            className={`rounded-xl px-4 py-1.5 ${
-              categoriaSeleccionada === "drink" ? "bg-mostaza" : "bg-black/20"
-            }`}
-          >
-            <Text
-              className={`text-xs font-bold ${
-                categoriaSeleccionada === "drink" ? "text-vino" : "text-amber-100/70"
-              }`}
-            >
-              🍹 Bebidas
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => setCategoriaSeleccionada("dessert")}
-            className={`rounded-xl px-4 py-1.5 ${
-              categoriaSeleccionada === "dessert" ? "bg-mostaza" : "bg-black/20"
-            }`}
-          >
-            <Text
-              className={`text-xs font-bold ${
-                categoriaSeleccionada === "dessert" ? "text-vino" : "text-amber-100/70"
-              }`}
-            >
-              🍰 Postres
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* 3. Contenido Principal */}
-      <View className="flex-1 px-5 pt-3">
-        {cargando ? (
+      {/* 3. Contenido Principal — una tarjeta por página, scroll vertical tipo Reels */}
+      <View onLayout={onLayoutPagina} className="flex-1">
+        {cargando || altoPagina === 0 ? (
           <View className="flex-1 items-center justify-center py-20">
             <ActivityIndicator size="large" color="#800020" />
             <Text className="mt-2 text-xs font-semibold text-vino">Cargando delicias...</Text>
           </View>
         ) : items.length === 0 ? (
           <View className="flex-1 items-center justify-center py-20">
-            <Text className="mb-2 text-5xl">
-              {categoriaSeleccionada === "dish" ? "🍲" : categoriaSeleccionada === "drink" ? "🍹" : "🍰"}
-            </Text>
+            <Text className="mb-2 text-5xl">{iconoCategoria}</Text>
             <Text className="text-base font-bold text-vino">No hay productos en esta sección</Text>
             <Text className="mt-1 text-xs text-stone-500">Pronto agregaremos más opciones.</Text>
           </View>
-        ) : esStaff ? (
-          /* VISTA STAFF */
+        ) : (
+          /* CARTA VERTICAL PAGINADA: cada producto ocupa una página completa */
           <FlatList
             data={items}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
+            decelerationRate="fast"
+            disableIntervalMomentum
+            snapToInterval={altoPagina}
+            getItemLayout={(_, index) => ({
+              length: altoPagina,
+              offset: altoPagina * index,
+              index,
+            })}
             renderItem={({ item }) => (
-              <View className="mb-3 rounded-2xl border border-mostaza/30 bg-white p-3.5 shadow-sm">
-                <View className="flex-row">
-                  {item.fotos.length > 0 && item.fotos[0] ? (
-                    <Image
-                      source={{ uri: item.fotos[0] }}
-                      className="h-20 w-20 rounded-xl"
-                      resizeMode="cover"
-                    />
-                  ) : (
-                    <View className="h-20 w-20 items-center justify-center rounded-xl bg-stone-200">
-                      <Text className="text-2xl">🍲</Text>
-                    </View>
-                  )}
-                  <View className="ml-3 flex-1 justify-between">
-                    <View>
-                      <Text className="text-base font-bold text-vino">{item.nombre}</Text>
-                      <Text className="text-xs text-stone-500" numberOfLines={2}>
+              <View
+                className="px-5 pt-3"
+                style={{
+                  height: altoPagina,
+                  paddingBottom: muestraBarraInferior ? altoBarra : 0,
+                }}
+              >
+                <View className="mb-3 flex-1 overflow-hidden rounded-3xl border-2 border-mostaza/40 bg-white shadow-xl">
+                  <View className="flex-1 p-4">
+                    <CarruselFotos fotos={item.fotos} iconoRespaldo={iconoCategoria} />
+
+                    {/* Ficha descriptiva */}
+                    <View className="mt-3.5">
+                      <View className="flex-row items-start justify-between">
+                        <Text className="mr-2 mb-2 pr-5 flex-1 text-2xl font-black text-vino">
+                          {item.nombre}
+                        </Text>
+                        <Text className="text-3xl font-black text-calabaza">
+                          ${item.precio}
+                        </Text>
+                      </View>
+
+                      <View className="mt-1 flex-row items-center">
+                        <View className="rounded-md bg-amber-100 px-2 py-0.5">
+                          <Text className="font-bold text-amber-900" style={{ fontSize: 16 }}>
+                            ⏱ {item.tiempoElaboracion} minutos
+                          </Text>
+                        </View>
+                      </View>
+                      <Text
+                        numberOfLines={3}
+                        className="px-5 my-2 text-stone-600"
+                        style={{ fontSize: 16 }}
+                      >
                         {item.descripcion}
                       </Text>
                     </View>
-                    <View className="mt-2 flex-row items-center justify-between">
-                      <Text className="font-bold text-calabaza">${item.precio}</Text>
-                      <Text className="text-[11px] text-stone-400">⏱ {item.tiempoElaboracion} min</Text>
-                    </View>
+
+                    {/* Acciones de la carta. Son mutuamente excluyentes: el personal de
+                        cocina/barra da de baja, el cliente arma su comanda y el resto
+                        (dueño, supervisor, metre, mozo) solo consulta. */}
+                {puedeDarDeBaja ? (
+                  <TouchableOpacity
+                    onPress={() => setItemAEliminar(item)}
+                    className="mt-2 flex-row items-center justify-center rounded-xl bg-terracota/20 py-2.5 active:bg-terracota/40"
+                  >
+                    <Image
+                      source={require("../../assets/images/trash-t.png")}
+                      className="mr-1.5 h-7 w-7"
+                      resizeMode="contain"
+                    />
+                    <Text className="text-lg font-bold text-terracota">Dar de baja producto</Text>
+                  </TouchableOpacity>
+                ) : esCliente ? (
+                      <TouchableOpacity
+                        onPress={() => agregarAlCarrito(item)}
+                        className="mt-2 flex-row items-center justify-center rounded-2xl bg-vino py-3 active:bg-terracota"
+                      >
+                        <Image
+                          source={require("../../assets/images/sello.png")}
+                          className="h-7 w-7"
+                          resizeMode="contain"
+                        />
+                        <Text
+                          style={{ fontFamily: "LaOriental" }}
+                          className="mx-4 text-lg uppercase tracking-wider text-mostaza pt-1"
+                        >
+                          Agregar a la Mesa
+                        </Text>
+                        <Image
+                          source={require("../../assets/images/sello.png")}
+                          className="h-7 w-7"
+                          resizeMode="contain"
+                        />
+                      </TouchableOpacity>
+                    ) : null}
                   </View>
                 </View>
-                <TouchableOpacity
-                  onPress={() => setItemAEliminar(item)}
-                  className="mt-3 items-center rounded-xl bg-terracota/20 py-2 active:bg-terracota/40"
-                >
-                  <Text className="text-xs font-bold text-terracota">🗑 Dar de baja producto</Text>
-                </TouchableOpacity>
               </View>
             )}
           />
-        ) : (
-          /* VISTA CLIENTE: TARJETA CON 3 FOTOS INDIVIDUALES (Punto 11) */
-          <ScrollView
-            className="flex-1"
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingBottom: 110 }}
-          >
-            <View className="rounded-3xl border-2 border-mostaza/40 bg-white p-4 shadow-xl">
-              {/* Contenedor exacto de imágenes */}
-              <View
-                onLayout={onLayoutContenedorFoto}
-                className="relative h-64 w-full overflow-hidden rounded-2xl bg-stone-100"
-              >
-                {itemActual.fotos && itemActual.fotos.length > 0 && anchoContenedorFoto > 0 ? (
-                  <>
-                    <ScrollView
-                      ref={scrollFotosRef}
-                      horizontal
-                      pagingEnabled
-                      showsHorizontalScrollIndicator={false}
-                      onScroll={handleScrollFotos}
-                      scrollEventThrottle={16}
-                      className="h-full w-full"
-                    >
-                      {itemActual.fotos.map((url, index) => (
-                        <View
-                          key={`${itemActual.id}-foto-${index}`}
-                          style={{ width: anchoContenedorFoto, height: 256 }}
-                          className="items-center justify-center bg-stone-900/5"
-                        >
-                          <Image
-                            source={{ uri: url }}
-                            style={{ width: "100%", height: "100%" }}
-                            resizeMode="cover"
-                          />
-                        </View>
-                      ))}
-                    </ScrollView>
-
-                    {/* Flechas para cambiar de foto individualmente (Punto 11) */}
-                    {itemActual.fotos.length > 1 && (
-                      <>
-                        {fotoActiva > 0 && (
-                          <TouchableOpacity
-                            onPress={() => cambiarFotoDirecta(fotoActiva - 1)}
-                            className="absolute left-2 top-1/2 -mt-4 h-8 w-8 items-center justify-center rounded-full bg-black/50"
-                          >
-                            <Text className="text-base font-bold text-white">‹</Text>
-                          </TouchableOpacity>
-                        )}
-                        {fotoActiva < itemActual.fotos.length - 1 && (
-                          <TouchableOpacity
-                            onPress={() => cambiarFotoDirecta(fotoActiva + 1)}
-                            className="absolute right-2 top-1/2 -mt-4 h-8 w-8 items-center justify-center rounded-full bg-black/50"
-                          >
-                            <Text className="text-base font-bold text-white">›</Text>
-                          </TouchableOpacity>
-                        )}
-                      </>
-                    )}
-
-                    {/* Indicador de fotos (Punto 11: 3 imágenes individuales) */}
-                    <View className="absolute bottom-2 left-0 right-0 flex-row items-center justify-center gap-1.5">
-                      <View className="flex-row rounded-full bg-black/60 px-2 py-0.5">
-                        <Text className="text-[10px] font-bold text-white">
-                          Foto {fotoActiva + 1} de {itemActual.fotos.length}
-                        </Text>
-                      </View>
-                    </View>
-                  </>
-                ) : (
-                  <View className="h-full w-full items-center justify-center">
-                    <Text className="text-6xl">
-                      {categoriaSeleccionada === "dish" ? "🍲" : categoriaSeleccionada === "drink" ? "🍹" : "🍰"}
-                    </Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Ficha descriptiva */}
-              <View className="mt-3.5">
-                <View className="flex-row items-start justify-between">
-                  <Text className="mr-2 flex-1 text-lg font-black text-vino">
-                    {itemActual.nombre}
-                  </Text>
-                  <Text className="text-2xl font-black text-calabaza">
-                    ${itemActual.precio}
-                  </Text>
-                </View>
-
-                <View className="mt-1 flex-row items-center">
-                  <View className="rounded-md bg-amber-100 px-2 py-0.5">
-                    <Text className="text-[11px] font-bold text-amber-900">
-                      ⏱ {itemActual.tiempoElaboracion} min elaboración
-                    </Text>
-                  </View>
-                  <Text className="ml-2 text-xs font-semibold text-stone-400">
-                    {indiceActual + 1} de {items.length}
-                  </Text>
-                </View>
-
-                <Text className="mt-2 text-xs leading-relaxed text-stone-600">
-                  {itemActual.descripcion}
-                </Text>
-              </View>
-
-              {/* Botón Agregar al Carrito */}
-              <TouchableOpacity
-                onPress={() => agregarAlCarrito(itemActual)}
-                className="mt-4 flex-row items-center justify-center rounded-2xl bg-vino py-3 shadow active:bg-terracota"
-              >
-                <Text className="mr-2 text-base">🛒</Text>
-                <Text
-                  style={{ fontFamily: "LaOriental" }}
-                  className="text-sm font-bold uppercase tracking-wider text-mostaza"
-                >
-                  Agregar a la Mesa
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Controles de Navegación de Productos */}
-            <View className="mt-3 flex-row items-center justify-between gap-x-3">
-              <TouchableOpacity
-                onPress={platoAnterior}
-                className="flex-1 flex-row items-center justify-center rounded-2xl border-2 border-mostaza bg-vino py-2.5 active:bg-terracota"
-              >
-                <Text className="mr-1 text-base font-black text-mostaza">‹</Text>
-                <Text style={{ fontFamily: "LaOriental" }} className="text-xs uppercase text-mostaza">
-                  Anterior
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={platoSiguiente}
-                className="flex-1 flex-row items-center justify-center rounded-2xl border-2 border-mostaza bg-vino py-2.5 active:bg-terracota"
-              >
-                <Text style={{ fontFamily: "LaOriental" }} className="text-xs uppercase text-mostaza">
-                  Siguiente
-                </Text>
-                <Text className="ml-1 text-base font-black text-mostaza">›</Text>
-              </TouchableOpacity>
-            </View>
-          </ScrollView>
         )}
       </View>
 
       {/* 4. BARRA INFERIOR FIJA: IMPORTE ACUMULADO VISIBLE EN TODO MOMENTO (Punto 12) */}
-      {esCliente && carrito.length > 0 && onIrAlCarrito && (
-        <View className="absolute bottom-0 left-0 right-0 border-t-2 border-mostaza bg-vino px-5 py-3 shadow-2xl">
+      {muestraBarraInferior && onIrAlCarrito && (
+        <View
+          onLayout={onLayoutBarra}
+          className="absolute bottom-0 left-0 right-0 border-t-2 border-mostaza bg-vino px-5 py-3 shadow-2xl"
+        >
           <View className="flex-row items-center justify-between">
             <View>
-              <Text className="text-[10px] font-bold uppercase text-amber-200">
-                Importe acumulado ({carrito.length} ítems):
+              <Text className="text-sm font-bold uppercase text-amber-200">
+                Importe acumulado ({carrito.length} ítem/s):
               </Text>
               {/* Buen tamaño requerido por Punto 12 */}
-              <Text className="text-2xl font-black text-mostaza">
+              <Text className="text-3xl font-black text-mostaza">
                 ${importeAcumulado.toLocaleString("es-AR")}
               </Text>
-              <Text className="text-[10px] text-amber-100/70">
+              <Text className="text-sm text-amber-100/70">
                 ⏱ Tiempo estimado: ~{tiempoEstimadoMax} min
               </Text>
             </View>
@@ -511,10 +546,9 @@ export function CartaScreen({
               onPress={onIrAlCarrito}
               className="flex-row items-center rounded-2xl bg-calabaza px-4 py-2.5 shadow active:bg-calabaza/80"
             >
-              <Text style={{ fontFamily: "LaOriental" }} className="mr-1.5 text-xs font-black uppercase text-white">
-                Ver Comanda
+              <Text style={{ fontFamily: "LaOriental" }} className="text-xs font-black uppercase text-white">
+                Ver pedido
               </Text>
-              <Text className="text-base">➔</Text>
             </TouchableOpacity>
           </View>
         </View>

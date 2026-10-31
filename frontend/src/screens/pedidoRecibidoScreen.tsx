@@ -1,0 +1,268 @@
+import React, { useState } from "react";
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  ScrollView,
+  Modal,
+  Alert,
+} from "react-native";
+import { StatusBar } from "expo-status-bar";
+import { CameraView, useCameraPermissions } from "expo-camera";
+import * as Haptics from "expo-haptics";
+import { ChineseFrame } from "../components/ChineseFrame";
+
+interface Props {
+  pedidoId: string;
+  numeroMesa?: string | number;
+  onIrAJuegos: () => void;
+  onIrAEncuesta: (pedidoId: string) => void;
+  onPedirCuenta: (pedidoId: string, propinaPorcentaje: number) => void;
+  onVolver?: () => void;
+}
+
+// Mapeo de códigos QR a porcentaje de satisfacción
+export const MAPA_QRS_PROPINA: Record<string, { label: string; porcentaje: number }> = {
+  TIP_0: { label: "Malo (0%)", porcentaje: 0 },
+  TIP_5: { label: "Regular (5%)", porcentaje: 5 },
+  TIP_10: { label: "Bueno (10%)", porcentaje: 10 },
+  TIP_15: { label: "Muy Bueno (15%)", porcentaje: 15 },
+  TIP_20: { label: "Excelente (20%)", porcentaje: 20 },
+};
+
+export function PedidoRecibidoScreen({
+  pedidoId,
+  numeroMesa = "S/N",
+  onIrAJuegos,
+  onIrAEncuesta,
+  onPedirCuenta,
+}: Props) {
+  const [modalQrVisible, setModalQrVisible] = useState(false);
+  const [permission, requestPermission] = useCameraPermissions();
+  const [escaneado, setEscaneado] = useState(false);
+
+  const abrirEscanerPropina = async () => {
+    if (!permission?.granted) {
+      const res = await requestPermission();
+      if (!res.granted) {
+        Alert.alert(
+          "Permiso de cámara",
+          "Se requiere acceso a la cámara para escanear el QR de satisfacción/propina."
+        );
+        return;
+      }
+    }
+    setEscaneado(false);
+    setModalQrVisible(true);
+  };
+
+  const handleBarcodeScanned = ({ data }: { data: string }) => {
+    if (escaneado) return;
+    const cleanData = data ? data.trim().toUpperCase() : "";
+
+    if (MAPA_QRS_PROPINA[cleanData]) {
+      setEscaneado(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      const { porcentaje } = MAPA_QRS_PROPINA[cleanData];
+      setModalQrVisible(false);
+      onPedirCuenta(pedidoId, porcentaje);
+    } else {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Alert.alert(
+        "QR no reconocido",
+        `El código '${cleanData}' no corresponde a una opción válida de propina (TIP_0, TIP_5, TIP_10, TIP_15, TIP_20).`
+      );
+    }
+  };
+
+  return (
+    <View className="flex-1 bg-amber-50">
+      <StatusBar style="light" />
+
+      {/* Cabecera */}
+      <View className="px-5 pt-4">
+        <Image
+          source={require("../../assets/images/logo-name.png")}
+          className="h-16 w-auto self-center"
+          resizeMode="contain"
+        />
+        <Image
+          source={require("../../assets/images/separator.png")}
+          className="my-2 h-5 w-full"
+          resizeMode="contain"
+        />
+        <ChineseFrame className="mt-2 bg-vino">
+          <View className="items-center rounded-xl bg-mostaza/15 px-4 py-4">
+            <Text
+              style={{ fontFamily: "LaOriental" }}
+              className="text-2xl text-mostaza uppercase text-center"
+            >
+              Mesa #{numeroMesa}
+            </Text>
+            <Text className="mt-1 text-xs font-semibold text-amber-100">
+              ¡Pedido entregado con éxito!
+            </Text>
+          </View>
+        </ChineseFrame>
+      </View>
+
+      <ScrollView
+        className="flex-1 px-5 pt-6"
+        contentContainerStyle={{ paddingBottom: 30 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text
+          style={{ fontFamily: "LaOriental" }}
+          className="text-center text-lg uppercase text-vino mb-2"
+        >
+          ¿Qué deseas hacer ahora?
+        </Text>
+        <Text className="text-center text-xs text-stone-600 mb-6 px-4">
+          Esperamos que haya disfrutado su comida. Puede divertirse con nuestros juegos, dejarnos su opinión o solicitar la cuenta cuando esté listo.
+        </Text>
+
+        {/* BOTÓN 1: JUEGOS */}
+        <TouchableOpacity
+          onPress={onIrAJuegos}
+          activeOpacity={0.85}
+          className="mb-4 flex-row items-center justify-between rounded-2xl border-2 border-caramelo bg-calabaza p-4 shadow-md active:bg-terracota"
+        >
+          <View className="flex-row items-center flex-1 pr-2">
+            <View className="h-12 w-12 items-center justify-center rounded-xl bg-white/20 mr-3">
+              <Text className="text-2xl">🎮</Text>
+            </View>
+            <View className="flex-1">
+              <Text
+                style={{ fontFamily: "LaOriental" }}
+                className="text-lg uppercase text-white"
+              >
+                Juegos
+              </Text>
+              <Text className="text-xs text-amber-100">
+                Diviértase y gane descuentos exclusivos
+              </Text>
+            </View>
+          </View>
+          <Image
+            source={require("../../assets/images/right-arrow-y.png")}
+            className="h-6 w-6"
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+
+        {/* BOTÓN 2: ENCUESTA */}
+        <TouchableOpacity
+          onPress={() => onIrAEncuesta(pedidoId)}
+          activeOpacity={0.85}
+          className="mb-4 flex-row items-center justify-between rounded-2xl border-2 border-vino bg-mostaza p-4 shadow-md active:bg-mostaza/80"
+        >
+          <View className="flex-row items-center flex-1 pr-2">
+            <View className="h-12 w-12 items-center justify-center rounded-xl bg-vino/15 mr-3">
+              <Text className="text-2xl">📋</Text>
+            </View>
+            <View className="flex-1">
+              <Text
+                style={{ fontFamily: "LaOriental" }}
+                className="text-lg uppercase text-vino"
+              >
+                Encuesta de Satisfacción
+              </Text>
+              <Text className="text-xs text-stone-700">
+                Su opinión nos ayuda a seguir mejorando
+              </Text>
+            </View>
+          </View>
+          <Image
+            source={require("../../assets/images/right-arrow-y.png")}
+            className="h-6 w-6 tint-vino"
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+
+        {/* BOTÓN 3: PEDIR LA CUENTA (Abre escaneo de propina) */}
+        <TouchableOpacity
+          onPress={abrirEscanerPropina}
+          activeOpacity={0.85}
+          className="mb-4 flex-row items-center justify-between rounded-2xl border-2 border-mostaza bg-vino p-4 shadow-md active:bg-vino/80"
+        >
+          <View className="flex-row items-center flex-1 pr-2">
+            <View className="h-12 w-12 items-center justify-center rounded-xl bg-mostaza/20 mr-3">
+              <Text className="text-2xl">💵</Text>
+            </View>
+            <View className="flex-1">
+              <Text
+                style={{ fontFamily: "LaOriental" }}
+                className="text-lg uppercase text-mostaza"
+              >
+                Pedir la Cuenta
+              </Text>
+              <Text className="text-xs text-amber-100">
+                Escanear QR de satisfacción y ver el total
+              </Text>
+            </View>
+          </View>
+          <Image
+            source={require("../../assets/images/right-arrow-y.png")}
+            className="h-6 w-6"
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+      </ScrollView>
+
+      {/* MODAL CÁMARA QR DE PROPINA */}
+      <Modal
+        visible={modalQrVisible}
+        animationType="slide"
+        transparent={false}
+        onRequestClose={() => setModalQrVisible(false)}
+      >
+        <View className="flex-1 bg-black">
+          <CameraView
+            style={{ flex: 1 }}
+            facing="back"
+            barcodeScannerSettings={{
+              barcodeTypes: ["qr"],
+            }}
+            onBarcodeScanned={escaneado ? undefined : handleBarcodeScanned}
+          >
+            <View className="flex-1 justify-between p-6 bg-black/40">
+              {/* Header Modal */}
+              <View className="items-center mt-10">
+                <Text
+                  style={{ fontFamily: "LaOriental" }}
+                  className="text-xl text-mostaza uppercase text-center"
+                >
+                  Escaneo de Propina
+                </Text>
+                <Text className="text-white text-xs text-center mt-1 px-4">
+                  Escanee el código QR que indica su grado de satisfacción con el servicio para generar la cuenta.
+                </Text>
+              </View>
+
+              {/* Marco visor */}
+              <View className="items-center justify-center">
+                <View className="w-64 h-64 border-2 border-mostaza rounded-3xl bg-transparent relative items-center justify-center">
+                  <View className="w-56 h-56 border border-dashed border-amber-200/50 rounded-2xl" />
+                </View>
+                <Text className="text-amber-100/80 text-[11px] mt-3 font-semibold">
+                  Apunte la cámara al código QR
+                </Text>
+              </View>
+
+              {/* Botón Cerrar */}
+              <TouchableOpacity
+                onPress={() => setModalQrVisible(false)}
+                className="bg-stone-800 py-3 rounded-xl border border-stone-600 mb-4 items-center"
+              >
+                <Text className="text-white text-xs font-bold uppercase tracking-wider">
+                  Cancelar
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </CameraView>
+        </View>
+      </Modal>
+    </View>
+  );
+}
