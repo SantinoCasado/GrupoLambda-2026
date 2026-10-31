@@ -10,6 +10,8 @@ import pedidosRoutes from './modules/pedidos/pedidos.routes';
 import chatRoutes from './modules/chat/chat.routes';
 import mesasRoutes from './modules/mesas/mesas.routes';
 import juegosRoutes from './modules/juegos/juegos.routes';
+import reservasRoutes from './modules/reservas/reservas.routes';
+import { procesarReservasService } from './modules/reservas/reservas.service';
 
 dotenv.config();
 
@@ -35,6 +37,7 @@ app.use('/api/pedidos', pedidosRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/mesas', mesasRoutes);
 app.use('/api/juegos', juegosRoutes);
+app.use('/api/reservas', reservasRoutes);
 
 // Ruta base
 app.get('/', (req: Request, res: Response) => {
@@ -56,3 +59,10 @@ app.get('/api/ping-db', async (req: Request, res: Response) => {
 app.listen(port, () => {
     console.log(`[Servidor]: Corriendo en http://localhost:${port}`);
 });
+
+// Punto 26: cada minuto se vencen las reservas sin check-in (45 min) y se bloquean las mesas reservadas
+setInterval(() => {
+    procesarReservasService().catch((error) =>
+        console.error('⚠️ Error al procesar reservas:', error.message)
+    );
+}, 60 * 1000);
