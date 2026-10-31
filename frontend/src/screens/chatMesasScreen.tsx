@@ -48,7 +48,7 @@ export function ChatMesasScreen({
         <View className="mb-4">
           <Image
             source={require("../../assets/images/logo-name.png")}
-            className="h-16 w-auto self-center"
+            className="h-20 w-auto self-center mt-1"
             resizeMode="contain"
           />
           <Image
@@ -105,7 +105,11 @@ export function ChatMesasScreen({
 
                 <View className="flex-row items-center gap-1">
                   <Text className="text-xs font-bold text-calabaza">Abrir Chat</Text>
-                  <Text className="text-lg">💬</Text>
+                  <Image
+                    source={require("../../assets/images/chat-cal.png")}
+                    className="h-4 w-4"
+                    resizeMode="contain"
+                  />
                 </View>
               </TouchableOpacity>
             );

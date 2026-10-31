@@ -77,9 +77,8 @@ export function EstadisticasScreen({ onVolver, esModal = false }: Props) {
       {/* Cabecera (mismo estilo que pedidoRecibidoScreen) */}
       <View
         className="px-5 pt-4"
-        style={esModal ? { paddingTop: margenSuperior + 16 } : undefined}
+        style={esModal ? { paddingTop: margenSuperior + 50 } : undefined}
       >
-        
 
         <Image
           source={require("../../assets/images/logo-name.png")}
@@ -140,7 +139,12 @@ export function EstadisticasScreen({ onVolver, esModal = false }: Props) {
       {/* Contenido: solo gráficos */}
       <ScrollView
         className="flex-1 px-5 pt-3"
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 24 }}
+        contentContainerStyle={{
+          flexGrow: 1,
+          // En modal el contenido llega hasta abajo de la pantalla: sumamos el
+          // inset inferior para que la tarjeta no quede bajo los botones del sistema.
+          paddingBottom: esModal ? insets.bottom + 24 : 24,
+        }}
         showsVerticalScrollIndicator={false}
       >
         <View className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza/70 bg-amber-50 p-4">
