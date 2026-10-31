@@ -2,7 +2,6 @@ import { UsuarioSeed, PerfilUsuario } from "../data/usuariosPrecargados";
 import { getSupabaseClient, isSupabaseConfigured, supabase } from "../config/supabase";
 import { API_URL } from "../config/api";
 import { makeRedirectUri } from "expo-auth-session";
-import * as QueryParams from "expo-auth-session/build/QueryParams";
 import * as WebBrowser from "expo-web-browser";
 
 // Requerido por expo-web-browser para gestionar sesiones pendientes en Android
@@ -98,17 +97,36 @@ export async function login(email: string, clave: string): Promise<UsuarioSeed> 
   return loginConSupabase(email, clave);
 }
 
-export async function loginConGoogle(): Promise<UsuarioSeed> {
+// expo-auth-session 58 bloquea el deep import `build/QueryParams` (mapa `exports`),
+// así que parseamos la URL de redirección nosotros mismos.
+// - PKCE: el code/error llega en el query string (?code=... / ?error=...)
+// - Implicit (legacy): los tokens llegan en el hash (#access_token=...)
+function parseAuthParams(url: string): Record<string, string> {
+  const hashIndex = url.indexOf("#");
+  const queryIndex = url.indexOf("?");
+  const queryEnd = hashIndex >= 0 ? hashIndex : url.length;
+
+  const query =
+    queryIndex >= 0 && queryIndex < queryEnd ? url.slice(queryIndex + 1, queryEnd) : "";
+  const hash = hashIndex >= 0 ? url.slice(hashIndex + 1) : "";
+
+  return {
+    ...(Object.fromEntries(new URLSearchParams(query)) as Record<string, string>),
+    ...(Object.fromEntries(new URLSearchParams(hash)) as Record<string, string>),
+  };
+}
+
+export async function loginConGoogle(): Promise<UsuarioSeed | null> {
   if (!isSupabaseConfigured) {
     throw new Error("Supabase no configurado.");
   }
 
   const client = getSupabaseClient() || supabase;
 
-  // 1. Usar el esquema de la app
-  const redirectTo = "jardinimperial://google-auth";
+  // 1. Redirect URI: nativo → jardinimperial://google-auth | web → http://localhost:8081/google-auth
+  const redirectTo = makeRedirectUri({ scheme: "jardinimperial", path: "google-auth" });
 
-  // 2. Pedir la URL de OAuth a Supabase
+  // 2. Pedir la URL de OAuth a Supabase (con PKCE, Supabase agrega el code_challenge)
   const { data: authData, error: oauthError } = await client.auth.signInWithOAuth({
     provider: "google",
     options: {
@@ -128,38 +146,32 @@ export async function loginConGoogle(): Promise<UsuarioSeed> {
   // 3. Abrir navegador nativo
   const res = await WebBrowser.openAuthSessionAsync(authData.url, redirectTo);
 
+  // Cancelar/cerrar el navegador no es un error: devolvemos null y la pantalla lo ignora
   if (res.type !== "success" || !res.url) {
-    throw new Error("Se canceló el ingreso con Google.");
+    return null;
   }
 
-  // 4. Extraer access_token y refresh_token (soporta hash fragment # y query params ?)
-  let accessToken: string | undefined;
-  let refreshToken: string | undefined;
+  // 4. Leer la respuesta (URLSearchParams ya decodifica %XX y '+')
+  const params = parseAuthParams(res.url);
 
-  if (res.url.includes("#")) {
-    const hash = res.url.split("#")[1];
-    const params = new URLSearchParams(hash);
-    accessToken = params.get("access_token") || undefined;
-    refreshToken = params.get("refresh_token") || undefined;
-  } else {
-    const { params } = QueryParams.getQueryParams(res.url);
-    accessToken = params.access_token;
-    refreshToken = params.refresh_token;
+  if (params.error || params.error_description) {
+    throw new Error(params.error_description || params.error);
   }
 
-  if (!accessToken) {
-    throw new Error("No se obtuvo un token de acceso válido de Google.");
+  if (!params.code) {
+    throw new Error(
+      "Google no devolvió un código de autorización. Verificá que la Redirect URL esté habilitada en Supabase (Authentication → URL Configuration)."
+    );
   }
 
-  // 5. Inicializar la sesión en Supabase local
-  const { data: sesionData, error: sessionError } = await client.auth.setSession({
-    access_token: accessToken,
-    refresh_token: refreshToken || "",
-  });
+  // 5. Canjear el código PKCE por una sesión local
+  const { data: sesionData, error: sessionError } = await client.auth.exchangeCodeForSession(
+    params.code
+  );
 
   if (sessionError || !sesionData.session) {
     await client.auth.signOut();
-    throw new Error("Fallo al establecer la sesión del usuario.");
+    throw new Error(sessionError?.message || "Fallo al establecer la sesión del usuario.");
   }
 
   // 6. Enviar al endpoint que armó tu compañero

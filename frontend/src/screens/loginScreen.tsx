@@ -122,6 +122,8 @@ export function LoginScreen({
       setTextoCargando("Autenticando con Google...");
       setCargando(true);
       const usuario = await loginConGoogle();
+      // null = el usuario canceló o cerró el navegador: no es un error
+      if (!usuario) return;
       vibrar("exito");
       onLoginSuccess(usuario);
     } catch (error: any) {

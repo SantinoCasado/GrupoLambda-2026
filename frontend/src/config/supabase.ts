@@ -8,7 +8,19 @@ export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
 
 const clienteUnico: SupabaseClient = createClient(
   supabaseUrl || "https://placeholder.supabase.co",
-  supabaseAnonKey || "placeholder-key"
+  supabaseAnonKey || "placeholder-key",
+  {
+    auth: {
+      // Flujo PKCE: el redirect de Google trae un `code` en el query string
+      // (no tokens en el hash), y lo canjeamos con exchangeCodeForSession().
+      flowType: "pkce",
+      // En React Native no hay URL de navegador que inspeccionar al iniciar.
+      detectSessionInUrl: false,
+      // Se usa el storage en memoria por defecto: el code_verifier de PKCE vive
+      // en memoria durante la sesión. Si querés que sobreviva a que el SO mate la
+      // app con el navegador abierto, pasá AsyncStorage acá (requiere rebuild nativo).
+    },
+  }
 );
 
 export function getSupabaseClient(): SupabaseClient | null {
