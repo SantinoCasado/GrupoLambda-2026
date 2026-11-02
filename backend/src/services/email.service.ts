@@ -4,86 +4,148 @@ import path from 'path';
 
 dotenv.config();
 
-export const enviarNotificacionAprobacion = async (email: string, nombre: string, status: 'approved' | 'rejected') => {
+export const enviarNotificacionAprobacion = async (
+    email: string, 
+    nombre: string, 
+    status: 'approved' | 'rejected'
+) => {
     const esAprobado = status === 'approved';
-    const asunto = esAprobado ? '¡Tu cuenta ha sido aprobada! 🎉' : 'Actualización sobre tu cuenta';
+    const asunto = esAprobado ? '¡Tu cuenta ha sido aprobada! 🎉' : 'Actualización sobre el estado de tu cuenta';
 
-    // ¡Tu diseño HTML intacto!
+    // --- TIPOGRAFÍAS Y COLORES DIFERENCIADOS POR ESTADO ---
+    const colorPrincipal = esAprobado ? '#16a34a' : '#c32f27'; // Verde para aprobado / Rojo para rechazado
+    const colorBorde = esAprobado ? '#22c55e' : '#c32f27';
+    const colorFondoBadge = esAprobado ? '#e8f5e9' : '#ffebee';
+    const colorTextoBadge = esAprobado ? '#1b5e20' : '#c62828';
+
+    // Tipografías distintas según la consigna
+    // Aprobado: Shojumaru (Título oriental/festivo) + Poppins (Cuerpo moderno)
+    // Rechazado: Cinzel (Título formal/sobrio) + Lato (Cuerpo institucional)
+    const fuenteTitulo = esAprobado 
+        ? "'Shojumaru', 'Georgia', serif" 
+        : "'Cinzel', 'Times New Roman', serif";
+
+    const fuenteCuerpo = esAprobado 
+        ? "'Poppins', 'Helvetica Neue', Arial, sans-serif" 
+        : "'Lato', 'Trebuchet MS', sans-serif";
+
     const contenidoHtml = `
     <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="utf-8">
-            <style>
-                /* Importamos Shojumaru y Poppins desde Google Fonts */
-                @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&family=Shojumaru&display=swap');
-                
-                body {
-                    font-family: 'Poppins', Arial, sans-serif;
-                    background-color: #f7fafc;
-                    margin: 0;
-                    padding: 0;
-                }
-                .container {
-                    background-color: #ffffff;
-                    padding: 30px;
-                    color: #2d3748;
-                    max-width: 600px;
-                    margin: 30px auto;
-                    border: 2px solid #780116; /* Rojo institucional */
-                    border-radius: 12px;
-                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-                }
-                .header {
-                    text-align: center;
-                    margin-bottom: 25px;
-                    border-bottom: 2px solid #edf2f7;
-                    padding-bottom: 20px;
-                }
-                .logo {
-                    width: 130px;
-                    height: auto;
-                }
-                h2 {
-                    font-family: 'Shojumaru', cursive, serif; /* Fuente oriental institucional */
-                    color: ${esAprobado ? '#780116' : '#D8572A'};
-                    font-size: 22px;
-                    margin-top: 0;
-                    text-align: center;
-                    letter-spacing: 1px;
-                }
-                p {
-                    font-size: 15px;
-                    line-height: 1.6;
-                    color: #4a5568;
-                }
-                .footer {
-                    font-size: 12px;
-                    color: #718096;
-                    border-top: 1px solid #e2e8f0;
-                    padding-top: 15px;
-                    margin-top: 25px;
-                    text-align: center;
-                }
-            </style>
-        </head>
-        <body>
-            <div class="container">
-                <div class="header">
-                    <img src="https://lxrgtjaqczpacjkvxnuw.supabase.co/storage/v1/object/public/assets/logo.png" alt="Logo Restaurante" class="logo" width="150" />
-                </div>
-                <h2>¡Hola, ${nombre}!</h2>
-                <p>Te escribimos para informarte que el estado de tu cuenta ha sido actualizado a: <strong>${esAprobado ? 'Aprobado' : 'Rechazado'}</strong>.</p>
-                ${esAprobado
-                    ? '<p>Ya podés iniciar sesión en la aplicación para escanear tu mesa y disfrutar de la mejor experiencia y la mejor comida china.</p>'
-                    : '<p>Lamentablemente, no hemos podido aprobar tu solicitud en esta ocasión. Te sugerimos intentar registrarte nuevamente verificando tus datos o acercarte a nuestro local.</p>'
-                }
-                <div class="footer">
-                    Atentamente,<br><strong>El equipo de Restaurante Chino / Grupo Lambda</strong>
-                </div>
+    <html lang="es">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+            /* Importación de ambas familias tipográficas */
+            @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Lato:ital,wght@0,400;0,700&family=Poppins:wght@400;600&family=Shojumaru&display=swap');
+            
+            body {
+                font-family: ${fuenteCuerpo};
+                background-color: #f4f6f8;
+                margin: 0;
+                padding: 0;
+                -webkit-text-size-adjust: 100%;
+                -ms-text-size-adjust: 100%;
+            }
+            .container {
+                background-color: #ffffff;
+                padding: 35px;
+                color: #2d3748;
+                max-width: 600px;
+                margin: 30px auto;
+                border-top: 6px solid ${colorBorde};
+                border-left: 1px solid #e2e8f0;
+                border-right: 1px solid #e2e8f0;
+                border-bottom: 1px solid #e2e8f0;
+                border-radius: 12px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+            }
+            .header {
+                text-align: center;
+                margin-bottom: 25px;
+                border-bottom: 2px solid #edf2f7;
+                padding-bottom: 20px;
+            }
+            .logo {
+                width: 140px;
+                height: auto;
+            }
+            h2 {
+                font-family: ${fuenteTitulo};
+                color: ${colorPrincipal};
+                font-size: 24px;
+                margin-top: 10px;
+                margin-bottom: 15px;
+                text-align: center;
+                letter-spacing: 1px;
+            }
+            p {
+                font-family: ${fuenteCuerpo};
+                font-size: 15px;
+                line-height: 1.7;
+                color: #4a5568;
+                margin-bottom: 15px;
+            }
+            .badge-estado {
+                display: inline-block;
+                background-color: ${colorFondoBadge};
+                color: ${colorTextoBadge};
+                font-weight: 700;
+                padding: 6px 16px;
+                border-radius: 20px;
+                font-size: 14px;
+                text-transform: uppercase;
+                letter-spacing: 0.5px;
+                border: 1px solid ${colorPrincipal};
+                font-family: ${fuenteCuerpo};
+            }
+            .caja-mensaje {
+                background-color: #f8fafc;
+                border-left: 4px solid ${colorPrincipal};
+                padding: 15px 20px;
+                margin: 20px 0;
+                border-radius: 4px;
+            }
+            .footer {
+                font-family: ${fuenteCuerpo};
+                font-size: 12px;
+                color: #718096;
+                border-top: 1px solid #e2e8f0;
+                padding-top: 20px;
+                margin-top: 30px;
+                text-align: center;
+                line-height: 1.5;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="header">
+                <img src="https://lxrgtjaqczpacjkvxnuw.supabase.co/storage/v1/object/public/assets/logo.png" alt="Logo Jardín Imperial" class="logo" width="140" />
             </div>
-        </body>
-        </html>
+            
+            <h2>¡Hola, ${nombre}!</h2>
+            
+            <p>Te escribimos para informarte la actualización del estado de tu solicitud de registro:</p>
+            
+            <div style="text-align: center; margin: 20px 0;">
+                <span class="badge-estado">${esAprobado ? '✓ Cuenta Aprobada' : '✕ Cuenta Rechazada'}</span>
+            </div>
+
+            <div class="caja-mensaje">
+                ${esAprobado
+                    ? '<p style="margin: 0;"><strong>¡Ya podés ingresar!</strong> Tu cuenta ha sido habilitada correctamente. Podés iniciar sesión en la aplicación, escanear tu mesa y disfrutar de nuestro menú.</p>'
+                    : '<p style="margin: 0;">Lamentablemente no hemos podido aprobar tu registro en esta ocasión. Te sugerimos intentar registrarte nuevamente verificando tus datos personales o consultar directamente en nuestro local.</p>'
+                }
+            </div>
+
+            <div class="footer">
+                Atentamente,<br>
+                <strong style="color: #2d3748;">El equipo de Jardín Imperial / Grupo Lambda</strong>
+            </div>
+        </div>
+    </body>
+    </html>
     `;
 
     try {
@@ -110,10 +172,10 @@ export const enviarNotificacionAprobacion = async (email: string, nombre: string
             throw new Error(`Fallo Brevo: ${JSON.stringify(errorBody)}`);
         }
 
-        console.log(`✉️ Correo enviado por HTTP a: ${email}`);
+        console.log(`✉️ Correo de ${status} enviado por HTTP a: ${email}`);
         return true; 
     } catch (error: any) {
-        console.error('❌ Error enviando mail:', error.message);
+        console.error('❌ Error enviando mail de aprobación/rechazo:', error.message);
         return false; 
     }
 };
@@ -174,4 +236,42 @@ export const enviarFacturaPorEmail = async (
         console.error('❌ Error enviando factura por mail:', error.message);
         return false; 
     }
+};
+
+export const enviarCorreoInformativo = async (
+  email: string,
+  nombre: string,
+  asunto: string,
+  contenidoHtml: string
+) => {
+  try {
+    const respuesta = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': process.env.BREVO_API_KEY as string,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        sender: { 
+          name: "Jardín Imperial", 
+          email: process.env.GMAIL_USER as string
+        },
+        to: [{ email: email, name: nombre }],
+        subject: asunto,
+        htmlContent: contenidoHtml
+      })
+    });
+
+    if (!respuesta.ok) {
+      const errorBody = await respuesta.json();
+      throw new Error(`Fallo Brevo: ${JSON.stringify(errorBody)}`);
+    }
+
+    console.log(`✉️ Correo enviado por HTTP a: ${email}`);
+    return true; 
+  } catch (error: any) {
+    console.error('❌ Error enviando mail por Brevo:', error.message);
+    return false; 
+  }
 };

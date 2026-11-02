@@ -13,11 +13,14 @@ export const crearPedidoSchema = z.object({
   productos: z
     .array(productoItemSchema)
     .nonempty('El pedido debe incluir al menos un producto'),
+  delivery_address: z.string().optional(),
+  delivery_latitude: z.number().optional(),
+  delivery_longitude: z.number().optional(),
 });
 
 // Confirmar o rechazar pedido por el mozo
 export const confirmarPedidoSchema = z.object({
-  waiter_id: z.string().uuid('El ID del mozo debe ser un UUID válido'),
+  waiter_id: z.string().uuid('El ID del mozo debe ser un UUID válido').optional().nullable(),
   estado: z.enum(['in_preparation', 'cancelled']).default('in_preparation'),
   rejection_reason: z.string().optional(),
 }).refine(
