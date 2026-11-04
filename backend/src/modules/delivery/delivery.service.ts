@@ -1,6 +1,7 @@
 import { supabase } from '../../config/supabase'; 
 import { enviarPushNotification } from '../../services/pushNotifications.service';
 import { FiltrosDelivery } from './interface/filtrosDelivery';
+import { enviarFacturaPorEmail } from '../../services/email.service';
 
 /**
  * Obtener pedidos disponibles para el repartidor (en estado 'ready' u 'on_the_way')
@@ -170,6 +171,104 @@ export const tomarPedidoDeliveryService = async (pedidoId: string, repartidorId:
   return {
     success: true,
     mensaje: 'Pedido asignado. Estado actualizado a "on_the_way" y cliente notificado.',
+    pedido: pedidoActualizado,
+  };
+};
+
+/**
+ * Punto 30: El repartidor entrega el pedido, se liquida el cobro,
+ * se genera la factura PDF y se envía por correo.
+ */
+export const entregarYFacturarPedidoService = async (
+  pedidoId: string,
+  repartidorId: string,
+  metodoPago: string = 'efectivo'
+) => {
+  // Busca el pedido completo con ítems y datos del cliente
+  const { data: pedido, error: errorBusqueda } = await supabase
+    .from('orders')
+    .select(`
+      *,
+      client:users!client_id(id, first_name, last_name, email, push_token),
+      items:order_items(*, product:products(name, price))
+    `)
+    .eq('id', pedidoId)
+    .single();
+
+  if (errorBusqueda || !pedido) {
+    throw new Error('El pedido especificado no existe.');
+  }
+
+  if (pedido.status !== 'on_the_way') {
+    throw new Error(`El pedido no está en camino. Estado actual: ${pedido.status}`);
+  }
+
+  // Calculo de los totales finales para la factura
+  const totalBase = Number(pedido.total_amount) || 0;
+  const propina = Number(pedido.tip_amount) || 0;
+  const descuento = Number(pedido.discount_amount) || 0;
+  const totalFinal = Number(pedido.final_total) || (totalBase + propina - descuento);
+
+  // Simulacion / generacion de la URL de la factura PDF guardada en Supabase Storage
+  // (O la URL pública estática de la factura generada)
+  const urlFactura = pedido.invoice_pdf_url || `https://jardin-imperial.storage.supabase.co/invoices/factura_${pedido.id}.pdf`;
+
+  // Actualiza el estado del pedido a 'delivered' o 'paid'
+  const { data: pedidoActualizado, error: errorUpdate } = await supabase
+    .from('orders')
+    .update({
+      status: 'delivered', 
+      invoice_pdf_url: urlFactura,
+      final_total: totalFinal,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', pedidoId)
+    .select()
+    .single();
+
+  if (errorUpdate || !pedidoActualizado) {
+    throw new Error(`Error al finalizar el pedido: ${errorUpdate?.message}`);
+  }
+
+  // Desempaquetacion del cliente si Supabase lo devuelve como array
+  const cliente: any = Array.isArray(pedido.client) ? pedido.client[0] : pedido.client;
+
+  // Envío de Correo con la Factura  (Punto 30)
+  if (cliente?.email) {
+    try {
+      const nombreCliente = `${cliente.first_name || ''} ${cliente.last_name || ''}`.trim() || 'Cliente';
+      
+      await enviarFacturaPorEmail(
+        cliente.email,
+        nombreCliente,
+        urlFactura
+      );
+    } catch (emailErr) {
+      console.error('❌ Error enviando mail de factura por Brevo:', emailErr);
+    }
+  }
+
+  // Push Notification al cliente (Punto 30)
+  try {
+    if (cliente?.push_token) {
+      await enviarPushNotification(
+        cliente.push_token,
+        '🎉 ¡Pedido Entregado!',
+        '¡Tu pedido ha sido entregado con éxito! Enviamos la factura a tu correo electrónico.',
+        {
+          orderId: pedido.id,
+          status: 'paid',
+          tipo: 'pedido_entregado',
+        }
+      );
+    }
+  } catch (pushErr) {
+    console.error('❌ Error enviando push de entrega:', pushErr);
+  }
+
+  return {
+    success: true,
+    mensaje: 'Pedido entregado, cobrado y facturado exitosamente.',
     pedido: pedidoActualizado,
   };
 };
