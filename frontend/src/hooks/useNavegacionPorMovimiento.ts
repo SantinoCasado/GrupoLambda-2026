@@ -12,9 +12,9 @@ const CALIBRACION_MS = 600;
 /** Frecuencia de lectura del sensor (ms). */
 const INTERVALO_SENSOR_MS = 80;
 /** Ventana para considerar que los giros son "repetidos" (ms). */
-const VENTANA_ALTERNANCIA_MS = 1600;
+const VENTANA_ALTERNANCIA_MS = 5000;
 /** Alternancias horizontales que devuelven al primer producto. */
-const ALTERNANCIAS_PARA_REINICIAR = 6;
+const ALTERNANCIAS_PARA_REINICIAR = 4;
 
 // Si en el dispositivo los sentidos quedan invertidos, alcanza con cambiar
 // estos dos valores (1 o -1).
@@ -72,7 +72,12 @@ export function useNavegacionPorMovimiento(callbacks: Callbacks) {
 
     let armadoHorizontal = true;
     let armadoVertical = true;
-    let ultimoDisparo = 0;
+    let ultimoDisparoHorizontal = 0;
+    let ultimoDisparoVertical = 0;
+    // Sentido con el que se disparó cada eje: sirve para rearmarlo cuando el
+    // gesto cambia de dirección, aunque el muestreo se saltee la zona neutra.
+    let signoDisparoHorizontal = 0;
+    let signoDisparoVertical = 0;
 
     let ultimaDireccion: DireccionHorizontal | null = null;
     let alternancias = 0;
@@ -112,26 +117,43 @@ export function useNavegacionPorMovimiento(callbacks: Callbacks) {
 
         const deltaHorizontal = (gamma - gamma0) * SIGNO_HORIZONTAL;
         const deltaVertical = (beta - beta0) * SIGNO_VERTICAL;
-        const puedeDisparar = ahora - ultimoDisparo >= ESPERA_MINIMA_MS;
 
-        // Rearme: hay que volver cerca de la postura neutra.
-        if (Math.abs(deltaHorizontal) < UMBRAL_REARME) armadoHorizontal = true;
-        if (Math.abs(deltaVertical) < UMBRAL_REARME) armadoVertical = true;
-
+        // Rearme: volver cerca del neutro o cambiar de sentido. El segundo
+        // caso es clave: con muestreo cada 80 ms, un giro rápido puede saltar
+        // de +12° a -14° sin pasar por la banda de 8° y dejar el eje trabado.
         if (
-          puedeDisparar &&
+          !armadoHorizontal &&
+          (Math.abs(deltaHorizontal) < UMBRAL_REARME ||
+            Math.sign(deltaHorizontal) !== signoDisparoHorizontal)
+        ) {
+          armadoHorizontal = true;
+        }
+        if (
+          !armadoVertical &&
+          (Math.abs(deltaVertical) < UMBRAL_REARME ||
+            Math.sign(deltaVertical) !== signoDisparoVertical)
+        ) {
+          armadoVertical = true;
+        }
+
+        // Cooldown independiente por eje: un gesto vertical no debe consumir
+        // la ventana de un gesto horizontal (ni al revés).
+        if (
           armadoHorizontal &&
-          Math.abs(deltaHorizontal) > UMBRAL_GIRO
+          Math.abs(deltaHorizontal) > UMBRAL_GIRO &&
+          ahora - ultimoDisparoHorizontal >= ESPERA_MINIMA_MS
         ) {
           armadoHorizontal = false;
-          ultimoDisparo = ahora;
+          ultimoDisparoHorizontal = ahora;
+          signoDisparoHorizontal = Math.sign(deltaHorizontal);
 
           const direccion: DireccionHorizontal =
             deltaHorizontal > 0 ? "derecha" : "izquierda";
 
-          // Giros alternados y seguidos: cuentan para volver al principio.
+          // Giros alternados: cuentan para volver al principio. La racha se
+          // corta solo si se repite el mismo sentido (no por lentitud).
           if (
-            ultimaDireccion &&
+            ultimaDireccion !== null &&
             ultimaDireccion !== direccion &&
             ahora - ultimoHorizontal <= VENTANA_ALTERNANCIA_MS
           ) {
@@ -142,16 +164,22 @@ export function useNavegacionPorMovimiento(callbacks: Callbacks) {
           ultimaDireccion = direccion;
           ultimoHorizontal = ahora;
 
+          if (__DEV__) {
+            console.log(
+              `[mov] ${direccion} alt=${alternancias} dH=${deltaHorizontal.toFixed(
+                1
+              )} dV=${deltaVertical.toFixed(1)}`
+            );
+          }
+
           callbacksRef.current.onMovimiento?.();
 
           if (alternancias >= ALTERNANCIAS_PARA_REINICIAR) {
             alternancias = 0;
             ultimaDireccion = null;
+            if (__DEV__) console.log("[mov] RESET al primer producto");
             callbacksRef.current.onReiniciar();
-            return;
-          }
-
-          if (direccion === "derecha") {
+          } else if (direccion === "derecha") {
             callbacksRef.current.onDerecha();
           } else {
             callbacksRef.current.onIzquierda();
@@ -160,12 +188,13 @@ export function useNavegacionPorMovimiento(callbacks: Callbacks) {
         }
 
         if (
-          puedeDisparar &&
           armadoVertical &&
-          Math.abs(deltaVertical) > UMBRAL_GIRO
+          Math.abs(deltaVertical) > UMBRAL_GIRO &&
+          ahora - ultimoDisparoVertical >= ESPERA_MINIMA_MS
         ) {
           armadoVertical = false;
-          ultimoDisparo = ahora;
+          ultimoDisparoVertical = ahora;
+          signoDisparoVertical = Math.sign(deltaVertical);
 
           callbacksRef.current.onMovimiento?.();
 
