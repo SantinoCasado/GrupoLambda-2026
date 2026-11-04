@@ -1,4 +1,10 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import {
   View,
   Text,
@@ -16,6 +22,7 @@ import { supabase } from "../config/supabase";
 import { PerfilUsuario } from "../data/usuariosPrecargados";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { FeedbackModal } from "../components/FeedbackModal";
+import { useNavegacionPorMovimiento } from "../hooks/useNavegacionPorMovimiento";
 
 // Únicos autorizados a dar de baja productos: cozinero y cantinero, cada uno
 // sobre su propia sección (el cocinero solo ve comidas, el cantinero solo bebidas).
@@ -83,11 +90,30 @@ const ICONO_FILTRO: Record<CategoriaFiltro, { activo: any; inactivo: any }> = {
 // muestra una tarjeta por página y cada una necesita su posición de foto y su
 // referencia de scroll independientes. Mide su propio tamaño para que la foto
 // ocupe el espacio disponible y cada slide llene el contenedor exacto.
-function CarruselFotos({ fotos, iconoRespaldo }: { fotos: string[]; iconoRespaldo: string }) {
+export interface CarruselFotosHandle {
+  /** Avanza (delta > 0) o retrocede (delta < 0) una foto, sin salir del rango. */
+  cambiarFoto: (delta: number) => void;
+  /** Vuelve a la primera foto del producto. */
+  irAPrimera: () => void;
+}
+
+interface CarruselFotosProps {
+  fotos: string[];
+  iconoRespaldo: string;
+}
+
+const CarruselFotos = forwardRef<CarruselFotosHandle, CarruselFotosProps>(
+  CarruselFotosBase
+);
+
+function CarruselFotosBase(
+  { fotos, iconoRespaldo }: CarruselFotosProps,
+  ref: React.ForwardedRef<CarruselFotosHandle>
+) {
   const [fotoActiva, setFotoActiva] = useState(0);
   const [ancho, setAncho] = useState(0);
   const [alto, setAlto] = useState(0);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (ancho <= 0) return;
@@ -100,6 +126,20 @@ function CarruselFotos({ fotos, iconoRespaldo }: { fotos: string[]; iconoRespald
     scrollRef.current?.scrollTo({ x: indice * ancho, animated: true });
     setFotoActiva(indice);
   };
+
+  // Expone la navegación al padre para que los gestos muevan la foto del
+  // producto que está visible, sin levantar el estado del carrusel.
+  useImperativeHandle(
+    ref,
+    () => ({
+      cambiarFoto: (delta: number) => {
+        const destino = Math.max(0, Math.min(fotoActiva + delta, fotos.length - 1));
+        irAFoto(destino);
+      },
+      irAPrimera: () => irAFoto(0),
+    }),
+    [fotoActiva, fotos.length, ancho]
+  );
 
   const onLayout = (event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
@@ -223,6 +263,16 @@ export function CartaScreen({
   });
 
   const { agregarAlCarrito, carrito } = useCart();
+
+  // --- Navegación por movimiento (acelerómetro + giroscopio) ---
+  const listaRef = useRef<FlatList<ItemMenu> | null>(null);
+  // Handle de cada carrusel, indexado por id de producto: el gesto actúa sobre
+  // la tarjeta que está visible, sin levantar el estado de las fotos.
+  const carruselRefs = useRef<Record<string, CarruselFotosHandle | null>>({});
+  // Índice del producto visible. Va en un ref porque los gestos llegan desde el
+  // sensor, fuera del ciclo de render.
+  const indiceProductoRef = useRef(0);
+  const [mostrarAyudaMovimiento, setMostrarAyudaMovimiento] = useState(true);
 
   // Todos los roles comparten la misma vista de carta. Lo único que cambia es
   // qué acciones se ofrecen: el personal de cocina/barra puede dar de baja
@@ -369,6 +419,55 @@ export function CartaScreen({
 
   const cancelarEliminacion = () => setItemAEliminar(null);
 
+  const irAProducto = (indice: number) => {
+    const destino = Math.max(0, Math.min(indice, items.length - 1));
+    indiceProductoRef.current = destino;
+    listaRef.current?.scrollToIndex({ index: destino, animated: true });
+  };
+
+  // Mantiene el índice sincronizado cuando el usuario desliza con el dedo.
+  const sincronizarProductoVisible = (
+    event: NativeSyntheticEvent<NativeScrollEvent>
+  ) => {
+    if (altoPagina <= 0) return;
+    const indice = Math.round(event.nativeEvent.contentOffset.y / altoPagina);
+    indiceProductoRef.current = Math.max(0, Math.min(indice, items.length - 1));
+  };
+
+  // Aplica el gesto horizontal al carrusel del producto que se está viendo.
+  const moverFoto = (delta: number) => {
+    const id = items[indiceProductoRef.current]?.id;
+    if (!id) return;
+    carruselRefs.current[id]?.cambiarFoto(delta);
+  };
+
+  useNavegacionPorMovimiento({
+    // El sensor se pausa mientras carga, con un modal abierto o sin productos.
+    activo:
+      !cargando && !itemAEliminar && !modalFeedback.visible && items.length > 0,
+    // Izquierda / derecha: fotos del producto visible.
+    onIzquierda: () => moverFoto(1),
+    onDerecha: () => moverFoto(-1),
+    // Adelante / atrás: producto anterior y siguiente.
+    onAdelante: () => irAProducto(indiceProductoRef.current + 1),
+    onAtras: () => irAProducto(indiceProductoRef.current - 1),
+    // Giros alternados repetidos: primer producto y su primera foto.
+    onReiniciar: () => {
+      indiceProductoRef.current = 0;
+      irAProducto(0);
+      const id = items[0]?.id;
+      if (id) carruselRefs.current[id]?.irAPrimera();
+    },
+    // Al primer gesto la ayuda ya cumplió su función.
+    onMovimiento: () => setMostrarAyudaMovimiento(false),
+  });
+
+  // Al cambiar de sección la lista vuelve al primer producto.
+  useEffect(() => {
+    indiceProductoRef.current = 0;
+    listaRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, [categoriaActiva]);
+
   return (
     <View className="flex-1 bg-amber-50/40">
       {/* 1. Header con Mesa y Consulta al Mozo */}
@@ -408,6 +507,24 @@ export function CartaScreen({
             })}
           </View>
         )}
+
+        {/* Ayuda de gestos: se descarta a mano o al detectar el primer movimiento */}
+        {mostrarAyudaMovimiento && !cargando && items.length > 0 && (
+          <View className="mt-3 flex-row items-center rounded-full border border-mostaza/40 bg-mostaza/10 px-3 py-1.5">
+            <Text className="text-[11px] font-semibold text-mostaza">
+              Incliná el teléfono: ← → fotos · ↑ ↓ productos
+            </Text>
+            <TouchableOpacity
+              onPress={() => setMostrarAyudaMovimiento(false)}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Ocultar ayuda de movimiento"
+              className="ml-2 h-5 w-5 items-center justify-center rounded-full bg-mostaza/20"
+            >
+              <Text className="text-[11px] font-bold text-mostaza">×</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {/* 3. Contenido Principal — una tarjeta por página, scroll vertical tipo Reels */}
@@ -426,12 +543,21 @@ export function CartaScreen({
         ) : (
           /* CARTA VERTICAL PAGINADA: cada producto ocupa una página completa */
           <FlatList
+            ref={listaRef}
             data={items}
             keyExtractor={(item) => item.id}
             showsVerticalScrollIndicator={false}
             decelerationRate="fast"
             disableIntervalMomentum
             snapToInterval={altoPagina}
+            onMomentumScrollEnd={sincronizarProductoVisible}
+            onScrollToIndexFailed={(info) => {
+              // Respaldo: si la página todavía no está medida, salta directo.
+              listaRef.current?.scrollToOffset({
+                offset: info.index * altoPagina,
+                animated: false,
+              });
+            }}
             getItemLayout={(_, index) => ({
               length: altoPagina,
               offset: altoPagina * index,
@@ -447,7 +573,13 @@ export function CartaScreen({
               >
                 <View className="mb-3 flex-1 overflow-hidden rounded-3xl border-2 border-mostaza/40 bg-white shadow-xl">
                   <View className="flex-1 p-4">
-                    <CarruselFotos fotos={item.fotos} iconoRespaldo={iconoCategoria} />
+                    <CarruselFotos
+                      ref={(r) => {
+                        carruselRefs.current[item.id] = r;
+                      }}
+                      fotos={item.fotos}
+                      iconoRespaldo={iconoCategoria}
+                    />
 
                     {/* Ficha descriptiva */}
                     <View className="mt-3.5">

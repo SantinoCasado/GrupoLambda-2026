@@ -43,7 +43,13 @@
         }
       ],
       "expo-asset",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-sensors",
+        {
+          "motionPermission": "Permitir que Jardín Imperial use el movimiento del dispositivo para navegar la carta."
+        }
+      ]
     ],
     "extra": {
       "eas": {
