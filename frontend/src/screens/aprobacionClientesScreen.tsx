@@ -30,7 +30,7 @@ export default function AprobacionClientesScreen() {
   const [fotoCargando, setFotoCargando] = useState(true);
 
   // Carrusel horizontal de solicitudes (2 por página)
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const [pagina, setPagina] = useState(0);
   const screenWidth = Dimensions.get("window").width;
   const CLIENTES_POR_PAGINA = 2;

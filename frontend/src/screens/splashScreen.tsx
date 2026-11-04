@@ -75,11 +75,7 @@ export function SplashScreen({
 
   return (
     <View style={styles.container}>
-      <StatusBar
-        barStyle="dark-content"
-        translucent
-        backgroundColor="transparent"
-      />
+      <StatusBar barStyle="dark-content" />
 
       {/* Fondo + adornos, dentro del layer animable para que desvanecen juntos */}
       <Animated.View

@@ -48,7 +48,7 @@ export function EncuestaScreen({ pedidoId, userId, userRole = "cliente_registrad
   const [enviando, setEnviando] = useState(false);
 
   // Carrusel horizontal del formulario (0: calificaciones, 1: comentario y envío)
-  const carouselRef = useRef<ScrollView>(null);
+  const carouselRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const [paso, setPaso] = useState(0);
   // Se bloquea el deslizamiento del carrusel mientras se arrastra el slider
   // de comodidad, para que el gesto no cambie de página.

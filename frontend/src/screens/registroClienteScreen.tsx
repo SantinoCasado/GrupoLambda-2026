@@ -69,7 +69,7 @@ export default function RegistroClienteScreen({
   });
 
   const cameraRef = useRef<CameraView | null>(null);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const paso1Validado = useRef(false);
   const [currentStep, setCurrentStep] = useState(0);
 

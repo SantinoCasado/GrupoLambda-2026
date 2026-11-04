@@ -55,13 +55,13 @@ export default function AltaMesaScreen() {
   const cameraRef = useRef<CameraView | null>(null);
 
   // Carrusel de secciones
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const paso1Validado = useRef(false);
   const [currentStep, setCurrentStep] = useState(0);
   const screenWidth = Dimensions.get("window").width;
 
   // Carrusel del listado de mesas (2 por página)
-  const listaScrollRef = useRef<ScrollView>(null);
+  const listaScrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const [listaPage, setListaPage] = useState(0);
   const MESAS_POR_PAGINA = 2;
   const agrupadas: Mesa[][] = [];

@@ -27,7 +27,7 @@ export function ComandasScreen({ usuarioActual }: Props) {
   const [procesandoId, setProcesandoId] = useState<string | null>(null);
 
   // Carrusel horizontal de comandas (1 por página)
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const [pagina, setPagina] = useState(0);
   const screenWidth = Dimensions.get("window").width;
 

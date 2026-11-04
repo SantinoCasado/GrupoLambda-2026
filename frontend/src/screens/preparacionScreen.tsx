@@ -49,7 +49,7 @@ export default function PreparacionScreen({ rol }: Props) {
     titulo: string;
     mensaje: string;
   }>({ visible: false, tipo: "exito", titulo: "", mensaje: "" });
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
 
   const avisadosRef = useRef<Set<string>>(new Set());
 
