@@ -1,8 +1,106 @@
 import nodemailer from 'nodemailer';
 import dotenv from 'dotenv';
-import path from 'path';
 
 dotenv.config();
+
+export interface AdjuntoCorreo {
+    buffer: Buffer;
+    fileName: string;
+}
+
+/**
+ * Envía un correo HTML usando Brevo si hay API key configurada.
+ * Si Brevo no está configurado (o falla), cae al SMTP de Gmail con
+ * GMAIL_USER + GMAIL_APP_PASSWORD, que ya usa el proyecto.
+ */
+const enviarCorreo = async (
+    emailDestino: string,
+    nombre: string,
+    asunto: string,
+    contenidoHtml: string,
+    adjuntos: AdjuntoCorreo[] = []
+): Promise<boolean> => {
+    const remitente = process.env.GMAIL_USER || 'no-reply@jardinimperial.com';
+    let errorBrevo: string | null = null;
+
+    if (process.env.BREVO_API_KEY) {
+        try {
+            const payload: Record<string, any> = {
+                sender: { name: 'Jardín Imperial', email: remitente },
+                to: [{ email: emailDestino, name: nombre }],
+                subject: asunto,
+                htmlContent: contenidoHtml,
+            };
+
+            if (adjuntos.length > 0) {
+                payload.attachment = adjuntos.map((adjunto) => ({
+                    content: adjunto.buffer.toString('base64'),
+                    name: adjunto.fileName,
+                }));
+            }
+
+            const respuesta = await fetch('https://api.brevo.com/v3/smtp/email', {
+                method: 'POST',
+                headers: {
+                    accept: 'application/json',
+                    'api-key': process.env.BREVO_API_KEY,
+                    'content-type': 'application/json',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            if (!respuesta.ok) {
+                const errorBody = await respuesta.json().catch(() => ({}));
+                throw new Error(`Fallo Brevo: ${JSON.stringify(errorBody)}`);
+            }
+
+            console.log(`✉️ Correo "${asunto}" enviado por Brevo a: ${emailDestino}`);
+            return true;
+        } catch (error: any) {
+            errorBrevo = error?.message || 'error desconocido';
+            console.error('⚠️ Brevo falló, se intenta Gmail:', errorBrevo);
+        }
+    }
+
+    if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
+        console.error(
+            '❌ No hay forma de enviar correos: falta BREVO_API_KEY y también GMAIL_USER/GMAIL_APP_PASSWORD.'
+        );
+        return false;
+    }
+
+    try {
+        const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+                user: process.env.GMAIL_USER,
+                pass: process.env.GMAIL_APP_PASSWORD,
+            },
+        });
+
+        await transporter.sendMail({
+            from: `"Jardín Imperial" <${process.env.GMAIL_USER}>`,
+            to: emailDestino,
+            subject: asunto,
+            html: contenidoHtml,
+            attachments: adjuntos.map((adjunto) => ({
+                filename: adjunto.fileName,
+                content: adjunto.buffer,
+                contentType: 'application/pdf',
+            })),
+        });
+
+        console.log(`✉️ Correo "${asunto}" enviado por Gmail a: ${emailDestino}`);
+        return true;
+    } catch (error: any) {
+        console.error(
+            '❌ Error enviando correo por Gmail:',
+            error?.message || error,
+            errorBrevo ? `(Brevo: ${errorBrevo})` : ''
+        );
+        return false;
+    }
+};
 
 export const enviarNotificacionAprobacion = async (email: string, nombre: string, status: 'approved' | 'rejected') => {
     const esAprobado = status === 'approved';
@@ -88,49 +186,21 @@ export const enviarNotificacionAprobacion = async (email: string, nombre: string
         </html>
     `;
 
-    try {
-        const respuesta = await fetch('https://api.brevo.com/v3/smtp/email', {
-            method: 'POST',
-            headers: {
-                'accept': 'application/json',
-                'api-key': process.env.BREVO_API_KEY as string,
-                'content-type': 'application/json'
-            },
-            body: JSON.stringify({
-                sender: { 
-                    name: "Jardín Imperial", 
-                    email: process.env.GMAIL_USER as string
-                },
-                to: [{ email: email, name: nombre }],
-                subject: asunto,
-                htmlContent: contenidoHtml
-            })
-        });
-
-        if (!respuesta.ok) {
-            const errorBody = await respuesta.json();
-            throw new Error(`Fallo Brevo: ${JSON.stringify(errorBody)}`);
-        }
-
-        console.log(`✉️ Correo enviado por HTTP a: ${email}`);
-        return true; 
-    } catch (error: any) {
-        console.error('❌ Error enviando mail:', error.message);
-        return false; 
-    }
+    return enviarCorreo(email, nombre, asunto, contenidoHtml);
 };
 
 export const enviarFacturaPorEmail = async (
     emailDestino: string, 
     nombreCliente: string, 
-    urlFactura: string
+    urlFactura: string,
+    adjunto?: { buffer: Buffer; fileName: string }
 ) => {
     const asunto = '🧾 Tu factura de Jardín Imperial';
     const contenidoHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
             <h2 style="color: #780116; text-align: center;">¡Gracias por tu visita, ${nombreCliente}!</h2>
             <p style="color: #333; font-size: 16px;">Esperamos que hayas disfrutado tu comida en Jardín Imperial.</p>
-            <p style="color: #333; font-size: 16px;">Adjuntamos el enlace oficial para que puedas descargar el comprobante de tu pago:</p>
+            <p style="color: #333; font-size: 16px;">Adjuntamos tu comprobante en formato PDF. También podés descargarlo desde el siguiente enlace:</p>
             
             <div style="text-align: center; margin: 30px 0;">
                 <a href="${urlFactura}" style="background-color: #D8572A; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; font-weight: bold; font-size: 16px;">
@@ -146,36 +216,13 @@ export const enviarFacturaPorEmail = async (
         </div>
     `;
 
-    try {
-        const respuesta = await fetch('https://api.brevo.com/v3/smtp/email', {
-            method: 'POST',
-            headers: {
-                'accept': 'application/json',
-                'api-key': process.env.BREVO_API_KEY as string,
-                'content-type': 'application/json'
-            },
-            body: JSON.stringify({
-                sender: { 
-                    name: "Jardín Imperial", 
-                    email: process.env.GMAIL_USER as string
-                },
-                to: [{ email: emailDestino, name: nombreCliente }],
-                subject: asunto,
-                htmlContent: contenidoHtml
-            })
-        });
-
-        if (!respuesta.ok) {
-            const errorBody = await respuesta.json();
-            throw new Error(`Fallo Brevo: ${JSON.stringify(errorBody)}`);
-        }
-
-        console.log(`✉️ Factura enviada por HTTP (Brevo) a: ${emailDestino}`);
-        return true;
-    } catch (error: any) {
-        console.error('❌ Error enviando factura por mail:', error.message);
-        return false;
-    }
+    return enviarCorreo(
+        emailDestino,
+        nombreCliente,
+        asunto,
+        contenidoHtml,
+        adjunto ? [adjunto] : []
+    );
 };
 
 // ==========================================================================
@@ -276,43 +323,12 @@ const plantillaInstitucional = (titulo: string, tipo: 'aprobado' | 'rechazado', 
         </html>
     `;
 
-const enviarCorreoBrevo = async (
+const enviarCorreoInstitucional = (
     emailDestino: string,
     nombre: string,
     asunto: string,
     contenidoHtml: string
-): Promise<boolean> => {
-    try {
-        const respuesta = await fetch('https://api.brevo.com/v3/smtp/email', {
-            method: 'POST',
-            headers: {
-                'accept': 'application/json',
-                'api-key': process.env.BREVO_API_KEY as string,
-                'content-type': 'application/json'
-            },
-            body: JSON.stringify({
-                sender: {
-                    name: "Jardín Imperial",
-                    email: process.env.GMAIL_USER as string
-                },
-                to: [{ email: emailDestino, name: nombre }],
-                subject: asunto,
-                htmlContent: contenidoHtml
-            })
-        });
-
-        if (!respuesta.ok) {
-            const errorBody = await respuesta.json();
-            throw new Error(`Fallo Brevo: ${JSON.stringify(errorBody)}`);
-        }
-
-        console.log(`✉️ Correo "${asunto}" enviado a: ${emailDestino}`);
-        return true;
-    } catch (error: any) {
-        console.error(`❌ Error enviando el correo "${asunto}":`, error.message);
-        return false;
-    }
-};
+): Promise<boolean> => enviarCorreo(emailDestino, nombre, asunto, contenidoHtml);
 
 export const enviarReservaConfirmada = async (
     emailDestino: string,
@@ -332,7 +348,7 @@ export const enviarReservaConfirmada = async (
         <p>Recordá que la mesa se mantiene reservada hasta 45 minutos después del horario indicado. Pasado ese tiempo, la reserva se cancela automáticamente.</p>
     `;
 
-    return enviarCorreoBrevo(
+    return enviarCorreoInstitucional(
         emailDestino,
         nombre,
         '¡Tu reserva fue confirmada! 🏮',
@@ -355,7 +371,7 @@ export const enviarReservaRechazada = async (
         <p>Podés solicitar una nueva reserva para otro día u horario desde la aplicación, o acercarte a nuestro local.</p>
     `;
 
-    return enviarCorreoBrevo(
+    return enviarCorreoInstitucional(
         emailDestino,
         nombre,
         'Actualización sobre tu reserva',

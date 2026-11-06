@@ -2,6 +2,7 @@ import { supabase } from '../../config/supabase';
 import { enviarPushNotification } from '../../services/pushNotifications.service';
 import { enviarFacturaPorEmail } from '../../services/email.service';
 import { generarYSubirFactura } from '../../services/factura.service';
+import type { ClienteFactura, FacturaGenerada, ItemFactura } from '../../services/factura.service';
 
 interface ProductoItem {
   id_producto: string;
@@ -698,7 +699,7 @@ export const cobrarPedidoService = async (pedidoId: string, porcentajePropina: n
         throw new Error('Debe seleccionar un porcentaje de propina válido.');
     }
 
-    // CORRECCIÓN: Select con relaciones explícitas (!client_id) y trayendo los ítems con el nombre del producto
+    // Select con relaciones explícitas (!client_id) y los ítems con el nombre del producto.
     const { data: pedido, error: errorPedido } = await supabase
         .from('orders')
         .select(`
@@ -721,83 +722,152 @@ export const cobrarPedidoService = async (pedidoId: string, porcentajePropina: n
     const descuento = Number(pedido.discount_amount || 0);
     const montoPropina = Number(pedido.tip_amount || 0);
     const subtotal = totalFinal - montoPropina + descuento;
+    const porcentajeDescuento = subtotal > 0 ? (descuento / subtotal) * 100 : 0;
 
-    // Actualiza el pedido y cobramos la mesa
+    const cliente = (pedido.client || {}) as ClienteFactura;
+    const items = (pedido.items || []) as ItemFactura[];
+
+    // 1) Generar y subir el comprobante ANTES de tocar el pedido.
+    //    Si el PDF falla, el cobro se aborta y la mesa sigue ocupada.
+    let factura: FacturaGenerada;
+    try {
+        factura = await generarYSubirFactura(
+            pedidoId,
+            cliente,
+            {
+                precioBase: subtotal,
+                descuento,
+                propina: montoPropina,
+                precioFinal: totalFinal,
+                porcentajePropina: Number(porcentajePropina) || 0,
+                porcentajeDescuento,
+            },
+            items
+        );
+    } catch (pdfError: any) {
+        console.error('❌ [cobrarPedido] No se pudo generar el comprobante:', pdfError?.message);
+        throw new Error(
+            `No se pudo generar el comprobante: ${pdfError?.message || 'error desconocido'}`
+        );
+    }
+
+    // 2) Registrar el pago y la URL del comprobante.
     const { error: errorUpdate } = await supabase
         .from('orders')
         .update({
             status: 'paid',
-            final_total: totalFinal
+            final_total: totalFinal,
+            invoice_pdf_url: factura.url,
         })
         .eq('id', pedidoId);
 
-    if (errorUpdate) throw new Error(`Error al actualizar el pago: ${errorUpdate.message}`);
+    if (errorUpdate) {
+        // Si no se pudo registrar el pago, no dejamos un PDF huérfano en Storage.
+        await supabase.storage.from('invoices').remove([factura.fileName]);
+        throw new Error(`Error al actualizar el pago: ${errorUpdate.message}`);
+    }
 
-    // Libera la mesa automáticamente
+    // 3) Liberar la mesa.
+    let mesa_liberada = false;
     if (pedido.table_id) {
-        await supabase
+        const { error: errorMesa } = await supabase
             .from('restaurant_tables')
-            .update({ availability: 'free' }) 
+            .update({ availability: 'free' })
             .eq('id', pedido.table_id);
+
+        if (errorMesa) {
+            console.error('❌ [cobrarPedido] No se pudo liberar la mesa:', errorMesa.message);
+        } else {
+            mesa_liberada = true;
+        }
     }
 
-    // Notifica a Dueños y Supervisores del cobro
-    const { data: administradores } = await supabase
-        .from('users')
-        .select('push_token')
-        .in('role', ['owner', 'supervisor'])
-        .not('push_token', 'is', null);
-
-    if (administradores && administradores.length > 0) {
-        const tokensAdmin = administradores.map((admin: any) => admin.push_token);
-        
-        // Dispara todas las notificaciones en paralelo, pasándole un string a la vez
-        await Promise.all(
-            tokensAdmin.map(token => 
-                enviarPushNotification(
-                    token, 
-                    '💳 Pago Confirmado y Mesa Libre',
-                    `La mesa ${pedido.restaurant_tables?.table_number || 'sin asignar'} pagó $${totalFinal.toFixed(2)}.`
-                )
-            )
-        );
-    }
-
-    // Generamos el PDF sin bloquear el flujo principal
-    const cliente = pedido.client;
-    
-    // Lo envouelvo en un try/catch para que un fallo del PDF no tire atrás el cobro
+    // 4) Notificar a Dueños y Supervisores del cobro.
+    const notificacionesAdmin = { enviadas: 0, total: 0 };
     try {
-        const invoiceUrl = await generarYSubirFactura(pedidoId, cliente, {
-            precioBase: subtotal,
-            descuento: descuento,
-            propina: montoPropina,
-            precioFinal: totalFinal,
-            porcentajePropina: porcentajePropina
-        }, pedido.items || []); // Pasa los ítems
+        const { data: administradores, error: errorAdmins } = await supabase
+            .from('users')
+            .select('push_token')
+            .in('role', ['owner', 'supervisor'])
+            .not('push_token', 'is', null);
 
-        // Guardamos la URL del PDF generado
-        await supabase.from('orders').update({ invoice_pdf_url: invoiceUrl }).eq('id', pedidoId);
+        if (errorAdmins) throw errorAdmins;
 
-        if (cliente.role === 'registered_client') {
-            await enviarFacturaPorEmail(cliente.email, cliente.first_name, invoiceUrl);
-        } else if (cliente.role === 'anonymous_client' || cliente.role === 'client_anonymous') {
+        const tokensAdmin = (administradores || [])
+            .map((admin: any) => admin.push_token)
+            .filter((token: any): token is string => typeof token === 'string' && token.length > 0);
+
+        notificacionesAdmin.total = tokensAdmin.length;
+
+        if (tokensAdmin.length > 0) {
+            const resultados = await Promise.all(
+                tokensAdmin.map((token) =>
+                    enviarPushNotification(
+                        token,
+                        '💳 Pago Confirmado y Mesa Libre',
+                        `La mesa ${pedido.restaurant_tables?.table_number || 'sin asignar'} pagó $${totalFinal.toFixed(2)}.`
+                    )
+                )
+            );
+
+            notificacionesAdmin.enviadas = resultados.filter(Boolean).length;
+        }
+
+        console.log(
+            `📲 [cobrarPedido] Push a dueños/supervisores: ${notificacionesAdmin.enviadas}/${notificacionesAdmin.total}`
+        );
+    } catch (pushError: any) {
+        console.error('⚠️ [cobrarPedido] Error notificando a dueños/supervisores:', pushError?.message);
+    }
+
+    // 5) Entregar el comprobante al cliente.
+    let email_enviado = false;
+    let push_enviado = false;
+    const rolCliente = String(cliente.role || '');
+
+    try {
+        if (rolCliente === 'registered_client') {
+            if (cliente.email) {
+                email_enviado = await enviarFacturaPorEmail(
+                    cliente.email,
+                    cliente.first_name || 'Cliente',
+                    factura.url,
+                    { buffer: factura.buffer, fileName: factura.fileName }
+                );
+            } else {
+                console.warn('⚠️ [cobrarPedido] Cliente registrado sin email; no se envía el comprobante.');
+            }
+        } else if (rolCliente === 'anonymous_client' || rolCliente === 'client_anonymous') {
             if (cliente.push_token) {
-                await enviarPushNotification(
+                push_enviado = await enviarPushNotification(
                     cliente.push_token,
                     '🧾 ¡Tu factura está lista!',
                     'Gracias por visitarnos. Tocá acá para descargar tu comprobante.',
-                    { tipo: 'factura', urlFactura: invoiceUrl } // App.tsx navega según `tipo`
+                    {
+                        tipo: 'factura',
+                        urlFactura: factura.url,
+                        fileName: factura.fileName,
+                    }
                 );
+            } else {
+                console.warn('⚠️ [cobrarPedido] Cliente anónimo sin push_token; no se envía el comprobante.');
             }
         }
-    } catch (pdfError: any) {
-        console.error('❌ Error generando PDF, pero el cobro se completó:', pdfError.message);
+    } catch (deliveryError: any) {
+        console.error(
+            '⚠️ [cobrarPedido] Error entregando el comprobante:',
+            deliveryError?.message
+        );
     }
 
-    return { 
-        success: true, 
-        total_pagado: totalFinal 
+    return {
+        success: true,
+        total_pagado: totalFinal,
+        invoice_url: factura.url,
+        mesa_liberada,
+        notificaciones_admin: notificacionesAdmin,
+        email_enviado,
+        push_enviado,
     };
 };
 

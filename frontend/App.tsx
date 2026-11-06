@@ -1,7 +1,9 @@
 import "./global.css";
 import React, { useState, useEffect, useRef } from "react";
 import { registrarPushToken } from "./src/services/pushNotificationClientService";
-import { View, Text, Image, TouchableOpacity, Vibration, Linking } from "react-native";
+import { View, Text, Image, TouchableOpacity, Vibration } from "react-native";
+import { File, Paths } from "expo-file-system";
+import * as Sharing from "expo-sharing";
 import { SafeAreaView} from "react-native-safe-area-context";
 import type {NotificationResponse } from "expo-notifications";
 import { UsuarioSeed } from "./src/data/usuariosPrecargados";
@@ -311,6 +313,35 @@ function AppInterna() {
     return abrirChatDeMesa(tableId, tableNumber, usuario);
   };
 
+  // Cliente anónimo: descarga el PDF en el dispositivo y abre la hoja para guardarlo.
+  const descargarFactura = async (urlFactura: string) => {
+    try {
+      const archivo = await File.downloadFileAsync(
+        urlFactura,
+        new File(Paths.document, `recibo-${Date.now()}.pdf`)
+      );
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(archivo.uri, {
+          mimeType: "application/pdf",
+          dialogTitle: "Guardar recibo",
+          UTI: "com.adobe.pdf",
+        });
+      } else {
+        await archivo.preview({ title: "Recibo" });
+      }
+    } catch (error: any) {
+      console.warn("⚠️ [Factura] No se pudo descargar:", error?.message);
+      Vibration.vibrate([0, 100, 50, 100, 50, 200]);
+      setAvisoNotif({
+        visible: true,
+        tipo: "error",
+        titulo: "Recibo no disponible",
+        mensaje: "No se pudo descargar el recibo. Intentá nuevamente en unos minutos.",
+      });
+    }
+  };
+
   const navegarConDatos = (datos: any) => {
     if (!datos) return;
 
@@ -435,20 +466,12 @@ function AppInterna() {
         return;
       }
 
-      // Factura del cliente anonimo: abre el PDF para descargarlo
+      // Factura del cliente anónimo: descarga el PDF y ofrece guardarlo.
       case "factura": {
         const urlFactura = typeof datos.urlFactura === "string" ? datos.urlFactura : null;
         if (!urlFactura) return;
 
-        Linking.openURL(urlFactura).catch(() => {
-          Vibration.vibrate([0, 100, 50, 100, 50, 200]);
-          setAvisoNotif({
-            visible: true,
-            tipo: "error",
-            titulo: "Factura no disponible",
-            mensaje: "No se pudo abrir la factura. Intentá nuevamente en unos minutos.",
-          });
-        });
+        void descargarFactura(urlFactura);
         return;
       }
     }
@@ -551,7 +574,7 @@ function AppInterna() {
           for (const mesaId of mesaIds) {
             await supabase
               .from("restaurant_tables")
-              .update({ availability: "free", status: "available", current_client_id: null })
+              .update({ availability: "free" })
               .eq("id", mesaId);
           }
 

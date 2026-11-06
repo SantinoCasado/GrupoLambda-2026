@@ -3,6 +3,7 @@ import { getSupabaseClient, isSupabaseConfigured, supabase } from "../config/sup
 import { API_URL } from "../config/api";
 import { makeRedirectUri } from "expo-auth-session";
 import * as WebBrowser from "expo-web-browser";
+import { isRunningInExpoGo } from "expo";
 
 // Requerido por expo-web-browser para gestionar sesiones pendientes en Android
 WebBrowser.maybeCompleteAuthSession();
@@ -124,7 +125,11 @@ export async function loginConGoogle(): Promise<UsuarioSeed | null> {
   const client = getSupabaseClient() || supabase;
 
   // 1. Redirect URI: nativo → jardinimperial://google-auth | web → http://localhost:8081/google-auth
-  const redirectTo = makeRedirectUri({ scheme: "jardinimperial", path: "google-auth" });
+  //    En Expo Go el scheme propio no está registrado: hay que volver con `exp://`
+  //    (requiere habilitar `exp://**` en Supabase → Authentication → URL Configuration).
+  const redirectTo = isRunningInExpoGo()
+    ? makeRedirectUri({ path: "google-auth" })
+    : makeRedirectUri({ scheme: "jardinimperial", path: "google-auth" });
 
   // 2. Pedir la URL de OAuth a Supabase (con PKCE, Supabase agrega el code_challenge)
   const { data: authData, error: oauthError } = await client.auth.signInWithOAuth({

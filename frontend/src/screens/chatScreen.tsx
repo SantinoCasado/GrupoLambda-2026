@@ -11,7 +11,7 @@ import {
 import {
   KeyboardChatScrollView,
   KeyboardStickyView,
-} from "react-native-keyboard-controller";
+} from "../components/keyboardControllerCompat";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "../config/supabase";
 import {
@@ -21,7 +21,7 @@ import {
 } from "../services/chatService";
 
 import type { ScrollViewProps } from "react-native";
-import type { KeyboardChatScrollViewProps } from "react-native-keyboard-controller";
+import type { KeyboardChatScrollViewProps } from "../components/keyboardControllerCompat";
 
 /**
  * Adapta `KeyboardChatScrollView` (un ScrollView) para poder usarlo como el

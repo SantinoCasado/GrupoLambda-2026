@@ -1,6 +1,6 @@
 import { registerRootComponent } from 'expo';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { KeyboardProvider } from 'react-native-keyboard-controller';
+import { KeyboardProvider } from './src/components/keyboardControllerCompat';
 import { useFonts } from 'expo-font';
 
 import App from './App';

@@ -101,7 +101,8 @@ export function CuentaScreen({
         visible: true,
         tipo: "exito",
         titulo: "¡Pago Confirmado!",
-        mensaje: "El mozo ha confirmado tu pago. ¡Gracias por visitarnos!",
+        mensaje:
+          "El mozo ha confirmado tu pago. Tu comprobante en PDF ya fue generado y enviado. ¡Gracias por visitarnos!",
       });
       setTimeout(() => {
         onPagoCompletado();

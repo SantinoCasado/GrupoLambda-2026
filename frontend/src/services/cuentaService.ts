@@ -463,7 +463,7 @@ export async function confirmarPagoPorMozo(
   if (mesaId) {
     await supabase
       .from("restaurant_tables")
-      .update({ availability: "free", status: "available", current_client_id: null })
+      .update({ availability: "free" })
       .eq("id", mesaId);
   }
 }
