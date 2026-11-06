@@ -26,13 +26,26 @@ export const crearPedido = async (req: Request, res: Response) => {
     });
   }
 
-  const { id_cliente, numero_mesa, productos, order_type } = validacion.data;
+  // Extrae los campos nuevos de delivery
+  const { 
+    id_cliente, 
+    numero_mesa, 
+    productos, 
+    order_type,
+    delivery_address,
+    delivery_latitude,
+    delivery_longitude
+  } = validacion.data;
 
   try {
-    const resultado = await guardarPedido(id_cliente, numero_mesa, productos, order_type);
+    // Le paso todo al service (agrupamos los de delivery en un objeto extra)
+    const datosDelivery = { delivery_address, delivery_latitude, delivery_longitude };
+    const resultado = await guardarPedido(id_cliente, numero_mesa, productos, order_type, datosDelivery);
 
     return res.status(201).json({
-      mensaje: `Pedido para la mesa ${numero_mesa} recibido. Esperando aprobación del mozo.`,
+      mensaje: order_type === 'delivery' 
+        ? 'Pedido a domicilio recibido. Esperando aprobación.' 
+        : `Pedido para la mesa ${numero_mesa} recibido. Esperando aprobación del mozo.`,
       status: 'OK',
       data: resultado,
     });
@@ -66,10 +79,11 @@ export const verEstadoPedido = async (req: Request, res: Response) => {
 export const confirmarPedido = async (req: Request, res: Response) => {
   const { id } = req.params;
 
+  // Valida el body recibido con Zod
   const validacion = confirmarPedidoSchema.safeParse(req.body);
   if (!validacion.success) {
     return res.status(400).json({
-      error: 'Datos inválidos para confirmar el pedido.',
+      error: 'Datos inválidos para confirmar o rechazar el pedido.',
       detalles: validacion.error.format(),
     });
   }
@@ -77,15 +91,27 @@ export const confirmarPedido = async (req: Request, res: Response) => {
   const { waiter_id, estado, rejection_reason } = validacion.data;
 
   try {
-    const resultado = await confirmarPedidoPorMozo(id as string, waiter_id, estado, rejection_reason);
+    // Ejecuta la lógica completa en el service (push + correo por Brevo + cálculo de tiempo)
+    const resultado = await confirmarPedidoPorMozo(
+      id as string, 
+      waiter_id, 
+      estado, 
+      rejection_reason
+    );
+
+    const mensajeRespuesta = estado === 'cancelled'
+      ? `Pedido ${id} rechazado correctamente. Se notificó al cliente por mail y push.`
+      : `Pedido ${id} aprobado. Se envió tiempo estimado de preparación al cliente.`;
+
     return res.status(200).json({
-      mensaje: `Pedido ${id} actualizado con éxito a '${estado}'`,
+      mensaje: mensajeRespuesta,
       status: 'OK',
       data: resultado,
     });
   } catch (error: any) {
+    console.error('[ConfirmarPedido Controller Error]:', error.message);
     return res.status(400).json({
-      error: 'No se pudo confirmar el pedido.',
+      error: 'No se pudo procesar la actualización del pedido.',
       detalle: error.message,
     });
   }
