@@ -1,18 +1,19 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
+  Image,
 } from "react-native";
-import { StatusBar } from "expo-status-bar";
 import { supabase } from "../config/supabase";
 import {
   obtenerDetalleCuenta,
   confirmarPagoPorMozo,
   DetalleCuenta,
 } from "../services/cuentaService";
+import { ChineseFrame } from "../components/ChineseFrame";
 import { FeedbackModal } from "../components/FeedbackModal";
 
 interface TransaccionPendiente {
@@ -21,17 +22,32 @@ interface TransaccionPendiente {
   numeroMesa: string | number;
   total: number;
   propina: number;
+  createdAt: string | null;
 }
 
-interface Props {
-  onVolver: () => void;
-}
+const formatearMonto = (monto: number) =>
+  monto.toLocaleString("es-AR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
-export function TransaccionesScreen({ onVolver }: Props) {
-  console.log("⚡ TransaccionesScreen montado/renderizado");
+const formatearFecha = (iso: string | null) => {
+  if (!iso) return "";
+  const fecha = new Date(iso);
+  return `${fecha.toLocaleDateString([], {
+    day: "2-digit",
+    month: "2-digit",
+  })} ${fecha.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
+};
 
+export function TransaccionesScreen() {
   const [cargando, setCargando] = useState(true);
   const [lista, setLista] = useState<TransaccionPendiente[]>([]);
+  const [pagina, setPagina] = useState(0);
+  const [altoPagina, setAltoPagina] = useState(0);
   const [cuentaSeleccionada, setCuentaSeleccionada] = useState<{
     detalle: DetalleCuenta;
     mesaId: string;
@@ -45,23 +61,27 @@ export function TransaccionesScreen({ onVolver }: Props) {
     mensaje: string;
   }>({ visible: false, tipo: "informacion", titulo: "", mensaje: "" });
 
-  const cargarTransacciones = async () => {
+  const abrirAviso = (
+    titulo: string,
+    mensaje: string,
+    tipo: "exito" | "error" | "informacion" = "informacion"
+  ) => {
+    setFeedback({ visible: true, tipo, titulo, mensaje });
+  };
+
+  const cargarTransacciones = useCallback(async () => {
     try {
-      console.log("🔍 [Transacciones] Ejecutando cargarTransacciones...");
       setCargando(true);
+      // Al recargar, el carrusel vuelve a la primera página.
+      setPagina(0);
 
       const { data: pedidos, error } = await supabase
         .from("orders")
-        .select("id, table_id, total_amount, tip_amount, status")
+        .select("id, table_id, total_amount, tip_amount, status, created_at")
         .eq("status", "bill_requested")
         .order("created_at", { ascending: false });
 
-      if (error) {
-        console.error("❌ [Transacciones] Error en query:", error.message);
-        throw error;
-      }
-
-      console.log("📦 [Transacciones] Registros crudos devueltos:", pedidos?.length ?? 0);
+      if (error) throw error;
 
       const items: TransaccionPendiente[] = [];
 
@@ -86,53 +106,45 @@ export function TransaccionesScreen({ onVolver }: Props) {
           numeroMesa: numMesa,
           total: Number(p.total_amount || 0),
           propina: Number(p.tip_amount || 0),
+          createdAt: p.created_at ?? null,
         });
       }
 
-      console.log("✅ [Transacciones] Items procesados para la lista:", items);
       setLista(items);
     } catch (err: any) {
-      console.error("❌ [Transacciones] Excepción capturada:", err);
-      setFeedback({
-        visible: true,
-        tipo: "error",
-        titulo: "Error al cargar",
-        mensaje: err?.message || "No se pudieron obtener las cuentas pendientes.",
-      });
+      console.warn("Error cargando transacciones:", err?.message);
+      abrirAviso(
+        "Error al cargar",
+        err?.message || "No se pudieron obtener las cuentas pendientes.",
+        "error"
+      );
     } finally {
       setCargando(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    // 1. Carga inicial
     cargarTransacciones();
 
-    // 2. Crear canal con nombre único o limpiar el existente
     const canal = supabase
-      .channel(`mozo_transacciones_${Date.now()}`)
+      .channel("mozo_transacciones_channel")
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "orders",
-        },
-        (payload) => {
-          console.log("🔔 [Transacciones] Cambio detectado:", payload);
-          cargarTransacciones();
-        }
+        { event: "*", schema: "public", table: "orders" },
+        () => cargarTransacciones()
       )
-      .subscribe((status) => {
-        console.log("📡 [Transacciones] Estado suscripción:", status);
-      });
+      .subscribe();
 
-    // 3. Limpieza estricta al desmontar
     return () => {
-      console.log("🔴 [Transacciones] Desmontando canal realtime");
       supabase.removeChannel(canal);
     };
-  }, []);
+  }, [cargarTransacciones]);
+
+  useEffect(() => {
+    if (lista.length > 0 && pagina >= lista.length) {
+      setPagina(lista.length - 1);
+    }
+  }, [lista.length, pagina]);
 
   const verDetalle = async (item: TransaccionPendiente) => {
     try {
@@ -143,12 +155,11 @@ export function TransaccionesScreen({ onVolver }: Props) {
       const detalle = await obtenerDetalleCuenta(item.pedidoId, porcentajeAprox);
       setCuentaSeleccionada({ detalle, mesaId: item.mesaId });
     } catch (err: any) {
-      setFeedback({
-        visible: true,
-        tipo: "error",
-        titulo: "Error al abrir cuenta",
-        mensaje: err?.message || "No se pudo cargar el desglose.",
-      });
+      abrirAviso(
+        "Error al abrir cuenta",
+        err?.message || "No se pudo cargar el desglose.",
+        "error"
+      );
     } finally {
       setCargando(false);
     }
@@ -164,207 +175,307 @@ export function TransaccionesScreen({ onVolver }: Props) {
         cuentaSeleccionada.detalle.porcentajePropina // número entero (0, 5, 10, etc.)
       );
 
-      setFeedback({
-        visible: true,
-        tipo: "exito",
-        titulo: "Cobro Registrado",
-        mensaje: `La Mesa #${cuentaSeleccionada.detalle.numeroMesa} quedó liberada correctamente.`,
-      });
+      abrirAviso(
+        "Cobro Registrado",
+        `La Mesa #${cuentaSeleccionada.detalle.numeroMesa} quedó liberada correctamente.`,
+        "exito"
+      );
 
       setCuentaSeleccionada(null);
       await cargarTransacciones();
     } catch (err: any) {
-      setFeedback({
-        visible: true,
-        tipo: "error",
-        titulo: "Error al confirmar",
-        mensaje: err?.message || "No se pudo cerrar la cuenta.",
-      });
+      abrirAviso(
+        "Error al confirmar",
+        err?.message || "No se pudo cerrar la cuenta.",
+        "error"
+      );
     } finally {
       setConfirmando(false);
     }
   };
 
   return (
-    <View className="flex-1 bg-stone-100">
-      <StatusBar style="dark" />
+    <View className="flex-1">
+      {/* Cabecera */}
+      <View className="px-5 pt-4">
+        <Image
+          source={require("../../assets/images/logo-name.png")}
+          className="h-20 w-auto self-center mt-1"
+          resizeMode="contain"
+        />
+        <Image
+          source={require("../../assets/images/separator.png")}
+          className="my-2 h-5 w-full"
+          resizeMode="contain"
+        />
+        <ChineseFrame className="mt-2 bg-vino">
+          <View className="items-center rounded-xl bg-mostaza/15 px-4 py-4">
+            <Text
+              style={{ fontFamily: "LaOriental" }}
+              className="text-center text-2xl text-mostaza uppercase"
+            >
+              {cuentaSeleccionada
+                ? `Mesa #${cuentaSeleccionada.detalle.numeroMesa}`
+                : "Transacciones"}
+            </Text>
+            <Text className="mt-1 text-center text-xs font-semibold text-amber-100">
+              {cuentaSeleccionada
+                ? "Detalle de la cuenta a cobrar"
+                : "Cuentas pendientes de cobro"}
+            </Text>
+          </View>
+        </ChineseFrame>
 
-      {/* Header */}
-      <View className="bg-sky-700 px-6 pt-6 pb-5 shadow-md flex-row justify-between items-center">
-        <View>
-          <Text className="text-white text-xs font-bold uppercase tracking-wider">
-            Sector Mozo
-          </Text>
-          <Text className="text-white text-2xl font-black">
-            {cuentaSeleccionada ? `Mesa #${cuentaSeleccionada.detalle.numeroMesa}` : "Transacciones"}
-          </Text>
-        </View>
-
-        <TouchableOpacity
-          onPress={() => {
-            if (cuentaSeleccionada) {
-              setCuentaSeleccionada(null);
-            } else {
-              onVolver();
-            }
-          }}
-          className="bg-sky-900/60 px-3 py-1.5 rounded-xl border border-sky-400/30"
-        >
-          <Text className="text-white text-xs font-bold">
-            {cuentaSeleccionada ? "Lista" : "Volver"}
-          </Text>
-        </TouchableOpacity>
+        {cuentaSeleccionada && (
+          <View className="mt-2 flex-row justify-end">
+            <TouchableOpacity
+              onPress={() => setCuentaSeleccionada(null)}
+              className="rounded-xl border border-calabaza bg-caramelo/10 px-4 py-2"
+            >
+              <Text className="text-xs font-bold text-calabaza">Volver a la lista</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
-      {cargando ? (
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator size="large" color="#0369a1" />
-          <Text className="mt-2 text-xs font-bold text-stone-500">Cargando...</Text>
-        </View>
-      ) : cuentaSeleccionada ? (
-        /* Vista de Detalle idéntica a Mercado Pago */
-        <ScrollView
-          className="flex-1 px-4 pt-4"
-          contentContainerStyle={{ paddingBottom: 40 }}
-          showsVerticalScrollIndicator={false}
-        >
-          <View className="bg-white rounded-2xl p-5 shadow-sm border border-stone-200">
-            <Text className="text-xs font-bold uppercase text-stone-400 mb-3 tracking-wider">
-              Detalle del Consumo
+      <View
+        className="flex-1"
+        onLayout={(e) => setAltoPagina(Math.round(e.nativeEvent.layout.height))}
+      >
+        {cargando ? (
+          <View className="items-center justify-center py-20">
+            <ActivityIndicator size="large" color="#8B1A1A" />
+            <Text className="mt-3 text-xs font-bold text-vino">
+              Cargando cuentas pendientes...
             </Text>
+          </View>
+        ) : cuentaSeleccionada ? (
+          /* Detalle de la cuenta */
+          <ScrollView
+            className="flex-1 px-4 pt-2"
+            contentContainerStyle={{ paddingBottom: 40 }}
+            showsVerticalScrollIndicator={false}
+          >
+            <View className="rounded-2xl border-2 border-caramelo bg-[#FFFDF9] p-4">
+              <Text className="mb-2 text-xs font-bold uppercase tracking-wider text-stone-500">
+                Detalle del Consumo
+              </Text>
 
-            {cuentaSeleccionada.detalle.items.map((it) => (
-              <View
-                key={it.id}
-                className="flex-row justify-between items-center py-2.5 border-b border-stone-100"
-              >
-                <View className="flex-1 pr-2">
-                  <Text className="text-stone-800 text-sm font-semibold">{it.name}</Text>
-                  <Text className="text-stone-400 text-xs">
-                    {it.quantity} x ${it.unit_price.toFixed(2)}
+              <View className="border-b border-calabaza border-dashed pb-3">
+                {cuentaSeleccionada.detalle.items.map((it) => (
+                  <View key={it.id} className="mt-1.5 flex-row items-center">
+                    <View className="h-2.5 w-2.5 rounded-full bg-calabaza" />
+                    <Text
+                      style={{ fontFamily: "LaOriental" }}
+                      className="ml-3 text-2xl text-calabaza"
+                    >
+                      {it.quantity}x
+                    </Text>
+                    <View className="ml-3 min-w-0 flex-1">
+                      <Text
+                        className="text-lg text-stone-700"
+                        numberOfLines={2}
+                        ellipsizeMode="tail"
+                      >
+                        {it.name}
+                      </Text>
+                      <Text className="text-xs text-stone-400">
+                        ${formatearMonto(it.unit_price)} c/u
+                      </Text>
+                    </View>
+                    <Text className="ml-3 text-lg font-semibold text-vino">
+                      ${formatearMonto(it.subtotal)}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+
+              {/* Subtotal */}
+              <View className="flex-row justify-between pt-4 pb-2">
+                <Text className="text-sm text-stone-600">Subtotal</Text>
+                <Text className="text-sm font-semibold text-stone-800">
+                  ${formatearMonto(cuentaSeleccionada.detalle.subtotal)}
+                </Text>
+              </View>
+
+              {/* Descuento Juegos */}
+              {cuentaSeleccionada.detalle.porcentajeDescuento > 0 && (
+                <View className="flex-row justify-between py-1.5">
+                  <Text className="text-sm font-semibold text-emerald-700">
+                    Descuento Juegos ({cuentaSeleccionada.detalle.porcentajeDescuento}%)
+                  </Text>
+                  <Text className="text-sm font-bold text-emerald-700">
+                    -${formatearMonto(cuentaSeleccionada.detalle.montoDescuento)}
                   </Text>
                 </View>
-                <Text className="text-stone-800 font-bold text-sm">
-                  ${it.subtotal.toFixed(2)}
+              )}
+
+              {/* Propina */}
+              <View className="flex-row justify-between py-1.5">
+                <Text className="text-sm text-calabaza">
+                  Propina QR ({cuentaSeleccionada.detalle.porcentajePropina}%)
                 </Text>
+                <Text className="text-sm font-semibold text-calabaza">
+                  +${formatearMonto(cuentaSeleccionada.detalle.montoPropina)}
+                </Text>
+              </View>
+
+              <View className="my-3 border-t-2 border-dashed border-caramelo/60" />
+
+              {/* Total */}
+              <View className="flex-row items-center justify-between">
+                <View>
+                  <Text className="text-xs font-extrabold uppercase text-stone-500">
+                    Total Cobrado
+                  </Text>
+                  <Text className="text-[10px] text-stone-400">Listo para confirmar</Text>
+                </View>
+                <Text
+                  style={{ fontFamily: "LaOriental" }}
+                  className="text-3xl text-vino"
+                >
+                  ${formatearMonto(cuentaSeleccionada.detalle.totalFinal)}
+                </Text>
+              </View>
+            </View>
+
+            {/* Confirmar transacción */}
+            <TouchableOpacity
+              onPress={handleConfirmarCobro}
+              disabled={confirmando}
+              activeOpacity={0.85}
+              className={`mt-4 w-full items-center rounded-2xl bg-emerald-600 py-2.5 shadow-md active:bg-emerald-700 ${
+                confirmando ? "opacity-60" : ""
+              }`}
+            >
+              {confirmando ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <Text
+                  style={{ fontFamily: "LaOriental" }}
+                  className="text-center text-sm uppercase tracking-wide text-white"
+                >
+                  Confirmar Transacción
+                </Text>
+              )}
+            </TouchableOpacity>
+          </ScrollView>
+        ) : lista.length === 0 ? (
+          /* Sin cuentas pendientes */
+          <View className="mt-6 items-center justify-center bg-transparent p-8">
+            <Image
+              source={require("../../assets/images/yoga-y.png")}
+              className="mb-3 h-12 w-12"
+              resizeMode="contain"
+            />
+            <Text
+              style={{ fontFamily: "LaOriental" }}
+              className="text-center text-base uppercase text-vino"
+            >
+              No hay transacciones pendientes
+            </Text>
+            <Text className="mt-1 text-center text-xs text-stone-600">
+              Cuando una mesa solicite la cuenta, aparecerá aquí para su cobro.
+            </Text>
+            <TouchableOpacity
+              onPress={cargarTransacciones}
+              className="mt-3 rounded-xl border border-calabaza bg-caramelo/10 px-4 py-2"
+            >
+              <Text className="text-xs font-bold text-calabaza">Actualizar Lista</Text>
+            </TouchableOpacity>
+          </View>
+        ) : !altoPagina ? null : (
+          /* Cuentas en carrusel, una por página */
+          <ScrollView
+            pagingEnabled
+            directionalLockEnabled
+            showsVerticalScrollIndicator={false}
+            style={{ flex: 1 }}
+            onMomentumScrollEnd={(e) =>
+              setPagina(
+                Math.round(e.nativeEvent.contentOffset.y / (altoPagina || 1))
+              )
+            }
+          >
+            {lista.map((item) => (
+              <View
+                key={item.pedidoId}
+                style={{ height: altoPagina }}
+                className="px-4 py-2"
+              >
+                <View className="flex-1 rounded-2xl border-2 border-caramelo bg-[#FFFDF9] p-4">
+                  <View className="mb-2 flex-row items-center justify-between">
+                    <Text
+                      className="text-2xl text-vino"
+                      style={{ fontFamily: "LaOriental" }}
+                    >
+                      Mesa #{item.numeroMesa}
+                    </Text>
+                    <Text className="text-sm font-semibold text-stone-500">
+                      {formatearFecha(item.createdAt)}
+                    </Text>
+                  </View>
+
+                  <ScrollView
+                    className="mt-2 flex-1"
+                    nestedScrollEnabled
+                    showsVerticalScrollIndicator={false}
+                    contentContainerStyle={{ paddingBottom: 12 }}
+                  >
+                    <View className="border-b border-calabaza border-dashed pb-3">
+                      <View className="mt-1.5 flex-row items-center">
+                        <View className="h-2.5 w-2.5 rounded-full bg-calabaza" />
+                        <Text className="ml-3 flex-1 text-lg text-stone-700">
+                          Consumo
+                        </Text>
+                        <Text className="text-lg font-semibold text-stone-700">
+                          ${formatearMonto(Math.max(0, item.total - item.propina))}
+                        </Text>
+                      </View>
+                      <View className="mt-1.5 flex-row items-center">
+                        <View className="h-2.5 w-2.5 rounded-full bg-calabaza" />
+                        <Text className="ml-3 flex-1 text-lg text-stone-700">
+                          Propina QR
+                        </Text>
+                        <Text className="text-lg font-semibold text-calabaza">
+                          +${formatearMonto(item.propina)}
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View className="mt-4 flex-row items-center justify-between">
+                      <Text className="text-xs font-extrabold uppercase text-stone-500">
+                        Total a cobrar
+                      </Text>
+                      <Text
+                        style={{ fontFamily: "LaOriental" }}
+                        className="text-3xl text-vino"
+                      >
+                        ${formatearMonto(item.total)}
+                      </Text>
+                    </View>
+                  </ScrollView>
+
+                  <View className="mt-auto pt-3">
+                    <TouchableOpacity
+                      onPress={() => verDetalle(item)}
+                      activeOpacity={0.85}
+                      className="w-full rounded-2xl bg-emerald-600 py-2.5 active:bg-emerald-700"
+                    >
+                      <Text
+                        style={{ fontFamily: "LaOriental" }}
+                        className="text-center text-sm uppercase tracking-wide text-white"
+                      >
+                        Revisar Cuenta
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
               </View>
             ))}
-
-            {/* Subtotal */}
-            <View className="flex-row justify-between pt-4 pb-2">
-              <Text className="text-stone-600 text-sm">Subtotal</Text>
-              <Text className="text-stone-800 font-semibold text-sm">
-                ${cuentaSeleccionada.detalle.subtotal.toFixed(2)}
-              </Text>
-            </View>
-
-            {/* Descuento Juegos */}
-            {cuentaSeleccionada.detalle.porcentajeDescuento > 0 && (
-              <View className="flex-row justify-between py-1.5">
-                <Text className="text-emerald-600 text-sm font-semibold">
-                  Descuento Juegos ({cuentaSeleccionada.detalle.porcentajeDescuento}%)
-                </Text>
-                <Text className="text-emerald-600 font-bold text-sm">
-                  -${cuentaSeleccionada.detalle.montoDescuento.toFixed(2)}
-                </Text>
-              </View>
-            )}
-
-            {/* Propina */}
-            <View className="flex-row justify-between py-1.5">
-              <Text className="text-amber-700 text-sm">
-                Propina QR ({cuentaSeleccionada.detalle.porcentajePropina}%)
-              </Text>
-              <Text className="text-amber-700 font-semibold text-sm">
-                +${cuentaSeleccionada.detalle.montoPropina.toFixed(2)}
-              </Text>
-            </View>
-
-            <View className="border-t-2 border-dashed border-stone-200 my-4" />
-
-            {/* Total */}
-            <View className="flex-row justify-between items-center">
-              <View>
-                <Text className="text-xs uppercase font-extrabold text-stone-500">
-                  Total Cobrado
-                </Text>
-                <Text className="text-[10px] text-stone-400">Listo para confirmar</Text>
-              </View>
-              <Text className="text-2xl font-black text-sky-700">
-                ${cuentaSeleccionada.detalle.totalFinal.toLocaleString("es-AR", {
-                  minimumFractionDigits: 2,
-                })}
-              </Text>
-            </View>
-          </View>
-
-          {/* Botón Mozo: Confirmar Transacción */}
-          <TouchableOpacity
-            onPress={handleConfirmarCobro}
-            disabled={confirmando}
-            activeOpacity={0.85}
-            className={`mt-6 w-full py-4 rounded-2xl bg-emerald-600 items-center shadow-md active:bg-emerald-700 ${
-              confirmando ? "opacity-60" : ""
-            }`}
-          >
-            {confirmando ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <Text className="text-white text-base font-bold tracking-wide uppercase">
-                Confirmar Transacción
-              </Text>
-            )}
-          </TouchableOpacity>
-        </ScrollView>
-      ) : (
-        /* Lista de Mesas con Cuentas Pedidas */
-        <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false}>
-          {lista.length === 0 ? (
-            <View className="items-center justify-center mt-20">
-              <Text className="text-3xl mb-2">🧾</Text>
-              <Text className="text-stone-700 font-bold text-base">
-                No hay transacciones pendientes
-              </Text>
-              <Text className="text-stone-400 text-xs text-center mt-1 px-8">
-                Las mesas que soliciten la cuenta aparecerán aquí para su cobro.
-              </Text>
-              <TouchableOpacity
-                onPress={cargarTransacciones}
-                className="mt-4 px-4 py-2 bg-sky-600 rounded-xl"
-              >
-                <Text className="text-white text-xs font-bold">Reintentar lectura</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            lista.map((item) => (
-              <TouchableOpacity
-                key={item.pedidoId}
-                onPress={() => verDetalle(item)}
-                activeOpacity={0.85}
-                className="bg-white p-4 rounded-2xl border border-stone-200 shadow-sm mb-3 flex-row justify-between items-center"
-              >
-                <View>
-                  <Text className="text-base font-extrabold text-stone-800">
-                    Mesa #{item.numeroMesa}
-                  </Text>
-                  <Text className="text-xs text-amber-700 font-semibold mt-0.5">
-                    Propina: ${item.propina.toFixed(2)}
-                  </Text>
-                </View>
-
-                <View className="items-end">
-                  <Text className="text-lg font-black text-sky-700">
-                    ${item.total.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
-                  </Text>
-                  <Text className="text-[10px] font-bold text-emerald-600 uppercase mt-0.5">
-                    Tocar para revisar →
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            ))
-          )}
-        </ScrollView>
-      )}
+          </ScrollView>
+        )}
+      </View>
 
       <FeedbackModal
         visible={feedback.visible}

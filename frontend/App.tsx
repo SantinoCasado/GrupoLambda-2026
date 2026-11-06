@@ -1114,9 +1114,7 @@ function AppInterna() {
         )}
 
         {/* Transacciones del Mozo */}
-        {vistaPrivada === "transacciones" && (
-          <TransaccionesScreen onVolver={volverAlInicio} />
-        )}
+        {vistaPrivada === "transacciones" && <TransaccionesScreen />}
 
         {/* Estadísticas de Encuestas (Dueño / Supervisor) */}
         {vistaPrivada === "estadisticas" && (

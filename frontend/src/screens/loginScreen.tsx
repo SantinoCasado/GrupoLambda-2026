@@ -182,7 +182,7 @@ export function LoginScreen({
           <TouchableOpacity onPress={manejarToqueLogo} activeOpacity={0.8}>
             <Image
               source={require("../../assets/images/logo-name2.png")}
-              className="mt-4 h-40 w-auto self-center"
+              className="mt-4 h-48 w-auto self-center"
               resizeMode="contain"
             />
           </TouchableOpacity>
@@ -273,22 +273,22 @@ export function LoginScreen({
             <Text className="mx-3 text-xs font-bold uppercase text-stone-400">o continuar con</Text>
             <View className="h-[1px] flex-1 bg-mostaza/40" />
           </View>
-
-          {/* Botón Ingresar con Google */}
-          <TouchableOpacity
-            onPress={ejecutarLoginGoogle}
-            disabled={cargando}
-            activeOpacity={0.8}
-            className="w-full flex-row items-center justify-center rounded-2xl border-2 border-mostaza bg-[#FFF8EA] py-3 shadow-sm active:bg-amber-100"
+          <View className="flex-1 gap-y-3 items-center justify-center">
+            {/* Botón Ingresar con Google */}
+            <TouchableOpacity
+              onPress={ejecutarLoginGoogle}
+              disabled={cargando}
+              activeOpacity={0.8}
+              className="w-[90%] align-self-center flex-row items-center justify-center rounded-2xl border-2 border-mostaza bg-[#FFF8EA] py-3 shadow-sm active:bg-amber-100"
           >
             <Image
               source={{ uri: "https://www.gstatic.com/images/branding/product/1x/gsa_512dp.png" }}
-              className="h-6 w-6 mr-3"
+              className="h-7 w-7 mr-3"
               resizeMode="contain"
             />
             <Text
               style={{ fontFamily: "LaOriental" }}
-              className="text-center text-sm uppercase tracking-wider text-vino"
+              className="text-center mt-1 text-base uppercase tracking-wider text-vino"
             >
               Ingresar con Google
             </Text>
@@ -305,12 +305,12 @@ export function LoginScreen({
           >
             <Image
               source={require("../../assets/images/guest-c.png")}
-              className="mr-2 h-5 w-5"
+              className="mr-2 h-6 w-6"
               resizeMode="contain"
             />
             <Text
               style={{ fontFamily: "LaOriental" }}
-              className="text-center text-xs uppercase tracking-wider text-calabaza"
+              className="text-center mt-1 text-sm uppercase tracking-wider text-calabaza"
             >
               Ingresar como Invitado
             </Text>
@@ -328,6 +328,8 @@ export function LoginScreen({
               ¿No tienes cuenta? Regístrate como cliente aquí
             </Text>
           </TouchableOpacity>
+          </View>
+            
         </View>
       </ScrollView>
 

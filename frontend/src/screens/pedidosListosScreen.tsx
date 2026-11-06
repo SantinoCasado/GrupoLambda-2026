@@ -147,7 +147,7 @@ export default function PedidosListosScreen() {
         <View className="mb-4">
           <Image
             source={require("../../assets/images/logo-name.png")}
-            className="h-16 w-auto self-center"
+            className="h-20 w-auto self-center mt-1"
             resizeMode="contain"
           />
           <Image

@@ -16,6 +16,7 @@ import { ChineseFrame } from "../components/ChineseFrame";
 import { ConfirmModal } from "../components/ConfirmModal";
 import { FeedbackModal } from "../components/FeedbackModal";
 import { CompanySpinner } from "../components/CompanySpinner";
+import ScreenBackground from "../components/ScreenBackground";
 import { EstadisticasScreen } from "./estadisticasScreen";
 
 interface Props {
@@ -27,7 +28,7 @@ interface Props {
     status: string;
   };
   onSalir: () => void;
-  onMesaConfirmada?: (numeroMesa: number) => void;
+  onMesaConfirmada?: (numeroMesa: number) => void | Promise<void>;
 }
 
 interface ModalMensajeInfo {
@@ -76,6 +77,9 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
   const [modalEncuestas, setModalEncuestas] = useState(false);
   const [modalSalir, setModalSalir] = useState(false);
   const [saliendo, setSaliendo] = useState(false);
+  // Se mantiene en true mientras se procesa un QR escaneado (espera la
+  // respuesta del backend y el commit de los cambios de estado).
+  const [procesandoQR, setProcesandoQR] = useState(false);
   const [modalCancelado, setModalCancelado] = useState(false);
   const [modalMensaje, setModalMensaje] = useState<ModalMensajeInfo>({
     visible: false,
@@ -86,6 +90,9 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
 
   const [permission, requestPermission] = useCameraPermissions();
   const scanLockRef = useRef(false);
+  // true mientras la salida la inicia el propio cliente: su DELETE de
+  // waiting_list no debe interpretarse como "el metre lo quitó".
+  const salidaVoluntariaRef = useRef(false);
 
   const mostrarMensaje = (
     titulo: string,
@@ -103,6 +110,7 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
   };
 
   const reanunciarse = () => {
+    salidaVoluntariaRef.current = false;
     setModalCancelado(false);
     setQrEntradaEscaneado(false);
     setWaitingListId(null);
@@ -189,6 +197,8 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
           filter: `id=eq.${waitingListId}`,
         },
         () => {
+          // Ignoramos el DELETE que provoca la salida voluntaria del cliente.
+          if (salidaVoluntariaRef.current) return;
           setModalCancelado(true);
         }
       )
@@ -220,89 +230,106 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
     if (scanLockRef.current) return;
     scanLockRef.current = true;
     setEscaneandoQR(false);
+    setProcesandoQR(true);
 
-    if (modoEscaneo === "entrada") {
-      if (
-        data.includes("INGRESO_LOCAL") ||
-        data.toLowerCase().includes("ingreso") ||
-        data.toLowerCase().includes("entrada")
-      ) {
-        // Si ya está registrado en espera y vuelve a escanear el QR, abre los gráficos
-        if (qrEntradaEscaneado) {
-          setModalEncuestas(true);
-          return;
-        }
+    try {
+      if (modoEscaneo === "entrada") {
+        if (
+          data.includes("INGRESO_LOCAL") ||
+          data.toLowerCase().includes("ingreso") ||
+          data.toLowerCase().includes("entrada")
+        ) {
+          // Si ya está registrado en espera y vuelve a escanear el QR, abre los gráficos
+          if (qrEntradaEscaneado) {
+            setModalEncuestas(true);
+            return;
+          }
 
-        // Primera vez: ingresa a waiting_list
-        const res = await ingresarAListaEsperaLocal(
-          cliente.user_id || cliente.id,
-          cliente.client_name,
-          cliente.client_photo
-        );
-
-        if (res.exito && res.waitingId) {
-          setWaitingListId(res.waitingId);
-          setQrEntradaEscaneado(true);
-
-          mostrarMensaje(
-            "¡Ingreso Confirmado!",
-            "Escaneaste el QR de la puerta. Ya figurás en la lista de espera del metre.",
-            "exito"
+          // Primera vez: ingresa a waiting_list
+          const res = await ingresarAListaEsperaLocal(
+            cliente.user_id || cliente.id,
+            cliente.client_name,
+            cliente.client_photo
           );
+
+          if (res.exito && res.waitingId) {
+            setWaitingListId(res.waitingId);
+            setQrEntradaEscaneado(true);
+
+            mostrarMensaje(
+              "¡Ingreso Confirmado!",
+              "Escaneaste el QR de la puerta. Ya figurás en la lista de espera del metre.",
+              "exito"
+            );
+          } else {
+            mostrarMensaje(
+              "Error al ingresar",
+              res.error || "No se pudo registrar en la lista de espera.",
+              "error"
+            );
+          }
         } else {
           mostrarMensaje(
-            "Error al ingresar",
-            res.error || "No se pudo registrar en la lista de espera.",
+            "QR Incorrecto",
+            "El código escaneado no corresponde al ingreso del local.",
             "error"
           );
         }
-      } else {
-        mostrarMensaje(
-          "QR Incorrecto",
-          "El código escaneado no corresponde al ingreso del local.",
-          "error"
-        );
-      }
-    } else if (modoEscaneo === "mesa") {
-      console.log("📸 [QR Escaneado en Mesa]:", data);
+      } else if (modoEscaneo === "mesa") {
+        console.log("📸 [QR Escaneado en Mesa]:", data);
 
-      if (!mesaAsignada) {
-        mostrarMensaje(
-          "Sin Mesa Asignada",
-          "Aún no tenés una mesa asignada por el metre.",
-          "error"
-        );
-        return;
-      }
-
-      const textoLimpio = data.trim().toUpperCase();
-      const numMesaAsignada = Number(mesaAsignada.numero);
-
-      // Extrae cualquier número del QR (ej: "RESTO-TFI-MESA-1", "1", "MESA-1")
-      const matchNumero = textoLimpio.match(/\d+/);
-      const numeroDetectado = matchNumero ? parseInt(matchNumero[0], 10) : null;
-
-      const esValido =
-        textoLimpio === `RESTO-TFI-MESA-${numMesaAsignada}` ||
-        textoLimpio.includes(`MESA-${numMesaAsignada}`) ||
-        textoLimpio.includes(`MESA ${numMesaAsignada}`) ||
-        numeroDetectado === numMesaAsignada;
-
-      if (esValido) {
-        if (onMesaConfirmada) {
-          onMesaConfirmada(numMesaAsignada);
+        if (!mesaAsignada) {
+          mostrarMensaje(
+            "Sin Mesa Asignada",
+            "Aún no tenés una mesa asignada por el metre.",
+            "error"
+          );
+          return;
         }
-      } else {
-        mostrarMensaje(
-          "Mesa Incorrecta",
-          `Esta no es tu mesa (leído: ${numeroDetectado ?? "desconocido"}). Tu mesa asignada es la #${numMesaAsignada}.`,
-          "error"
-        );
+
+        const textoLimpio = data.trim().toUpperCase();
+        const numMesaAsignada = Number(mesaAsignada.numero);
+
+        // Extrae cualquier número del QR (ej: "RESTO-TFI-MESA-1", "1", "MESA-1")
+        const matchNumero = textoLimpio.match(/\d+/);
+        const numeroDetectado = matchNumero ? parseInt(matchNumero[0], 10) : null;
+
+        const esValido =
+          textoLimpio === `RESTO-TFI-MESA-${numMesaAsignada}` ||
+          textoLimpio.includes(`MESA-${numMesaAsignada}`) ||
+          textoLimpio.includes(`MESA ${numMesaAsignada}`) ||
+          numeroDetectado === numMesaAsignada;
+
+        if (esValido) {
+          // Se espera la confirmación completa (lookup de mesa/pedido + cambios
+          // de estado en App) para que el spinner cubra todo el impacto en la UI.
+          await onMesaConfirmada?.(numMesaAsignada);
+        } else {
+          mostrarMensaje(
+            "Mesa Incorrecta",
+            `Esta no es tu mesa (leído: ${numeroDetectado ?? "desconocido"}). Tu mesa asignada es la #${numMesaAsignada}.`,
+            "error"
+          );
+        }
       }
+    } catch (err: any) {
+      console.warn("⚠️ [EsperaMesa] Error al procesar el QR:", err?.message);
+      mostrarMensaje(
+        "Error al escanear",
+        err?.message || "No se pudo completar la operación. Intentá nuevamente.",
+        "error"
+      );
+    } finally {
+      // Este setState se agrupa con los cambios de estado hechos durante el
+      // escaneo: el spinner se oculta recién cuando la nueva UI ya está aplicada.
+      setProcesandoQR(false);
     }
   };
 
   const confirmarSalida = async () => {
+    // Se marca antes de borrar la fila para que el realtime DELETE no muestre
+    // el modal de "Turno Cancelado".
+    salidaVoluntariaRef.current = true;
     setSaliendo(true);
     try {
       const targetUserId = cliente.user_id || cliente.id;
@@ -471,14 +498,14 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
               >
                 <Image
                   source={require("../../assets/images/rating-y.png")}
-                  className="h-6 w-12 mr-2"
+                  className="h-6 w-12 mr-4"
                   resizeMode="contain"
                 />
                 <Text
                   style={{ fontFamily: "LaOriental" }}
-                  className="text-base text-mostaza tracking-wide uppercase text-center flex-shrink"
+                  className="text-base mt-1 text-mostaza tracking-wide uppercase text-center flex-shrink"
                 >
-                  Ver Estadísticas
+                  Ver Reseñas
                 </Text>
               </TouchableOpacity>
             )}
@@ -509,7 +536,16 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
           onCancel={() => setModalSalir(false)}
         />
 
-        <CompanySpinner visible={saliendo} mensaje="Saliendo del local..." />
+        <CompanySpinner
+          visible={saliendo || procesandoQR}
+          mensaje={
+            saliendo
+              ? "Saliendo del local..."
+              : modoEscaneo === "entrada"
+              ? "Registrando tu ingreso..."
+              : "Verificando tu mesa..."
+          }
+        />
 
         {/* MODAL CÁMARA */}
         <Modal visible={escaneandoQR} animationType="slide">
@@ -579,9 +615,25 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
           presentationStyle="fullScreen"
           onRequestClose={() => setModalEncuestas(false)}
         >
-          <View className="flex-1 bg-vino">
-            <EstadisticasScreen 
-              onVolver={() => setModalEncuestas(false)} 
+          <View className="flex-1">
+            <ScreenBackground />
+
+            {/* Volver: flota arriba a la derecha, igual que el botón de salir */}
+            <TouchableOpacity
+              onPress={() => setModalEncuestas(false)}
+              className="absolute right-4 z-10 rounded-lg border border-mostaza bg-vino px-3 py-1 active:bg-vino/80"
+              style={{ top: insets.top + 20 }}
+            >
+              <Text
+                style={{ fontFamily: "LaOriental" }}
+                className="text-sm mt-1 uppercase tracking-wide text-mostaza"
+              >
+                Volver
+              </Text>
+            </TouchableOpacity>
+
+            <EstadisticasScreen
+              onVolver={() => setModalEncuestas(false)}
               esModal={true}
             />
           </View>
