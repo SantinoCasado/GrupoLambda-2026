@@ -26,7 +26,6 @@ export const crearPedido = async (req: Request, res: Response) => {
     });
   }
 
-  // Extrae los campos nuevos de delivery
   const { 
     id_cliente, 
     numero_mesa, 
@@ -38,9 +37,18 @@ export const crearPedido = async (req: Request, res: Response) => {
   } = validacion.data;
 
   try {
-    // Le paso todo al service (agrupamos los de delivery en un objeto extra)
-    const datosDelivery = { delivery_address, delivery_latitude, delivery_longitude };
-    const resultado = await guardarPedido(id_cliente, numero_mesa, productos, order_type, datosDelivery);
+    // Solo arma datosDelivery si order_type es estrictamente 'delivery'
+    const datosDelivery = order_type === 'delivery'
+      ? { delivery_address, delivery_latitude, delivery_longitude }
+      : undefined;
+
+    const resultado = await guardarPedido(
+      id_cliente, 
+      numero_mesa ?? null, 
+      productos, 
+      order_type, 
+      datosDelivery
+    );
 
     return res.status(201).json({
       mensaje: order_type === 'delivery' 
