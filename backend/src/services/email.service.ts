@@ -421,6 +421,8 @@ export const enviarReservaRechazada = async (
         'Actualización sobre tu reserva',
         plantillaInstitucional(`¡Hola, ${nombre}!`, 'rechazado', cuerpo)
     );
+};
+
 export const enviarCorreoInformativo = async (
   email: string,
   nombre: string,
