@@ -1,6 +1,6 @@
 import { supabase } from '../../config/supabase';
 import { enviarPushNotification } from '../../services/pushNotifications.service';
-import { enviarFacturaPorEmail } from '../../services/email.service';
+import { enviarFacturaPorEmail, enviarCorreoInformativo } from '../../services/email.service';
 import { generarYSubirFactura } from '../../services/factura.service';
 import type { ClienteFactura, FacturaGenerada, ItemFactura } from '../../services/factura.service';
 
@@ -11,22 +11,50 @@ interface ProductoItem {
 
 export const guardarPedido = async (
   idCliente: string,
-  numeroMesa: number,
+  numeroMesa: number | null, // <-- Modificado para aceptar null en delivery
   items: ProductoItem[],
-  orderType: string = 'dine_in'
+  orderType: string = 'dine_in',
+  datosDelivery?: any
 ) => {
-  const { data: mesaData, error: mesaError } = await supabase
-    .from('restaurant_tables')
-    .select('id')
-    .eq('table_number', numeroMesa)
+  // Verifica el rol del cliente (Punto 27)
+  const { data: cliente, error: errorCliente } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', idCliente)
     .single();
 
-  if (mesaError || !mesaData) {
-    throw new Error(`No se encontró la mesa número ${numeroMesa}`);
+  if (errorCliente || !cliente) {
+    throw new Error('No se encontró el cliente en la base de datos.');
   }
 
-  const tableId = mesaData.id;
+  // Validación estricta para Delivery
+  if (orderType === 'delivery') {
+    if (cliente.role !== 'registered_client') {
+      throw new Error('Los pedidos a domicilio son exclusivos para clientes registrados.');
+    }
+    if (!datosDelivery?.delivery_address) {
+      throw new Error('Debe ingresar una dirección de entrega válida.');
+    }
+  }
 
+  // Búsqueda de mesa (Solo si NO es delivery)
+  let tableId = null;
+  if (orderType !== 'delivery') {
+    if (!numeroMesa) throw new Error('Se requiere un número de mesa para pedidos en el local.');
+    
+    const { data: mesaData, error: mesaError } = await supabase
+      .from('restaurant_tables')
+      .select('id')
+      .eq('table_number', numeroMesa)
+      .single();
+
+    if (mesaError || !mesaData) {
+      throw new Error(`No se encontró la mesa número ${numeroMesa}`);
+    }
+    tableId = mesaData.id;
+  }
+
+  // Procesamiento de productos y precios
   const idsProductos = items.map((i) => i.id_producto);
   const { data: productosData, error: prodError } = await supabase
     .from('products')
@@ -48,26 +76,35 @@ export const guardarPedido = async (
       throw new Error(`Producto con ID ${item.id_producto} no existe`);
     }
     totalAcumulado += Number(prod.price) * item.cantidad;
-    // Tomamos el tiempo del plato que más tarde
+    
     const prepTime = Number(prod.prep_time || 0);
     if (prepTime > tiempoElaboracionTotal) {
       tiempoElaboracionTotal = prepTime;
     }
   }
 
-  // Se usa total_amount y order_type
+  // Creación de la orden. Los campos de delivery solo se envían cuando el
+  // pedido es a domicilio; para el resto se omiten por completo.
+  const datosOrden: Record<string, any> = {
+    table_id: tableId,
+    client_id: idCliente,
+    order_type: orderType,
+    status: 'pending',
+    total_amount: totalAcumulado,
+    estimated_delivery_time: tiempoElaboracionTotal,
+  };
+
+  if (orderType === 'delivery') {
+    datosOrden.delivery_address = datosDelivery?.delivery_address ?? null;
+    // La API usa delivery_latitude/delivery_longitude, pero las columnas
+    // reales de la tabla son delivery_lat/delivery_lng.
+    datosOrden.delivery_lat = datosDelivery?.delivery_latitude ?? null;
+    datosOrden.delivery_lng = datosDelivery?.delivery_longitude ?? null;
+  }
+
   const { data: ordenCreada, error: ordenError } = await supabase
     .from('orders')
-    .insert([
-      {
-        table_id: tableId,
-        client_id: idCliente,
-        order_type: orderType,
-        status: 'pending',
-        total_amount: totalAcumulado,
-        estimated_delivery_time: tiempoElaboracionTotal,
-      },
-    ])
+    .insert([datosOrden])
     .select()
     .single();
 
@@ -75,6 +112,7 @@ export const guardarPedido = async (
     throw new Error(`Error al crear la orden: ${ordenError?.message}`);
   }
 
+  // Inserción de los ítems
   const itemsAInsertar = items.map((item) => {
     const prod = mapaProductos.get(item.id_producto)!;
     return {
@@ -94,31 +132,40 @@ export const guardarPedido = async (
   }
 
   // ==========================================
-  // PUSH NOTIFICATION: Nuevo pedido creado
+  // PUSH NOTIFICATION (Punto 28: Aviso a Dueños/Mozos)
   // ==========================================
-  // Busca si hay un mozo o personal de cocina al que notificar, o puede buscar el token del cliente.
-  // Por ejemplo, si quiere notificar al personal de cocina/mozos de la mesa:
   try {
-    const { data: mozos } = await supabase
+    // Si es delivery avisamos a Dueño y Supervisor. Si es de salón, al Mozo.
+    const rolesANotificar = orderType === 'delivery' ? ['owner', 'supervisor'] : ['waiter'];
+    
+    const { data: personal } = await supabase
       .from('users')
       .select('push_token')
-      .eq('role', 'waiter')
+      .in('role', rolesANotificar)
       .not('push_token', 'is', null);
 
-    if (mozos && mozos.length > 0) {
-      for (const mozo of mozos) {
-        if (mozo.push_token) {
-          await enviarPushNotification(
-            mozo.push_token,
-            '¡Nueva comanda!',
-            'Comanda pendiente de aprobación',
+    if (personal && personal.length > 0) {
+      const tokens = personal.map(p => p.push_token);
+      
+      const tituloPush = orderType === 'delivery' ? '🛵 ¡Nuevo Delivery!' : '🍽️ ¡Nueva Comanda!';
+      const mensajePush = orderType === 'delivery' 
+        ? 'Un cliente registró un pedido a domicilio pendiente de aprobación.' 
+        : `Comanda pendiente en la mesa ${numeroMesa}`;
+
+      // Promise.all para enviar todas las push en paralelo de forma eficiente
+      await Promise.all(
+        tokens.map(token => 
+          enviarPushNotification(
+            token,
+            tituloPush,
+            mensajePush,
             { orderId: ordenCreada.id, table_id: tableId, tipo: 'nuevo_pedido' }
-          );
-        }
-      }
+          )
+        )
+      );
     }
   } catch (pushError) {
-    console.error('No se pudo enviar la push de creación de pedido a los mozos:', pushError);
+    console.error('No se pudo enviar la push de creación de pedido:', pushError);
   }
 
   return {
@@ -155,16 +202,22 @@ export const obtenerEstadoPedido = async (idPedido: string) => {
   return data;
 };
 
-// Punto 13: Confirmar o rechazar pedido por el mozo
 export const confirmarPedidoPorMozo = async (
   idPedido: string,
-  waiterId: string,
+  waiterId: string | null | undefined, // Modificado para aceptar null cuando aprueba un dueño
   nuevoEstado: 'in_preparation' | 'cancelled' = 'in_preparation',
   rejectionReason?: string
 ) => {
+  // Busca el pedido con toda la información necesaria
   const { data: pedidoActual, error: errorBusqueda } = await supabase
     .from('orders')
-    .select('id, status, client_id') // Trae tambien el client_id para buscar su token
+    .select(`
+      id, 
+      status, 
+      client_id, 
+      order_type,
+      client:users!client_id(first_name, email, push_token)
+    `)
     .eq('id', idPedido)
     .single();
 
@@ -178,7 +231,7 @@ export const confirmarPedidoPorMozo = async (
 
   const updatePayload: Record<string, any> = {
     status: nuevoEstado,
-    waiter_id: waiterId,
+    waiter_id: waiterId || null,
     updated_at: new Date().toISOString(),
   };
 
@@ -188,6 +241,7 @@ export const confirmarPedidoPorMozo = async (
     updatePayload.rejection_reason = motivoRechazo;
   }
 
+  // Actualiza el pedido
   const { data: pedidoActualizado, error: errorUpdate } = await supabase
     .from('orders')
     .update(updatePayload)
@@ -200,48 +254,96 @@ export const confirmarPedidoPorMozo = async (
   }
 
   // ========================================================
-  // PUSH NOTIFICATION: Mozo confirmó o rechazó el pedido
+  // PUNTO 28 Y NOTIFICACIONES
   // ========================================================
   try {
-    if (pedidoActual.client_id) {
-      const { data: clienteData, error: errorCliente } = await supabase
-        .from('users')
-        .select('push_token')
-        .eq('id', pedidoActual.client_id)
-        .maybeSingle();
+    const cliente: any = Array.isArray(pedidoActual.client) 
+    ? pedidoActual.client[0] 
+    : pedidoActual.client;
 
-      if (errorCliente) {
-        console.error('No se pudo consultar el token push del cliente:', errorCliente.message);
-      } else if (!clienteData?.push_token) {
-        console.warn('El cliente no tiene un token push registrado:', pedidoActual.client_id);
-      } else {
-        const titulo = nuevoEstado === 'in_preparation' ? '👨‍🍳 ¡Pedido en Preparación!' : '❌ Pedido Cancelado';
-        const cuerpo = nuevoEstado === 'in_preparation'
-          ? 'El mozo confirmó tu pedido y ya se encuentra en cocina.'
-          : `Lo sentimos, tu pedido fue rechazado. Motivo: ${motivoRechazo || 'No especificado'}`;
-
-        const pushEnviada = await enviarPushNotification(clienteData.push_token, titulo, cuerpo, {
-          orderId: idPedido,
-          status: nuevoEstado,
-          tipo: 'estado_pedido',
-          rejectionReason: motivoRechazo,
-        });
-
-        if (!pushEnviada) {
-          console.error('Expo Push no pudo entregar la notificación al cliente:', pedidoActual.client_id);
-        }
+    // --- CASO A: RECHAZO DE PEDIDO ---
+    if (nuevoEstado === 'cancelled') {
+      // Push de Rechazo
+      if (cliente?.push_token) {
+        await enviarPushNotification(
+          cliente.push_token,
+          '❌ Pedido Cancelado',
+          `Lo sentimos, tu pedido fue rechazado. Motivo: ${motivoRechazo || 'No especificado'}`,
+          { orderId: idPedido, status: nuevoEstado, tipo: 'estado_pedido', rejectionReason: motivoRechazo }
+        );
+      }
+      
+      // Correo de Brevo (Tipografía formal e institucionalidad)
+      if (cliente?.email) {
+        const htmlRechazo = `
+          <!DOCTYPE html>
+          <html lang="es">
+          <head>
+            <meta charset="utf-8">
+            <style>
+              @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&family=Lato:ital,wght@0,400;0,700&display=swap');
+              body { font-family: 'Lato', sans-serif; background-color: #f4f6f8; margin: 0; padding: 0; }
+              .container { background-color: #ffffff; padding: 30px; max-width: 600px; margin: 30px auto; border-top: 6px solid #c32f27; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+              h2 { font-family: 'Cinzel', serif; color: #c32f27; text-align: center; margin-top: 0; }
+              .box { background-color: #ffebee; border-left: 4px solid #c32f27; padding: 15px; margin: 20px 0; border-radius: 4px; }
+              p { color: #4a5568; line-height: 1.6; }
+              .footer { font-size: 12px; color: #718096; border-top: 1px solid #e2e8f0; padding-top: 15px; margin-top: 20px; text-align: center; }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h2>Actualización sobre tu pedido</h2>
+              <p>Hola <strong>${cliente.first_name}</strong>,</p>
+              <p>Lamentamos informarte que tu pedido ha sido rechazado por la administración.</p>
+              <div class="box">
+                <p style="margin:0; color:#c62828;"><strong>Motivo:</strong> ${motivoRechazo}</p>
+              </div>
+              <p>Si considerás que esto es un error, por favor contactanos mediante el chat de la aplicación.</p>
+              <div class="footer">
+                Atentamente,<br><strong>El equipo de Jardín Imperial / Grupo Lambda</strong>
+              </div>
+            </div>
+          </body>
+          </html>
+        `;
+        await enviarCorreoInformativo(
+          cliente.email, 
+          cliente.first_name, 
+          'Actualización sobre tu pedido', 
+          htmlRechazo
+        );
       }
     }
 
-    // Avisarle a la Cocina y al Bar (SOLO si se confirmó)
+    // --- CASO B: APROBACIÓN DE PEDIDO ---
     if (nuevoEstado === 'in_preparation') {
-      // Consulta quE categorIas de productos tiene este pedido
+      // Consulta ítems para cálculos y notificaciones
       const { data: itemsPedido } = await supabase
         .from('order_items')
-        .select('products(category)')
+        .select('products(category, prep_time)')
         .eq('order_id', idPedido);
 
-      // Determinar si hay comida o bebida en el pedido
+      // 2. Cálculo del tiempo de espera (Punto 28)
+      const tiemposCocina = (itemsPedido || []).map((i: any) => Number(i.products?.prep_time || 15));
+      const tiempoCocina = tiemposCocina.length > 0 ? Math.max(...tiemposCocina) : 15;
+      const tiempoViaje = pedidoActual.order_type === 'delivery' ? 20 : 0;
+      const tiempoTotal = tiempoCocina + tiempoViaje;
+
+      // 3. Push de Aprobación al cliente con el tiempo estimado
+      if (cliente?.push_token) {
+        const mensajePush = pedidoActual.order_type === 'delivery'
+          ? `El pedido está en cocina. Tiempo estimado de entrega: ${tiempoTotal} minutos.`
+          : `El mozo confirmó tu pedido. Tiempo en cocina: ${tiempoTotal} minutos.`;
+
+        await enviarPushNotification(
+          cliente.push_token,
+          '👨‍🍳 ¡Pedido en Preparación!',
+          mensajePush,
+          { orderId: idPedido, status: nuevoEstado, tipo: 'estado_pedido' }
+        );
+      }
+
+      // Notifica a Cocina / Bar (Lógica original mantenida)
       const tieneComida = itemsPedido?.some((i: any) => 
         i.products?.category === 'dish' || i.products?.category === 'food'
       );
@@ -258,16 +360,14 @@ export const confirmarPedidoPorMozo = async (
           .not('push_token', 'is', null);
 
         if (cocineros && cocineros.length > 0) {
-          for (const cocinero of cocineros) {
-            if (cocinero.push_token) {
-              await enviarPushNotification(
-                cocinero.push_token,
-                '🍳 Nuevo ticket en Cocina',
-                'Ingresó un nuevo pedido de comida para preparar.',
-                { orderId: idPedido, tipo: 'nuevo_pedido_cocina' }
-              );
-            }
-          }
+          await Promise.all(cocineros.map(cocinero => 
+            enviarPushNotification(
+              cocinero.push_token,
+              '🍳 Nuevo ticket en Cocina',
+              'Ingresó un nuevo pedido de comida para preparar.',
+              { orderId: idPedido, tipo: 'nuevo_pedido_cocina' }
+            )
+          ));
         }
       }
 
@@ -280,21 +380,19 @@ export const confirmarPedidoPorMozo = async (
           .not('push_token', 'is', null);
 
         if (cantineros && cantineros.length > 0) {
-          for (const cantinero of cantineros) {
-            if (cantinero.push_token) {
-              await enviarPushNotification(
-                cantinero.push_token,
-                '🍹 Nuevo ticket en Bar',
-                'Ingresó un nuevo pedido de bebidas para preparar.',
-                { orderId: idPedido, tipo: 'nuevo_pedido_bar' }
-              );
-            }
-          }
+          await Promise.all(cantineros.map(cantinero => 
+            enviarPushNotification(
+              cantinero.push_token,
+              '🍹 Nuevo ticket en Bar',
+              'Ingresó un nuevo pedido de bebidas para preparar.',
+              { orderId: idPedido, tipo: 'nuevo_pedido_bar' }
+            )
+          ));
         }
       }
     }
   } catch (pushError) {
-    console.error('No se pudo procesar el flujo de push notifications:', pushError);
+    console.error('No se pudo procesar el flujo de notificaciones/correos:', pushError);
   }
 
   return pedidoActualizado;

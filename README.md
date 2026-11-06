@@ -212,11 +212,12 @@ Pendiente de agregar: pedido listo, entrega, solicitud de cuenta y confirmación
 | Carrito post rechazo del mozo          | ![Carrito del cliente luego del rechazo del mozo](./assets/mapeo/registro_inicio_clientes/cliente_carrito_postRechazo.jpg) |
 | Dashboard post pedido                  | ![Dashboard del cliente con pedido en curso](./assets/mapeo/registro_inicio_clientes/cliente_dashboard_postPedido.jpg)     |
 | Detalle del pedido en curso            | ![Detalle del pedido en curso](./assets/mapeo/registro_inicio_clientes/cliente_verEstadoPedido.jpg)                        |
-| Detalle del Pago                       | ![Detalle del pago del pedido](./assets/mapeo/registro_inicio_clientes/cliente_pago_detalle.jpeg)                          |
+| Detalle del Pago sin Propina           | ![Detalle del pago del pedido](./assets/mapeo/registro_inicio_clientes/cliente_pago_detalle_sinPropina.jpeg)               |
+| Detalle del Pago con Propina           | ![Detalle del pago del pedido](./assets/mapeo/registro_inicio_clientes/cliente_pago_detalle_postPropina.jpeg)              |
 
 ##### Chat con el mozo
 
-![Consulta del cliente al mozo desde la mesa](./assets/mapeo/registro_inicio_clientes/cliente_chatMozo.jpg)
+![Consulta del cliente al mozo desde la mesa](./assets/mapeo/registro_inicio_clientes/cliente_chatMozo.jpeg)
 
 ##### Juegos y descuentos
 
@@ -235,7 +236,11 @@ Pendiente de agregar: pedido listo, entrega, solicitud de cuenta y confirmación
 
 ##### Reseñas y encuestas
 
-![Resultados de reseñas visibles para el cliente](./assets/mapeo/registro_inicio_clientes/cliente_verReseñas.jpeg)
+![Dejar reseña de satifaccion](./assets/mapeo/registro_inicio_clientes/cliente_reseña_satifaccion.jpeg)
+![Dejar comentario de reseña](./assets/mapeo/registro_inicio_clientes/cliente_reseña_comentario.jpeg)
+![Grafico de Barras](./assets/mapeo/registro_inicio_clientes/cliente_verReseñas_barras.jpeg)
+![Grafico de Lineas](./assets/mapeo/registro_inicio_clientes/cliente_verReseñas_lineas.jpeg)
+![Grafico de Torta](./assets/mapeo/registro_inicio_clientes/cliente_verReseñas_torta.jpeg)
 
 Pendiente de agregar: espera de aprobación, aviso de aprobación/rechazo, login aceptado y denegado, estado del pedido, cuenta y pago.
 
@@ -355,102 +360,6 @@ Este índice queda abierto para incorporar nuevas evidencias sin reestructurar e
 - Tickets completos y estados de pedidos posteriores a la comanda.
 - Encuestas, gráficos y pantallas de cuenta/pago.
 - Notificaciones push separadas por evento y perfil destinatario.
-
----
-
-<a id="documentacion-del-proyecto"></a>
-
-## 📚 División 2 — Documentación del Proyecto
-
-<a id="identidad-y-equipo"></a>
-
-## 🎨 Identidad Visual
-
-- **Temática:** restaurante de comida china.
-- **Paleta principal:**
-  - `#780116` — rojo oscuro.
-  - `#F7B538` — amarillo.
-  - `#DB7C26` — naranja suave.
-  - `#D8572A` — naranja intenso.
-  - `#C32F27` — rojo vibrante.
-
----
-
-## 👥 Grupo y Responsabilidades
-
-### 1. Brazanovich, Valentín
-
-- **Rol:** Frontend Lead & UX/UI.
-- **Objetivos:** autenticación, alta de empleados, registro de clientes y maquetación de la aplicación.
-- **Fecha de inicio:** 25/08/2026.
-- **Fecha estimada de cierre:** pendiente de confirmar con la cátedra.
-- **Branch:** `feature/valentin-auth-ui`.
-
-### 2. Andreozzi, Sebastián
-
-- **Rol:** Frontend App Developer.
-- **Objetivos:** pantallas de platos y bebidas, carta, interacción de cliente y funcionalidades de interfaz vinculadas con pedidos y juegos.
-- **Fecha de inicio:** 25/08/2026.
-- **Fecha estimada de cierre:** pendiente de confirmar con la cátedra.
-- **Branch:** `feature/sebastian-menu-juegos`.
-
-### 3. Casado, Santino
-
-- **Rol:** Backend & Integration Engineer.
-- **Objetivos:** autenticación, clientes, aprobación de usuarios, correos transaccionales con Nodemailer e integración transversal de notificaciones push mediante Expo API.
-- **Fecha de inicio:** 25/08/2026.
-- **Fecha estimada de cierre:** pendiente de confirmar con la cátedra.
-- **Branch:** Integrada en `main` desde `feature/santino-server-setup`.
-
-### 4. Sanchez, Rocío
-
-- **Rol:** Database Admin, API Developer & QA.
-- **Objetivos:** modelo de tablas, QR, mesas, políticas RLS y desarrollo de los módulos y endpoints de Pedidos y Chat en tiempo real.
-- **Fecha de inicio:** 25/08/2026.
-- **Fecha estimada de cierre:** pendiente de confirmar con la cátedra.
-- **Branch:** `feature/rocio-supabase-db`.
-
-> La fecha oficial de entrega se coordina con la cátedra y el cronograma vigente del equipo.
-
----
-
-<a id="tecnologias-y-arquitectura"></a>
-
-## 🛠️ Tecnologías
-
-- **Aplicación móvil:** React Native, Expo y TypeScript.
-- **Estilos:** NativeWind.
-- **API:** Node.js, Express y TypeScript.
-- **Base de datos, autenticación y almacenamiento:** Supabase, PostgreSQL, Supabase Auth y Supabase Storage.
-- **Validación de datos:** Zod.
-- **Carga de archivos:** Multer.
-- **Correo transaccional:** Nodemailer.
-- **Notificaciones móviles:** Expo Notifications y Expo Push API.
-- **Lectura de QR y cámara:** Expo Camera.
-
----
-
-## 🏗️ Arquitectura
-
-El frontend se organiza en pantallas, servicios de acceso a API y contextos de sesión y carrito. La navegación principal está coordinada desde `frontend/App.tsx`.
-
-El backend separa rutas, controladores, servicios y esquemas por dominio:
-
-- `auth`
-- `cliente`
-- `empleados`
-- `productos`
-- `mesas`
-- `pedidos`
-- `chat`
-- `juegos`
-- `encuesta` (módulo completo, con rutas montadas e integración funcional para registrar y consultar encuestas).
-
-Supabase proporciona persistencia, autenticación y almacenamiento de archivos. Las políticas RLS deben revisarse junto con la autorización aplicada en los middleware del backend.
-
-El endpoint de asignación de mesas utiliza actualizaciones condicionales sobre la fila de espera y la disponibilidad para detectar cambios concurrentes. Si la mesa deja de estar libre luego de marcar la espera como asignada, intenta revertir esa asignación. Es un rollback compensatorio entre peticiones, no una transacción atómica; el código registra si la reversión también falla.
-
-La instancia de Supabase puede reforzar el ciclo de pedidos mediante constraints SQL como `orders_status_check`. El código local utiliza `pending`, `in_preparation`, `ready`, `delivered`, `received`, `bill_requested`, `paid` y `cancelled`; cualquier constraint activo debe admitir todos los estados que el flujo persiste. No hay migraciones SQL en este repositorio para verificar o reproducir ese constraint; conviene versionar el esquema para evitar diferencias entre entornos.
 
 ---
 

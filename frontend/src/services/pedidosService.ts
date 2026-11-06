@@ -48,7 +48,12 @@ export const crearPedidoApi = async (payload: CrearPedidoPayload): Promise<Pedid
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || `HTTP ${res.status} al procesar el pedido`);
+    console.warn("[crearPedidoApi] Error del backend:", res.status, errorData);
+    throw new Error(
+      errorData.detalle
+        ? `${errorData.error || "Error del servidor"}: ${errorData.detalle}`
+        : errorData.error || `HTTP ${res.status} al procesar el pedido`
+    );
   }
 
   const json = await res.json();
