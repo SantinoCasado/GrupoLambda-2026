@@ -11,6 +11,7 @@ import chatRoutes from './modules/chat/chat.routes';
 import mesasRoutes from './modules/mesas/mesas.routes';
 import juegosRoutes from './modules/juegos/juegos.routes';
 import reservasRoutes from './modules/reservas/reservas.routes';
+import deliveryRoutes from './modules/delivery/delivery.routes';
 import { procesarReservasService } from './modules/reservas/reservas.service';
 
 dotenv.config();
@@ -38,6 +39,7 @@ app.use('/api/chat', chatRoutes);
 app.use('/api/mesas', mesasRoutes);
 app.use('/api/juegos', juegosRoutes);
 app.use('/api/reservas', reservasRoutes);
+app.use('/api/delivery', deliveryRoutes);
 
 // Ruta base
 app.get('/', (req: Request, res: Response) => {

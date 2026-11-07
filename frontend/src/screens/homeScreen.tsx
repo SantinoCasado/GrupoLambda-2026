@@ -20,6 +20,9 @@ export type HomeDestino =
   | "pedidos_listos"
   | "estadisticas"
   | "transacciones"
+  | "pedidos_domicilio"
+  | "repartidor"
+  | "delivery_address"
   | "preparacion";
 
 const PERFILES_EMPLEADO = [
@@ -27,6 +30,7 @@ const PERFILES_EMPLEADO = [
   { id: "cantinero", label: "Cantinero", imagen: require("../../assets/images/martini-glass-y.png") },
   { id: "mozo", label: "Mozo", imagen: require("../../assets/images/serving-y.png") },
   { id: "metre", label: "Metre", imagen: require("../../assets/images/bow-y.png") },
+  { id: "repartidor", label: "Repartidor", imagen: require("../../assets/images/audit-car.png") },
   { id: "supervisor", label: "Supervisor", imagen: require("../../assets/images/supervisor-y.png") },
 ];
 
@@ -45,9 +49,12 @@ interface Props {
   onVerEstadoPedido?: () => void;
   onAbrirChatMozo?: () => void;
   onIrAJuegos?: () => void;
+  /** Cliente que está armando un pedido a domicilio (sin mesa). */
+  modoEntrega?: boolean;
+  deliveryAddress?: string | null;
 }
 
-export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicitarMesa, pedidoActivoId, onVerEstadoPedido, onAbrirChatMozo, onIrAJuegos }: Props) {
+export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicitarMesa, pedidoActivoId, onVerEstadoPedido, onAbrirChatMozo, onIrAJuegos, modoEntrega = false, deliveryAddress }: Props) {
   const [modalPerfilVisible, setModalPerfilVisible] = useState(false);
   const { carrito } = useCart();
 
@@ -91,6 +98,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
   const esAdmin = perfil === "dueño" || perfil === "supervisor";
   const esProducto = perfil === "cocinero" || perfil === "cantinero";
   const esCliente = perfil === "cliente_registrado" || perfil === "cliente_anonimo";
+  const esRepartidor = perfil === "repartidor";
 
   return (
     <>
@@ -162,6 +170,25 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                   className="ml-4 uppercase tracking-wider text-mostaza"
                 >
                   Estadísticas
+                </Text>
+              </TouchableOpacity>
+
+              {/* Pedidos a domicilio */}
+              <TouchableOpacity
+                onPress={() => navegar("pedidos_domicilio")}
+                className="flex-row items-center justify-center rounded-2xl border-2 border-mostaza bg-vino px-6 active:bg-terracota"
+                style={{ paddingVertical: px(14, 0.055) }}
+              >
+                <Image
+                  source={require("../../assets/images/audit-car.png")}
+                  style={{ height: px(44, 0.11), width: px(44, 0.11) }}
+                  resizeMode="contain"
+                />
+                <Text
+                  style={{ fontFamily: "LaOriental", fontSize: texto(18, 0.055) }}
+                  className="ml-4 uppercase tracking-wider text-mostaza"
+                >
+                  Pedidos a Domicilio
                 </Text>
               </TouchableOpacity>
 
@@ -282,8 +309,26 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
           {esCliente && (
             <View className="flex-1 gap-y-4">
               <View className="mb-1 flex-row items-center justify-between">
-                <Text className="text-sm font-bold text-vino uppercase">Atención en Salón</Text>
-                {numeroMesa ? (
+                <Text className="text-sm font-bold text-vino uppercase">
+                  {modoEntrega ? "Entrega a Domicilio" : "Atención en Salón"}
+                </Text>
+                {modoEntrega ? (
+                  <TouchableOpacity
+                    onPress={() => navegar("delivery_address")}
+                    accessibilityRole="button"
+                    accessibilityLabel="Cambiar dirección de entrega"
+                    className="max-w-[62%] flex-row items-center rounded-lg border border-vino bg-mostaza px-2 py-1.5 active:bg-mostaza/70"
+                  >
+                    <Text className="mr-1 text-[11px] font-bold text-vino" numberOfLines={1}>
+                      {deliveryAddress || "Elegir dirección"}
+                    </Text>
+                    <Image
+                      source={require("../../assets/images/audit-car.png")}
+                      className="h-5 w-5"
+                      resizeMode="contain"
+                    />
+                  </TouchableOpacity>
+                ) : numeroMesa ? (
                   onAbrirChatMozo ? (
                     <TouchableOpacity
                       onPress={() => {
@@ -314,7 +359,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                 ) : null}
               </View>
 
-              {!numeroMesa ? (
+              {!numeroMesa && !modoEntrega ? (
                 /* ESTADO 1: SIN MESA ASIGNADA */
                 <TouchableOpacity
                   onPress={onSolicitarMesa}
@@ -566,8 +611,39 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
             </View>
           )}
 
-          {/* 6. OTROS */}
-          {!esAdmin && !esProducto && !esCliente && perfil !== "metre" && perfil !== "mozo" && (
+          {/* 6. REPARTIDOR */}
+          {esRepartidor && (
+            <View className="flex-1 gap-y-4 pb-2">
+              <Text className="text-xs font-bold text-vino uppercase">Operación de Entregas</Text>
+
+              <TouchableOpacity
+                onPress={() => navegar("repartidor")}
+                className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza bg-vino px-6 active:bg-terracota"
+                style={{ minHeight: px(220, 0.5) }}
+              >
+                <Image
+                  source={require("../../assets/images/audit-car.png")}
+                  style={{ height: px(120, 0.3), width: px(120, 0.3) }}
+                  resizeMode="contain"
+                />
+                <Text
+                  style={{ fontFamily: "LaOriental", fontSize: texto(26, 0.07) }}
+                  className="mt-3 text-center uppercase tracking-wider text-mostaza"
+                >
+                  Pedidos y Entregas
+                </Text>
+                <Text
+                  style={{ fontSize: texto(11, 0.035), fontWeight: "600" }}
+                  className="mt-1 text-center text-amber-100"
+                >
+                  Retirá pedidos listos, seguí la ruta y cobrá en el domicilio
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* 7. OTROS */}
+          {!esAdmin && !esProducto && !esCliente && !esRepartidor && perfil !== "metre" && perfil !== "mozo" && (
             <View className="flex-1 items-center justify-center rounded-2xl border border-dashed border-mostaza/60 bg-white/70 p-8">
               <Text className="text-4xl mb-2">📭</Text>
 

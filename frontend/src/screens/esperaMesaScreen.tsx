@@ -29,6 +29,9 @@ interface Props {
   };
   onSalir: () => void;
   onMesaConfirmada?: (numeroMesa: number) => void | Promise<void>;
+  /** Solo los clientes registrados pueden pedir entrega a domicilio. */
+  puedePedirDelivery?: boolean;
+  onPedirDelivery?: () => void;
 }
 
 interface ModalMensajeInfo {
@@ -39,7 +42,7 @@ interface ModalMensajeInfo {
   iconoImagen?: ImageSourcePropType;
 }
 
-export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) {
+export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada, puedePedirDelivery = false, onPedirDelivery }: Props) {
   const insets = useSafeAreaInsets();
   const [escaneandoQR, setEscaneandoQR] = useState(false);
   const [modoEscaneo, setModoEscaneo] = useState<"entrada" | "mesa">("entrada");
@@ -454,7 +457,38 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
               </TouchableOpacity>
             )}
 
-            {/* 2. Cartel de Espera (después de escanear puerta, antes de que el metre asigne mesa) */}
+            {/* 2. Botón Entrega a Domicilio (solo clientes registrados) */}
+            {puedePedirDelivery && (
+              <TouchableOpacity
+                onPress={onPedirDelivery}
+                className="mt-3 w-full flex-row items-center justify-center rounded-2xl border-2 border-mostaza bg-vino py-3 px-4 active:bg-terracota"
+                style={{ minHeight: px(78, 0.16), padding: px(12, 0.05) }}
+              >
+                <Image
+                  source={require("../../assets/images/audit-car.png")}
+                  style={{ height: px(44, 0.1), width: px(44, 0.1), marginRight: px(12, 0.03) }}
+                  resizeMode="contain"
+                />
+                <View className="flex-1">
+                  <Text
+                    style={{ fontFamily: "LaOriental", fontSize: px(18, 0.05) }}
+                    className="uppercase tracking-wider text-mostaza"
+                  >
+                    Entrega a Domicilio
+                  </Text>
+                  <Text className="text-[11px] font-semibold text-amber-100">
+                    Pedí desde tu casa y seguí el envío en el mapa
+                  </Text>
+                </View>
+                <Image
+                  source={require("../../assets/images/right-arrow-y.png")}
+                  style={{ height: px(24, 0.07), width: px(24, 0.07) }}
+                  resizeMode="contain"
+                />
+              </TouchableOpacity>
+            )}
+
+            {/* 3. Cartel de Espera (después de escanear puerta, antes de que el metre asigne mesa) */}
             {qrEntradaEscaneado && !mesaAsignada && (
               <View
                 className="w-full gap-2 items-center rounded-2xl bg-emerald-950/60 p-3 border border-emerald-500/40"
@@ -469,7 +503,7 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
               </View>
             )}
 
-            {/* 3. Botón QR Mesa (ÚNICO: solo visible cuando el Metre asignó mesa) */}
+            {/* 4. Botón QR Mesa (ÚNICO: solo visible cuando el Metre asignó mesa) */}
             {mesaAsignada && (
               <TouchableOpacity
                 onPress={() => abrirEscaner("mesa")}
@@ -489,7 +523,7 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada }: Props) 
               </TouchableOpacity>
             )}
 
-            {/* 4. Estadísticas (visible tras escanear el QR de entrada) */}
+            {/* 5. Estadísticas (visible tras escanear el QR de entrada) */}
             {qrEntradaEscaneado && (
               <TouchableOpacity
                 onPress={() => setModalEncuestas(true)}

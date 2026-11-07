@@ -84,6 +84,8 @@ export function PedidoRecibidoScreen({
               total_amount,
               discount_amount,
               tip_amount,
+              order_type,
+              delivery_address,
               order_items (
                 id,
                 quantity,
@@ -205,6 +207,13 @@ export function PedidoRecibidoScreen({
   const propinaRegistrada =
     propinaPorcentaje !== null || Number(pedido?.tip_amount || 0) > 0;
 
+  const esDelivery = pedido?.order_type === "delivery";
+  const direccionEntrega =
+    pedido?.delivery_address || (typeof numeroMesa === "string" ? numeroMesa : "");
+  const tituloCabecera = esDelivery
+    ? direccionEntrega || "Pedido a Domicilio"
+    : `Mesa #${numeroMesa}`;
+
   return (
     <View className="flex-1">
     
@@ -240,12 +249,17 @@ export function PedidoRecibidoScreen({
           <View className="items-center rounded-xl bg-mostaza/15 px-4 py-4">
             <Text
               style={{ fontFamily: "LaOriental" }}
-              className="text-2xl text-mostaza uppercase text-center"
+              className={`text-mostaza uppercase text-center ${
+                esDelivery ? "text-lg" : "text-2xl"
+              }`}
+              numberOfLines={2}
             >
-              Mesa #{numeroMesa}
+              {tituloCabecera}
             </Text>
             <Text className="mt-1 text-xs text-center font-semibold text-amber-100">
-              ¡Esperamos que haya disfrutado su estadía! 
+              {esDelivery
+                ? "¡Gracias por tu pedido!"
+                : "¡Esperamos que haya disfrutado su estadía!"}
             </Text>
             <Text className="mt-1 text-xs text-center font-semibold text-amber-100">
               No olvide dejarnos una reseña.

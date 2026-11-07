@@ -102,7 +102,9 @@ export function CuentaScreen({
         tipo: "exito",
         titulo: "¡Pago Confirmado!",
         mensaje:
-          "El mozo ha confirmado tu pago. Tu comprobante en PDF ya fue generado y enviado. ¡Gracias por visitarnos!",
+          detalle?.orderType === "delivery"
+            ? "El repartidor confirmó el cobro. Tu comprobante en PDF ya fue generado y enviado. ¡Gracias por tu pedido!"
+            : "El mozo ha confirmado tu pago. Tu comprobante en PDF ya fue generado y enviado. ¡Gracias por visitarnos!",
       });
       setTimeout(() => {
         onPagoCompletado();
@@ -114,7 +116,7 @@ export function CuentaScreen({
         desuscribir();
       }
     };
-  }, [pedidoId, onPagoCompletado]);
+  }, [pedidoId, onPagoCompletado, detalle?.orderType]);
 
   const simularPago = () => {
     setPagando(true);
@@ -141,8 +143,11 @@ export function CuentaScreen({
 
       {/* Header Estilo Mercado Pago */}
       <View className="bg-sky-600 px-6 pt-12 pb-6 items-center shadow-md">
-        <Text className="text-white text-xs font-bold tracking-widest uppercase">
-          Detalle de Cobro • Mesa #{detalle.numeroMesa}
+        <Text className="text-white text-xs font-bold tracking-widest uppercase text-center">
+          Detalle de Cobro •{" "}
+          {detalle.orderType === "delivery"
+            ? detalle.direccionEntrega || detalle.numeroMesa
+            : `Mesa #${detalle.numeroMesa}`}
         </Text>
         <Text className="text-white text-3xl font-extrabold mt-1">
           ${detalle.totalFinal.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
@@ -257,7 +262,7 @@ export function CuentaScreen({
               Pago emitido correctamente
             </Text>
             <Text className="text-amber-800 text-xs text-center mt-1">
-              Esperando que el mozo confirme la transacción...
+              Esperando que {detalle.orderType === "delivery" ? "el repartidor" : "el mozo"} confirme la transacción...
             </Text>
           </View>
         )}

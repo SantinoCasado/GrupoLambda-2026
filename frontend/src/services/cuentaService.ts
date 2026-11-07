@@ -20,6 +20,9 @@ export interface DetalleCuenta {
   montoPropina: number;
   totalFinal: number;
   estado: string;
+  /** Presente sólo en pedidos a domicilio. */
+  direccionEntrega?: string | null;
+  orderType?: string;
 }
 
 export interface EstadoSesionCliente {
@@ -29,6 +32,11 @@ export interface EstadoSesionCliente {
   pedidoStatus?: string;
   propina?: number;
   pantallaDestino: "inicio" | "menu" | "estado_pedido" | "pedido_recibido" | "cuenta";
+  /** Datos del pedido a domicilio, para reconstruir el contexto de entrega. */
+  orderType?: string;
+  deliveryAddress?: string | null;
+  deliveryLat?: number | null;
+  deliveryLng?: number | null;
 }
 
 /**
@@ -62,6 +70,30 @@ function normalizarPorcentajePropina(
   );
 }
 
+/**
+ * Deriva el porcentaje de propina a partir de los montos ya guardados en el
+ * pedido. El repartidor lo necesita para generar la factura al cobrar.
+ *
+ * `total_amount` = subtotal - descuento + propina, por lo que la base es
+ * `total_amount - tip_amount + discount_amount`.
+ */
+export function porcentajePropinaDesdePedido(
+  tipAmount: unknown,
+  totalAmount: unknown,
+  discountAmount: unknown
+): number {
+  const propina = Number(tipAmount || 0);
+  const total = Number(totalAmount || 0);
+  const descuento = Number(discountAmount || 0);
+
+  if (!Number.isFinite(propina) || propina <= 0) return 0;
+
+  const base = total - propina + descuento;
+  if (!Number.isFinite(base) || base <= 0) return 0;
+
+  return Math.max(0, Math.round((propina / base) * 100));
+}
+
 export async function recuperarEstadoActivoCliente(
   userId: string
 ): Promise<EstadoSesionCliente> {
@@ -86,9 +118,15 @@ export async function recuperarEstadoActivoCliente(
     if (pedido) {
       console.log("📦 [RecuperarSesion] Pedido activo encontrado:", pedido.id, "Estado:", pedido.status);
 
-      // Traer número de mesa de forma directa y segura
-      let numMesa: string | number = "S/N";
-      if (pedido.table_id) {
+      const esDelivery = pedido.order_type === "delivery";
+
+      // Traer número de mesa de forma directa y segura. Para delivery el
+      // "identificador" visible es la dirección de entrega.
+      let numMesa: string | number = esDelivery
+        ? pedido.delivery_address || "Domicilio"
+        : "S/N";
+
+      if (!esDelivery && pedido.table_id) {
         const { data: mesa } = await supabase
           .from("restaurant_tables")
           .select("table_number")
@@ -100,6 +138,20 @@ export async function recuperarEstadoActivoCliente(
         }
       }
 
+      const mesaId = pedido.table_id ?? undefined;
+      const direccionEntrega = esDelivery
+        ? pedido.delivery_address ?? null
+        : undefined;
+
+      const datosEntrega = esDelivery
+        ? {
+            orderType: "delivery",
+            deliveryAddress: direccionEntrega,
+            deliveryLat: pedido.delivery_lat ?? null,
+            deliveryLng: pedido.delivery_lng ?? null,
+          }
+        : { orderType: pedido.order_type ?? "dine_in" };
+
       // Si pidió la cuenta -> Directo a CuentaScreen
       if (pedido.status === "bill_requested") {
         const porcentajePropina = normalizarPorcentajePropina(
@@ -108,17 +160,44 @@ export async function recuperarEstadoActivoCliente(
         );
 
         return {
-          mesaId: pedido.table_id,
+          mesaId,
           numeroMesa: numMesa,
           pedidoId: pedido.id,
           pedidoStatus: pedido.status,
           propina: porcentajePropina,
           pantallaDestino: "cuenta",
+          ...datosEntrega,
+        };
+      }
+
+      // Un pedido a domicilio entregado todavía necesita que el cliente
+      // confirme la recepción desde el seguimiento.
+      if (esDelivery && pedido.status === "delivered") {
+        return {
+          mesaId,
+          numeroMesa: numMesa,
+          pedidoId: pedido.id,
+          pedidoStatus: pedido.status,
+          pantallaDestino: "estado_pedido",
+          ...datosEntrega,
+        };
+      }
+
+      // Pedido a domicilio recibido -> pantalla post-entrega (propina, reseña
+      // y pago). El cobro lo hace el repartidor en la puerta.
+      if (esDelivery && pedido.status === "received") {
+        return {
+          mesaId,
+          numeroMesa: numMesa,
+          pedidoId: pedido.id,
+          pedidoStatus: pedido.status,
+          pantallaDestino: "pedido_recibido",
+          ...datosEntrega,
         };
       }
 
       // Si el pedido ya fue entregado -> Pantalla de post-entrega (juegos, encuesta, pedir cuenta)
-      if (pedido.status === "delivered") {
+      if (!esDelivery && pedido.status === "delivered") {
         // Si ya escaneó el QR de propina, la recuperamos para que la pantalla
         // muestre directamente el botón "Pagar cuenta" con la propina incluida.
         const porcentajePropina = normalizarPorcentajePropina(
@@ -128,22 +207,24 @@ export async function recuperarEstadoActivoCliente(
         );
 
         return {
-          mesaId: pedido.table_id,
+          mesaId,
           numeroMesa: numMesa,
           pedidoId: pedido.id,
           pedidoStatus: pedido.status,
           ...(porcentajePropina > 0 ? { propina: porcentajePropina } : {}),
           pantallaDestino: "pedido_recibido",
+          ...datosEntrega,
         };
       }
 
-      // pending, in_preparation, ready, etc. -> Seguimiento de pedido
+      // pending, in_preparation, ready, on_the_way, etc. -> Seguimiento
       return {
-        mesaId: pedido.table_id,
+        mesaId,
         numeroMesa: numMesa,
         pedidoId: pedido.id,
         pedidoStatus: pedido.status,
         pantallaDestino: "estado_pedido",
+        ...datosEntrega,
       };
     }
 
@@ -205,9 +286,13 @@ export async function obtenerDetalleCuenta(
     throw new Error("No se pudo cargar el pedido.");
   }
 
-  // 2. Obtener número de mesa desde restaurant_tables
-  let numeroMesa: string | number = "S/N";
-  if (pedido.table_id) {
+  // 2. Obtener número de mesa desde restaurant_tables (o la dirección si es delivery)
+  const esDelivery = pedido.order_type === "delivery";
+  let numeroMesa: string | number = esDelivery
+    ? pedido.delivery_address || "Domicilio"
+    : "S/N";
+
+  if (!esDelivery && pedido.table_id) {
     const { data: mesa } = await supabase
       .from("restaurant_tables")
       .select("table_number")
@@ -312,6 +397,8 @@ export async function obtenerDetalleCuenta(
     montoPropina,
     totalFinal,
     estado: pedido.status,
+    direccionEntrega: esDelivery ? pedido.delivery_address ?? null : undefined,
+    orderType: pedido.order_type ?? "dine_in",
   };
 }
 
@@ -359,6 +446,8 @@ export async function solicitarCuentaApi(
 ) {
   console.log("👉 Actualizando orders a 'bill_requested'...");
 
+  // 1) Cerramos los montos en Supabase. El backend de cobro lee estos valores
+  //    para no volver a aplicar descuento ni propina.
   const payload: any = {
     status: "bill_requested",
     total_amount: totalFinal,
@@ -375,6 +464,27 @@ export async function solicitarCuentaApi(
   if (error) {
     console.error("❌ Error en solicitarCuentaApi:", error.message);
     throw error;
+  }
+
+  // 2) Avisamos al backend para que envíe la push al mozo o al repartidor
+  //    según el tipo de pedido. Es best-effort: si falla la red, la cuenta ya
+  //    quedó registrada y el personal igual la ve por Realtime.
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData?.session?.access_token;
+
+    await fetch(`${API_BASE_URL}/pedidos/${pedidoId}/solicitar-cuenta`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+  } catch (pushError: any) {
+    console.warn(
+      "⚠️ No se pudo notificar la solicitud de cuenta al personal:",
+      pushError?.message
+    );
   }
 
   console.log("✅ Pedido actualizado con éxito a bill_requested");
@@ -408,7 +518,7 @@ export function escucharPagoConfirmado(pedidoId: string, onPaid: () => void) {
 /** Acción del Mozo para confirmar el cobro y liberar la mesa */
 export async function confirmarPagoPorMozo(
   pedidoId: string,
-  mesaId: string,
+  mesaId: string | null,
   propinaPorcentaje: number = 0
 ): Promise<void> {
   console.log("👉 [confirmarPagoPorMozo] Datos enviados:", {

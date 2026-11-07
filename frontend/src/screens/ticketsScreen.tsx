@@ -124,6 +124,7 @@ export function TicketsScreen({ rol }: Props) {
           >
             {tickets.map((ticket) => {
               const numMesa = ticket.restaurant_tables?.table_number ?? "S/N";
+              const esDelivery = ticket.order_type === "delivery";
               const items = ticket.order_items || [];
 
               return (
@@ -149,8 +150,17 @@ export function TicketsScreen({ rol }: Props) {
                     </Text>
                   </View>
 
-                  {/* Mesa */}
-                  <Text className="text-lg font-black text-vino">Mesa #{numMesa}</Text>
+                  {/* Mesa o domicilio de entrega */}
+                  <Text className="text-lg font-black text-vino" numberOfLines={2}>
+                    {esDelivery
+                      ? `🛵 ${ticket.delivery_address || "Pedido a domicilio"}`
+                      : `Mesa #${numMesa}`}
+                  </Text>
+                  {esDelivery && (
+                    <Text className="text-[10px] font-bold uppercase tracking-wide text-terracota">
+                      Pedido a domicilio
+                    </Text>
+                  )}
 
                   {/* Productos */}
                   <View className="mt-2">

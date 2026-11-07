@@ -88,6 +88,7 @@ export function ComandasScreen({ usuarioActual }: Props) {
           )
         `)
         .eq("status", "pending")
+        .eq("order_type", "dine_in")
         .order("created_at", { ascending: false });
 
       if (ordersErr) console.warn("Error cargando pedidos:", ordersErr.message);

@@ -159,7 +159,7 @@ export const guardarPedido = async (
             token,
             tituloPush,
             mensajePush,
-            { orderId: ordenCreada.id, table_id: tableId, tipo: 'nuevo_pedido' }
+            { orderId: ordenCreada.id, table_id: tableId, tipo: 'nuevo_pedido', order_type: orderType }
           )
         )
       );
@@ -236,6 +236,7 @@ export const confirmarPedidoPorMozo = async (
   };
 
   const motivoRechazo = rejectionReason?.trim() || null;
+  const esDelivery = pedidoActual.order_type === 'delivery';
 
   if (nuevoEstado === 'cancelled' && motivoRechazo) {
     updatePayload.rejection_reason = motivoRechazo;
@@ -292,9 +293,9 @@ export const confirmarPedidoPorMozo = async (
           </head>
           <body>
             <div class="container">
-              <h2>Actualización sobre tu pedido</h2>
+              <h2>${esDelivery ? 'Actualización sobre tu pedido a domicilio' : 'Actualización sobre tu pedido'}</h2>
               <p>Hola <strong>${cliente.first_name}</strong>,</p>
-              <p>Lamentamos informarte que tu pedido ha sido rechazado por la administración.</p>
+              <p>Lamentamos informarte que ${esDelivery ? 'tu pedido a domicilio' : 'tu pedido'} ha sido rechazado por la administración.</p>
               <div class="box">
                 <p style="margin:0; color:#c62828;"><strong>Motivo:</strong> ${motivoRechazo}</p>
               </div>
@@ -309,7 +310,7 @@ export const confirmarPedidoPorMozo = async (
         await enviarCorreoInformativo(
           cliente.email, 
           cliente.first_name, 
-          'Actualización sobre tu pedido', 
+          esDelivery ? 'Actualización sobre tu pedido a domicilio' : 'Actualización sobre tu pedido', 
           htmlRechazo
         );
       }
@@ -328,6 +329,16 @@ export const confirmarPedidoPorMozo = async (
       const tiempoCocina = tiemposCocina.length > 0 ? Math.max(...tiemposCocina) : 15;
       const tiempoViaje = pedidoActual.order_type === 'delivery' ? 20 : 0;
       const tiempoTotal = tiempoCocina + tiempoViaje;
+
+      // Persistimos el ETA completo (elaboración + viaje) para que la pantalla
+      // de seguimiento del cliente no muestre solo el tiempo de cocina.
+      if (esDelivery) {
+        await supabase
+          .from('orders')
+          .update({ estimated_delivery_time: tiempoTotal })
+          .eq('id', idPedido);
+        pedidoActualizado.estimated_delivery_time = tiempoTotal;
+      }
 
       // 3. Push de Aprobación al cliente con el tiempo estimado
       if (cliente?.push_token) {
@@ -356,7 +367,7 @@ export const confirmarPedidoPorMozo = async (
         const { data: cocineros } = await supabase
           .from('users')
           .select('push_token')
-          .eq('role', 'cocinero')
+          .eq('role', 'cook')
           .not('push_token', 'is', null);
 
         if (cocineros && cocineros.length > 0) {
@@ -376,7 +387,7 @@ export const confirmarPedidoPorMozo = async (
         const { data: cantineros } = await supabase
           .from('users')
           .select('push_token')
-          .eq('role', 'cantinero')
+          .eq('role', 'bartender')
           .not('push_token', 'is', null);
 
         if (cantineros && cantineros.length > 0) {
@@ -406,6 +417,8 @@ export const obtenerPedidosPendientesCocina = async () => {
       id,
       created_at,
       status,
+      order_type,
+      delivery_address,
       restaurant_tables (table_number),
       order_items (
         id,
@@ -441,6 +454,8 @@ export const obtenerPedidosPendientesBar = async () => {
       id,
       created_at,
       status,
+      order_type,
+      delivery_address,
       restaurant_tables (table_number),
       order_items (
         id,
@@ -477,7 +492,7 @@ export const modificarPedidoRechazado = async (
   // 1. Verificar estado actual del pedido
   const { data: pedidoActual, error: errorBusqueda } = await supabase
     .from('orders')
-    .select('id, status, client_id, table_id')
+    .select('id, status, client_id, table_id, order_type, delivery_address')
     .eq('id', idPedido)
     .single();
   
@@ -599,28 +614,37 @@ export const modificarPedidoRechazado = async (
     throw new Error(`Error al actualizar la orden: ${errorUpdate?.message}`);
   }
 
-  // 7. Notificar a los MOZOS que el cliente corrigió el pedido
+  // 7. Notificar al personal que el cliente corrigió el pedido
   try {
-    const { data: mozos } = await supabase
+    const esDelivery = pedidoActual.order_type === 'delivery';
+    const rolesDestino = esDelivery ? ['owner', 'supervisor'] : ['waiter'];
+
+    const { data: destinatarios } = await supabase
       .from('users')
       .select('push_token')
-      .eq('role', 'waiter')
+      .in('role', rolesDestino)
       .not('push_token', 'is', null);
 
-    if (mozos && mozos.length > 0) {
-      for (const mozo of mozos) {
-        if (mozo.push_token) {
+    if (destinatarios && destinatarios.length > 0) {
+      for (const destinatario of destinatarios) {
+        if (destinatario.push_token) {
           await enviarPushNotification(
-            mozo.push_token,
+            destinatario.push_token,
             '🔄 Pedido Modificado',
-            `El cliente corrigió el pedido. Requiere tu confirmación nuevamente.`,
-            { orderId: pedidoActualizado.id, tipo: 'pedido_modificado' }
+            esDelivery
+              ? `El cliente corrigió su pedido a domicilio en ${pedidoActual.delivery_address || 'su dirección'}. Requiere aprobación nuevamente.`
+              : 'El cliente corrigió el pedido. Requiere tu confirmación nuevamente.',
+            {
+              orderId: pedidoActualizado.id,
+              tipo: 'pedido_modificado',
+              order_type: pedidoActual.order_type,
+            }
           );
         }
       }
     }
   } catch (pushError) {
-    console.error('No se pudo enviar la push de modificación al mozo:', pushError);
+    console.error('No se pudo enviar la push de modificación:', pushError);
   }
 
   return {
@@ -667,48 +691,132 @@ export const marcarItemComoListoService = async(itemId: string) => {
     .from('orders')
     .update({ status: 'ready', updated_at: new Date().toISOString() })
     .eq('id', orderId)
-    .select('id, table_id, restaurant_tables(table_number)')
+    .select('id, table_id, order_type, delivery_address, restaurant_tables(table_number)')
     .single();
 
     if (errorOrden){
       throw new Error(`Error al actualizar el estado del pedido: ${errorOrden?.message}`);
     }
 
-    // Notificar al mozo que el pedido está listo
-    try {
-      // Obtener el token del mozo asignado al pedido
-      const numeroMesa = (pedidoActualizado.restaurant_tables as any)?.table_number || 'S/N'; 
-      
-      const { data: mozos } = await supabase
-        .from('users')
-        .select('push_token')
-        .eq('role', 'waiter')
-        .not('push_token', 'is', null)
+    const esDelivery = (pedidoActualizado as any).order_type === 'delivery';
 
-      if (mozos && mozos.length > 0){
-        for(const mozo of mozos){
-          if(mozo.push_token){
-            await enviarPushNotification(
-              mozo.push_token,
-              '🛎️ ¡Pedido Completo!',
-              `El pedido de la Mesa #${numeroMesa} está 100% listo para retirar y entregar.`,
-              { orderId: orderId, tipo: 'pedido_completo', table_id: pedidoActualizado.table_id }
-            );
+    try {
+      if (esDelivery) {
+        // El pedido a domicilio no lo entrega un mozo: lo retira un repartidor.
+        const { data: repartidores } = await supabase
+          .from('users')
+          .select('push_token')
+          .eq('role', 'delivery')
+          .not('push_token', 'is', null);
+
+        if (repartidores && repartidores.length > 0) {
+          for (const repartidor of repartidores) {
+            if (repartidor.push_token) {
+              await enviarPushNotification(
+                repartidor.push_token,
+                '🛵 Pedido listo para retirar',
+                `El pedido a domicilio en ${
+                  (pedidoActualizado as any).delivery_address || 'la dirección del cliente'
+                } está listo para llevar.`,
+                {
+                  orderId: orderId,
+                  tipo: 'delivery_listo',
+                  order_type: 'delivery',
+                }
+              );
+            }
+          }
+        }
+      } else {
+        const numeroMesa = (pedidoActualizado.restaurant_tables as any)?.table_number || 'S/N';
+
+        const { data: mozos } = await supabase
+          .from('users')
+          .select('push_token')
+          .eq('role', 'waiter')
+          .not('push_token', 'is', null);
+
+        if (mozos && mozos.length > 0){
+          for(const mozo of mozos){
+            if(mozo.push_token){
+              await enviarPushNotification(
+                mozo.push_token,
+                '🛎️ ¡Pedido Completo!',
+                `El pedido de la Mesa #${numeroMesa} está 100% listo para retirar y entregar.`,
+                { orderId: orderId, tipo: 'pedido_completo', table_id: pedidoActualizado.table_id }
+              );
+            }
           }
         }
       }
     } catch (pushError){
-      console.error('⚠️ Error al enviar la push de pedido completo al mozo:', pushError);
+      console.error('⚠️ Error al enviar la push de pedido completo:', pushError);
     }
 
     return { 
         pedidoCompleto: true, 
-        message: '¡Pedido completo! Notificación enviada a los mozos.',
+        message: esDelivery
+          ? '¡Pedido completo! Notificación enviada a los repartidores.'
+          : '¡Pedido completo! Notificación enviada a los mozos.',
         orden: pedidoActualizado
     };
 }
 
 export const entregarPedidoMozoService = async (idPedido: string) => {
+    const { data: pedidoActual, error: errorBusqueda } = await supabase
+        .from('orders')
+        .select('id, status, order_type, delivery_address')
+        .eq('id', idPedido)
+        .single();
+
+    if (errorBusqueda || !pedidoActual) {
+        throw new Error('El pedido especificado no existe.');
+    }
+
+    // En delivery el mozo no entrega en la mesa: avisa a los repartidores que
+    // el pedido está listo para retirar. El estado sigue en 'ready' hasta que
+    // un repartidor lo tome con PATCH /api/delivery/:id/tomar.
+    if (pedidoActual.order_type === 'delivery') {
+        if (pedidoActual.status !== 'ready') {
+            throw new Error(
+                `El pedido a domicilio todavía no está listo. Estado actual: ${pedidoActual.status}`
+            );
+        }
+
+        try {
+            const { data: repartidores } = await supabase
+                .from('users')
+                .select('push_token')
+                .eq('role', 'delivery')
+                .not('push_token', 'is', null);
+
+            if (repartidores && repartidores.length > 0) {
+                await Promise.all(
+                    repartidores.map((repartidor) =>
+                        repartidor.push_token
+                            ? enviarPushNotification(
+                                  repartidor.push_token,
+                                  '🛵 Pedido listo para retirar',
+                                  `El pedido a domicilio en ${
+                                      pedidoActual.delivery_address || 'la dirección del cliente'
+                                  } está listo para llevar.`,
+                                  {
+                                      orderId: pedidoActual.id,
+                                      tipo: 'delivery_listo',
+                                      order_type: 'delivery',
+                                  }
+                              )
+                            : Promise.resolve(false)
+                    )
+                );
+            }
+        } catch (pushError) {
+            console.error('⚠️ Error avisando a los repartidores:', pushError);
+        }
+
+        return pedidoActual;
+    }
+
     const { data: pedidoEntregado, error } = await supabase
         .from('orders')
         .update({ 
@@ -753,34 +861,69 @@ export const solicitarCuentaService = async (pedidoId: string) => {
         .from('orders')
         .update({ status: 'bill_requested' })
         .eq('id', pedidoId)
-        .select('*') 
+        .select(`
+            *,
+            restaurant_tables(table_number)
+        `)
         .single();
 
     if (error) {
         throw new Error(`Error al solicitar la cuenta: ${error.message}`);
     }
 
-    // aviso a los mozos que esa mesa quiere pagar
+    // Aviso al personal que corresponde cobrar
     try {
-      const numeroMesa = (pedido.restaurant_tables as any)?.table_number || 'S/N';
+      const esDelivery = pedido.order_type === 'delivery';
+      let destinatarios: { push_token: string | null }[] = [];
 
-      // Buscamos los tokens de mozos, dueños y supervisores en una sola consulta con .in()
-      const { data: destinatarios, error: errorDestinatarios } = await supabase
+      if (esDelivery) {
+        // En delivery cobra el repartidor asignado. Si todavía no hay
+        // repartidor, avisamos a dueños/supervisores como respaldo.
+        if (pedido.delivery_driver_id) {
+          const { data: driver } = await supabase
+            .from('users')
+            .select('push_token')
+            .eq('id', pedido.delivery_driver_id)
+            .maybeSingle();
+          if (driver?.push_token) destinatarios = [driver];
+        }
+
+        if (destinatarios.length === 0) {
+          const { data: admins } = await supabase
+            .from('users')
+            .select('push_token')
+            .in('role', ['owner', 'supervisor'])
+            .not('push_token', 'is', null);
+          destinatarios = admins || [];
+        }
+      } else {
+        const { data: personal } = await supabase
           .from('users')
           .select('push_token')
           .in('role', ['waiter', 'owner', 'supervisor'])
           .not('push_token', 'is', null);
+        destinatarios = personal || [];
+      }
 
-      if (errorDestinatarios) {
-          console.error('⚠️ Error al buscar destinatarios para la push:', errorDestinatarios.message);
-      } else if (destinatarios && destinatarios.length > 0) {
+      if (destinatarios.length > 0) {
           for (const user of destinatarios) {
               if (user.push_token) {
                   await enviarPushNotification(
                       user.push_token,
                       '🛎️ Cuenta Solicitada',
-                      `La Mesa #${numeroMesa} solicitó la cuenta y el pago.`,
-                      { orderId: pedidoId, tipo: 'bill_requested', table_id: pedido.table_id }
+                      esDelivery
+                        ? `El pedido a domicilio en ${
+                            pedido.delivery_address || 'la dirección del cliente'
+                          } solicitó la cuenta y el pago.`
+                        : `La Mesa #${
+                            (pedido.restaurant_tables as any)?.table_number || 'S/N'
+                          } solicitó la cuenta y el pago.`,
+                      {
+                        orderId: pedidoId,
+                        tipo: 'bill_requested',
+                        table_id: pedido.table_id,
+                        order_type: pedido.order_type,
+                      }
                   );
               }
           }
@@ -839,6 +982,7 @@ export const cobrarPedidoService = async (pedidoId: string, porcentajePropina: n
                 precioFinal: totalFinal,
                 porcentajePropina: Number(porcentajePropina) || 0,
                 porcentajeDescuento,
+                orderType: pedido.order_type === 'delivery' ? 'delivery' : 'dine_in',
             },
             items
         );
@@ -898,12 +1042,17 @@ export const cobrarPedidoService = async (pedidoId: string, porcentajePropina: n
         notificacionesAdmin.total = tokensAdmin.length;
 
         if (tokensAdmin.length > 0) {
+            const esDelivery = pedido.order_type === 'delivery';
             const resultados = await Promise.all(
                 tokensAdmin.map((token) =>
                     enviarPushNotification(
                         token,
-                        '💳 Pago Confirmado y Mesa Libre',
-                        `La mesa ${pedido.restaurant_tables?.table_number || 'sin asignar'} pagó $${totalFinal.toFixed(2)}.`
+                        esDelivery ? '💳 Pago Confirmado' : '💳 Pago Confirmado y Mesa Libre',
+                        esDelivery
+                            ? `El pedido a domicilio en ${
+                                  pedido.delivery_address || 'la dirección del cliente'
+                              } pagó $${totalFinal.toFixed(2)}.`
+                            : `La mesa ${pedido.restaurant_tables?.table_number || 'sin asignar'} pagó $${totalFinal.toFixed(2)}.`
                     )
                 )
             );
@@ -930,7 +1079,8 @@ export const cobrarPedidoService = async (pedidoId: string, porcentajePropina: n
                     cliente.email,
                     cliente.first_name || 'Cliente',
                     factura.url,
-                    { buffer: factura.buffer, fileName: factura.fileName }
+                    { buffer: factura.buffer, fileName: factura.fileName },
+                    pedido.order_type === 'delivery' ? 'delivery' : 'dine_in'
                 );
             } else {
                 console.warn('⚠️ [cobrarPedido] Cliente registrado sin email; no se envía el comprobante.');

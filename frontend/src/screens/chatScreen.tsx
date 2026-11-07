@@ -51,8 +51,14 @@ const ChatScrollView = React.forwardRef<
 });
 
 interface Props {
-  tableId: string;
-  numeroMesa: number;
+  tableId?: string;
+  numeroMesa?: number;
+  /** Pedido a domicilio al que pertenece el chat. */
+  orderId?: string;
+  /** Activa el encabezado y el contrato de chat de delivery. */
+  modoDelivery?: boolean;
+  direccionEntrega?: string;
+  fechaPedido?: string | null;
   usuarioActual: {
     id: string;
     nombres: string;
@@ -62,9 +68,30 @@ interface Props {
   onVolver: () => void;
 }
 
+const formatearFecha = (iso?: string | null) => {
+  if (!iso) return "";
+  const fecha = new Date(iso);
+  if (Number.isNaN(fecha.getTime())) return "";
+  return `${fecha.toLocaleDateString([], {
+    day: "2-digit",
+    month: "2-digit",
+  })} ${fecha.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+};
+
+const minutosDesde = (iso?: string | null) => {
+  if (!iso) return 0;
+  const fecha = new Date(iso);
+  if (Number.isNaN(fecha.getTime())) return 0;
+  return Math.max(0, Math.floor((Date.now() - fecha.getTime()) / 60_000));
+};
+
 export function ChatMozoScreen({
   tableId,
   numeroMesa,
+  orderId,
+  modoDelivery = false,
+  direccionEntrega,
+  fechaPedido,
   usuarioActual,
   onVolver,
 }: Props) {
@@ -72,24 +99,61 @@ export function ChatMozoScreen({
   const [texto, setTexto] = useState("");
   const [enviando, setEnviando] = useState(false);
   const [cargando, setCargando] = useState(true);
+  const [tick, setTick] = useState(0);
 
   const flatListRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
   const esMozo = usuarioActual.perfil === "mozo";
+  const soyCliente = usuarioActual.perfil.startsWith("cliente");
+
+  const filtro = modoDelivery
+    ? { orderId: orderId || null }
+    : { tableId: tableId || null };
+
+  const filtroRealtime = modoDelivery
+    ? `order_id=eq.${orderId}`
+    : `table_id=eq.${tableId}`;
+
+  // Mantiene actualizado el contador de minutos del encabezado de delivery.
+  useEffect(() => {
+    if (!modoDelivery) return;
+    const intervalo = setInterval(() => setTick((t) => t + 1), 30_000);
+    return () => clearInterval(intervalo);
+  }, [modoDelivery]);
+
+  const cargarHistorial = useCallback(async () => {
+    try {
+      setCargando(true);
+      const data = await obtenerMensajesChat(filtro);
+      setMensajes(data);
+    } catch (err: any) {
+      console.warn("Error cargando mensajes:", err.message);
+    } finally {
+      setCargando(false);
+    }
+  }, [modoDelivery ? orderId : tableId]);
 
   useEffect(() => {
+    // Sin mesa ni pedido no hay conversación que cargar.
+    if (modoDelivery ? !orderId : !tableId) {
+      setCargando(false);
+      return;
+    }
+
     cargarHistorial();
 
-    // Suscripción Realtime a la tabla 'chats' filtrada por esta mesa
+    // Suscripción Realtime a la tabla 'chats' filtrada por mesa o pedido.
     const canal = supabase
-      .channel(`chat_mesa_${tableId}`)
+      .channel(
+        modoDelivery ? `chat_delivery_${orderId}` : `chat_mesa_${tableId}`
+      )
       .on(
         "postgres_changes",
         {
           event: "INSERT",
           schema: "public",
           table: "chats",
-          filter: `table_id=eq.${tableId}`,
+          filter: filtroRealtime,
         },
         (payload) => {
           const nuevo = payload.new as MensajeChat;
@@ -97,7 +161,10 @@ export function ChatMozoScreen({
             if (prev.some((m) => m.id === nuevo.id)) return prev;
             return [...prev, nuevo];
           });
-          setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 100);
+          setTimeout(
+            () => flatListRef.current?.scrollToEnd({ animated: true }),
+            100
+          );
         }
       )
       .subscribe();
@@ -105,19 +172,7 @@ export function ChatMozoScreen({
     return () => {
       supabase.removeChannel(canal);
     };
-  }, [tableId]);
-
-  const cargarHistorial = async () => {
-    try {
-      setCargando(true);
-      const data = await obtenerMensajesChat(tableId);
-      setMensajes(data);
-    } catch (err: any) {
-      console.warn("Error cargando mensajes:", err.message);
-    } finally {
-      setCargando(false);
-    }
-  };
+  }, [tableId, orderId, modoDelivery, filtroRealtime, cargarHistorial]);
 
   const handleEnviar = async () => {
     if (!texto.trim() || enviando) return;
@@ -130,10 +185,11 @@ export function ChatMozoScreen({
       // La persistencia y las notificaciones push las resuelve el backend,
       // que conoce el remitente real y los destinatarios correctos.
       await enviarMensajeChat({
-        table_id: tableId,
+        ...(modoDelivery
+          ? { order_id: orderId, chat_type: "delivery" as const }
+          : { table_id: tableId, chat_type: "table_waiter" as const }),
         sender_id: usuarioActual.id,
         message: mensajeAEnviar,
-        chat_type: "table_waiter",
       });
     } catch (err: any) {
       console.warn("⚠️ Error al enviar mensaje:", err.message);
@@ -164,6 +220,14 @@ export function ChatMozoScreen({
         })
       : "";
 
+    const etiquetaRemitente = modoDelivery
+      ? soyCliente
+        ? "Repartidor"
+        : "Cliente"
+      : esMozo
+      ? `Mesa #${numeroMesa}`
+      : "Mozo de Salón";
+
     return (
       <View
         className={`mb-2 max-w-[80%] rounded-2xl px-3.5 py-2.5 shadow-sm ${
@@ -174,22 +238,21 @@ export function ChatMozoScreen({
       >
         {!esMio && (
           <Text className="mb-0.5 text-sm font-bold text-vino">
-            {esMozo ? `Mesa #${numeroMesa}` : "Mozo de Salón"}
+            {etiquetaRemitente}
           </Text>
         )}
 
         <Text
-        style={{
-          fontFamily: "sans-serif",
-          fontSize: 14,
-          color: esMio ? "#1c1917" : "#292524",
-          fontWeight: esMio ? "600" : "400",
-        }}
+          style={{
+            fontFamily: "sans-serif",
+            fontSize: 14,
+            color: esMio ? "#1c1917" : "#292524",
+            fontWeight: esMio ? "600" : "400",
+          }}
         >
           {item.message}
-          
         </Text>
-        
+
         <Text
           className={`mt-1 text-[10px] text-right ${
             esMio ? "text-stone-700" : "text-stone-400"
@@ -200,6 +263,16 @@ export function ChatMozoScreen({
       </View>
     );
   };
+
+  const titulo = modoDelivery
+    ? soyCliente
+      ? "Chat con el Repartidor"
+      : "Chat con el Cliente"
+    : esMozo
+    ? "Consultas de la Mesa"
+    : "Consulta al Mozo";
+
+  const minutos = minutosDesde(fechaPedido);
 
   return (
     <View className="flex-1 bg-amber-50">
@@ -223,16 +296,34 @@ export function ChatMozoScreen({
         </View>
 
         {/* Centro: título y subtítulo */}
-        <View className="items-center">
+        <View className="items-center flex-shrink">
           <Text
             style={{ fontFamily: "LaOriental" }}
-            className="text-xl uppercase text-mostaza"
+            className="text-lg uppercase text-mostaza text-center"
+            numberOfLines={1}
           >
-            {esMozo ? "Consultas de la Mesa" : "Consulta al Mozo"}
+            {titulo}
           </Text>
-          <Text className="text-sm font-bold text-emerald-300">
-            Mesa #{numeroMesa} • En Vivo
-          </Text>
+
+          {modoDelivery ? (
+            <>
+              <Text
+                className="max-w-[240px] text-[11px] font-bold text-amber-100 text-center"
+                numberOfLines={1}
+              >
+                📍 {direccionEntrega || "Domicilio del cliente"}
+              </Text>
+              <Text className="text-[10px] font-semibold text-emerald-300 text-center">
+                {formatearFecha(fechaPedido)}
+                {fechaPedido ? " • " : ""}
+                {minutos} min transcurridos • En vivo
+              </Text>
+            </>
+          ) : (
+            <Text className="text-sm font-bold text-emerald-300">
+              Mesa #{numeroMesa} • En Vivo
+            </Text>
+          )}
         </View>
 
         {/* Contrapeso derecho: mismo ancho que el bloque izquierdo */}
@@ -245,7 +336,9 @@ export function ChatMozoScreen({
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator size="large" color="#800020" />
             <Text className="mt-2 text-xs font-semibold text-vino">
-              Conectando con el mozo...
+              {modoDelivery
+                ? "Conectando con el repartidor..."
+                : "Conectando con el mozo..."}
             </Text>
           </View>
         ) : mensajes.length === 0 ? (
@@ -255,10 +348,14 @@ export function ChatMozoScreen({
               style={{ fontFamily: "LaOriental" }}
               className="text-base uppercase text-vino text-center font-bold"
             >
-              Sala de Consulta Abierta
+              {modoDelivery ? "Chat de Entrega Abierto" : "Sala de Consulta Abierta"}
             </Text>
             <Text className="mt-1 text-center text-xs text-stone-500">
-              Escribí tu consulta. Le llegará una notificación a los mozos de turno.
+              {modoDelivery
+                ? soyCliente
+                  ? "Escribile al repartidor para coordinar la entrega de tu pedido."
+                  : "Escribile al cliente para coordinar la entrega del pedido."
+                : "Escribí tu consulta. Le llegará una notificación a los mozos de turno."}
             </Text>
           </View>
         ) : (
@@ -285,7 +382,13 @@ export function ChatMozoScreen({
           <TextInput
             value={texto}
             onChangeText={setTexto}
-            placeholder="Escribir consulta al mozo..."
+            placeholder={
+              modoDelivery
+                ? soyCliente
+                  ? "Escribir al repartidor..."
+                  : "Escribir al cliente..."
+                : "Escribir consulta al mozo..."
+            }
             placeholderTextColor="#a8a29e"
             className="flex-1 rounded-2xl border border-stone-300 bg-stone-50 px-4 py-2.5 text-lg text-stone-800"
             multiline
@@ -296,7 +399,9 @@ export function ChatMozoScreen({
             onPress={handleEnviar}
             disabled={!texto.trim() || enviando}
             className={`ml-2 h-12 w-12 items-center justify-center rounded-2xl ${
-              !texto.trim() || enviando ? "border border-stone-300 bg-white" : "bg-vino active:bg-terracota"
+              !texto.trim() || enviando
+                ? "border border-stone-300 bg-white"
+                : "bg-vino active:bg-terracota"
             }`}
           >
             {enviando ? (

@@ -16,6 +16,7 @@ const ROLE_TO_PERFIL: Record<string, PerfilUsuario> = {
   bartender: "cantinero",
   waiter: "mozo",
   maitre: "metre",
+  delivery: "repartidor",
   registered_client: "cliente_registrado",
   anonymous_client: "cliente_anonimo",
 };
@@ -27,6 +28,7 @@ const TITULOS_VISUALES: Record<PerfilUsuario, string> = {
   cantinero: "Cantinero",
   mozo: "Mozo",
   metre: "Metre",
+  repartidor: "Repartidor",
   cliente_registrado: "Cliente",
   cliente_anonimo: "Invitado",
 };

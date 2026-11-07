@@ -66,6 +66,8 @@ export default function PedidosListosScreen() {
             id,
             created_at,
             status,
+            order_type,
+            delivery_address,
             restaurant_tables (table_number),
             order_items (
               id,
@@ -121,11 +123,16 @@ export default function PedidosListosScreen() {
 
     try {
       await marcarPedidoEntregadoApi(pedido.id);
+      const esDelivery = pedido.order_type === "delivery";
       abrirAviso(
-        "¡Pedido Entregado!",
-        `El pedido de la Mesa #${
-          pedido.restaurant_tables?.table_number ?? "S/N"
-        } fue marcado como entregado.`,
+        esDelivery ? "¡Pedido Listo para el Repartidor!" : "¡Pedido Entregado!",
+        esDelivery
+          ? `El pedido a domicilio en ${
+              pedido.delivery_address || "la dirección del cliente"
+            } fue avisado a los repartidores para que lo retiren.`
+          : `El pedido de la Mesa #${
+              pedido.restaurant_tables?.table_number ?? "S/N"
+            } fue marcado como entregado.`,
         "exito"
       );
       cargarPedidos();
@@ -217,6 +224,7 @@ export default function PedidosListosScreen() {
           >
             {pedidosListos.map((pedido) => {
               const numMesa = pedido.restaurant_tables?.table_number ?? "S/N";
+              const esDelivery = pedido.order_type === "delivery";
               // Platos primero, luego bebidas y al final los postres.
               const items = [...(pedido.order_items || [])].sort(
                 (a: any, b: any) =>
@@ -231,12 +239,22 @@ export default function PedidosListosScreen() {
                 >
                   <View className="flex-1 rounded-2xl border-2 border-caramelo bg-[#FFFDF9] p-4">
                     <View className="mb-2 flex-row items-center justify-between">
-                      <Text
-                        className="text-2xl text-vino"
-                        style={{ fontFamily: "LaOriental" }}
-                      >
-                        Mesa #{numMesa}
-                      </Text>
+                      <View className="flex-1 pr-2">
+                        <Text
+                          className={`text-vino ${esDelivery ? "text-lg" : "text-2xl"}`}
+                          style={{ fontFamily: "LaOriental" }}
+                          numberOfLines={2}
+                        >
+                          {esDelivery
+                            ? pedido.delivery_address || "Pedido a Domicilio"
+                            : `Mesa #${numMesa}`}
+                        </Text>
+                        {esDelivery && (
+                          <Text className="text-[11px] font-bold uppercase tracking-wide text-terracota">
+                            🛵 Entregar al Repartidor
+                          </Text>
+                        )}
+                      </View>
                       <Text className="text-sm font-semibold text-stone-500">
                         {pedido.created_at
                           ? `${new Date(pedido.created_at).toLocaleDateString([], {
@@ -312,7 +330,9 @@ export default function PedidosListosScreen() {
                           className="text-center text-sm uppercase tracking-wide text-white"
                         >
                           {procesandoId === pedido.id
-                            ? "Entregando..."
+                            ? "Procesando..."
+                            : esDelivery
+                            ? "Entregar al Repartidor"
                             : "Entregar"}
                         </Text>
                       </TouchableOpacity>
@@ -328,16 +348,32 @@ export default function PedidosListosScreen() {
       {/* Modal de confirmación de entrega */}
       <ConfirmModal
         visible={confirmando !== null}
-        titulo="Entregar Pedido"
-        mensaje={
-          <>
-            Entregar pedido de la {" "}
-            <Text className="font-bold text-mostaza">
-              Mesa #{confirmando?.restaurant_tables?.table_number}
-            </Text>{" "}
-          </>
+        titulo={
+          confirmando?.order_type === "delivery"
+            ? "Avisar al Repartidor"
+            : "Entregar Pedido"
         }
-        textoConfirmar="Entregar"
+        mensaje={
+          confirmando?.order_type === "delivery" ? (
+            <>
+              Avisar a los repartidores que el pedido a domicilio en{" "}
+              <Text className="font-bold text-mostaza">
+                {confirmando?.delivery_address || "la dirección del cliente"}
+              </Text>{" "}
+              está listo para retirar.
+            </>
+          ) : (
+            <>
+              Entregar pedido de la{" "}
+              <Text className="font-bold text-mostaza">
+                Mesa #{confirmando?.restaurant_tables?.table_number}
+              </Text>{" "}
+            </>
+          )
+        }
+        textoConfirmar={
+          confirmando?.order_type === "delivery" ? "Avisar" : "Entregar"
+        }
         textoCancelar="Cancelar"
         cargando={procesandoId !== null}
         onConfirm={ejecutarEntrega}

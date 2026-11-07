@@ -4,29 +4,53 @@ import { headersConToken } from "./tokenService";
 
 export interface MensajeChat {
   id: string;
-  table_id: string;
+  table_id: string | null;
+  order_id?: string | null;
   sender_id: string;
   sender_name?: string;
-  sender_role?: "cliente" | "mozo" | string;
-  chat_type: "table_waiter" | string;
+  sender_role?: "cliente" | "mozo" | "repartidor" | string;
+  chat_type: "table_waiter" | "delivery" | string;
   message: string;
   created_at: string;
+  users?: {
+    first_name?: string;
+    last_name?: string;
+    role?: string;
+  } | null;
+}
+
+export interface ChatFiltro {
+  tableId?: string | null;
+  orderId?: string | null;
 }
 
 export interface EnviarMensajePayload {
-  table_id: string;
+  /** Chat de mesa: mesa asignada. */
+  table_id?: string | null;
+  /** Chat de delivery: pedido a domicilio. */
+  order_id?: string | null;
   sender_id: string;
   message: string;
-  chat_type?: "table_waiter";
-  order_id?: string | null;
+  chat_type?: "table_waiter" | "delivery";
 }
 
-export const obtenerMensajesChat = async (tableId: string): Promise<MensajeChat[]> => {
-  if (!tableId) return [];
+const normalizarFiltro = (filtro: ChatFiltro | string): ChatFiltro =>
+  typeof filtro === "string" ? { tableId: filtro } : filtro;
+
+export const obtenerMensajesChat = async (
+  filtro: ChatFiltro | string
+): Promise<MensajeChat[]> => {
+  const { tableId, orderId } = normalizarFiltro(filtro);
+
+  if (!tableId && !orderId) return [];
 
   // 1. Intento por backend
   try {
-    const res = await fetch(`${API_BASE_URL}/chat?table_id=${tableId}`, {
+    const params = new URLSearchParams();
+    if (tableId) params.set("table_id", tableId);
+    if (orderId) params.set("order_id", orderId);
+
+    const res = await fetch(`${API_BASE_URL}/chat?${params.toString()}`, {
       headers: await headersConToken(),
     });
     if (res.ok) {
@@ -39,11 +63,14 @@ export const obtenerMensajesChat = async (tableId: string): Promise<MensajeChat[
 
   // 2. Fallback garantizado: consulta directa a Supabase
   try {
-    const { data, error } = await supabase
-      .from("chats")
-      .select("*")
-      .eq("table_id", tableId)
-      .order("created_at", { ascending: true });
+    let query = supabase.from("chats").select("*");
+
+    if (tableId) query = query.eq("table_id", tableId);
+    if (orderId) query = query.eq("order_id", orderId);
+
+    const { data, error } = await query.order("created_at", {
+      ascending: true,
+    });
 
     if (error) throw error;
     return (data as MensajeChat[]) || [];
@@ -53,26 +80,33 @@ export const obtenerMensajesChat = async (tableId: string): Promise<MensajeChat[
   }
 };
 
-export const enviarMensajeChat = async (payload: EnviarMensajePayload): Promise<MensajeChat> => {
+export const enviarMensajeChat = async (
+  payload: EnviarMensajePayload
+): Promise<MensajeChat> => {
+  const chatType = payload.chat_type || "table_waiter";
+  const tableId = payload.table_id || null;
+  const orderId = payload.order_id || null;
+
   const bodyData = {
-    table_id: payload.table_id,
+    table_id: tableId,
+    order_id: orderId,
     sender_id: payload.sender_id,
     message: payload.message,
-    chat_type: payload.chat_type || "table_waiter",
-    order_id: payload.order_id || null,
+    chat_type: chatType,
   };
 
   // 1. Intento por backend: ${API_BASE_URL}/chat
-  // El remitente lo resuelve el backend desde el token de sesión, por eso no se envía sender_id.
+  // El remitente lo resuelve el backend desde el token de sesión, por eso no
+  // se envía sender_id.
   try {
     const res = await fetch(`${API_BASE_URL}/chat`, {
       method: "POST",
       headers: await headersConToken({ "Content-Type": "application/json" }),
       body: JSON.stringify({
-        table_id: bodyData.table_id,
-        message: bodyData.message,
-        chat_type: bodyData.chat_type,
-        order_id: bodyData.order_id,
+        ...(tableId ? { table_id: tableId } : {}),
+        ...(orderId ? { order_id: orderId } : {}),
+        message: payload.message,
+        chat_type: chatType,
       }),
     });
 
@@ -81,8 +115,9 @@ export const enviarMensajeChat = async (payload: EnviarMensajePayload): Promise<
       return json.data;
     }
 
-    // El backend respondió con error (401/403/400/500): no se reintenta por Supabase
-    // porque esa vía saltaría la validación del remitente y la notificación push.
+    // El backend respondió con error (401/403/400/500): no se reintenta por
+    // Supabase porque esa vía saltaría la validación del remitente y la
+    // notificación push.
     const detalle = await res.json().catch(() => ({}));
     throw new Error(
       typeof detalle?.detalle === "string"
@@ -93,7 +128,9 @@ export const enviarMensajeChat = async (payload: EnviarMensajePayload): Promise<
     // Solo cae al fallback cuando el backend fue inalcanzable
     const esFallaDeRed =
       error instanceof TypeError ||
-      /network|failed to fetch|Network request failed|Load failed/i.test(error?.message || "");
+      /network|failed to fetch|Network request failed|Load failed/i.test(
+        error?.message || ""
+      );
 
     if (!esFallaDeRed) throw error;
 

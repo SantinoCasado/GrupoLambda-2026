@@ -1,42 +1,6 @@
-import { supabase } from '../../config/supabase'; 
+import { supabase } from '../../config/supabase';
 import { enviarPushNotification } from '../../services/pushNotifications.service';
 import { FiltrosDelivery } from './interface/filtrosDelivery';
-import { enviarFacturaPorEmail } from '../../services/email.service';
-
-/**
- * Obtener pedidos disponibles para el repartidor (en estado 'ready' u 'on_the_way')
- */
-export const obtenerPedidosDeliveryService = async (repartidorId?: string) => {
-  let query = supabase
-    .from('orders')
-    .select(`
-      id,
-      status,
-      order_type,
-      delivery_address,
-      delivery_lat,
-      delivery_lng,
-      total_amount,
-      created_at,
-      client:users!client_id(id, first_name, last_name, email, push_token),
-      items:order_items(*, product:products(name))
-    `)
-    .eq('order_type', 'delivery')
-    .in('status', ['ready', 'on_the_way'])
-    .order('created_at', { ascending: false });
-
-  // Si se pasa repartidorId, trae los asignados a él o los que no tienen repartidor aún
-  if (repartidorId) {
-    query = query.or(`delivery_driver_id.eq.${repartidorId},delivery_driver_id.is.null`);
-  }
-
-  const { data, error } = await query;
-  if (error) {
-    throw new Error(`Error al consultar pedidos de delivery: ${error.message}`);
-  }
-
-  return data || [];
-};
 
 export const obtenerTodosPedidosDeliveryService = async (filtros?: FiltrosDelivery) => {
   let query = supabase
@@ -62,9 +26,12 @@ export const obtenerTodosPedidosDeliveryService = async (filtros?: FiltrosDelive
     }
   }
 
-  // Filtro opcional por Repartidor
+  // Un repartidor debe ver tanto sus pedidos asignados como los que todavía
+  // no tomó nadie. Sin esto, los pedidos 'ready' nunca aparecen en su lista.
   if (filtros?.repartidorId) {
-    query = query.eq('delivery_driver_id', filtros.repartidorId);
+    query = query.or(
+      `delivery_driver_id.eq.${filtros.repartidorId},delivery_driver_id.is.null`
+    );
   }
 
   const { data, error } = await query;
@@ -97,14 +64,14 @@ export const obtenerPedidoDeliveryPorIdService = async (pedidoId: string) => {
 };
 
 /**
- * El repartidor (dispositivo 4) confirma la recepción del pedido (Punto 29)
- * Cambia estado a 'on_the_way', asigna el 'delivery_driver_id' y envía Push al cliente.
+ * El repartidor confirma la recepción del pedido (Punto 29).
+ * Cambia el estado a 'on_the_way', asigna el 'delivery_driver_id' y avisa al cliente.
+ * Solo puede tomarlo un repartidor si el pedido está 'ready' y todavía no tiene dueño.
  */
 export const tomarPedidoDeliveryService = async (pedidoId: string, repartidorId: string) => {
-  // Verificamos estado actual del pedido
   const { data: pedidoExistente, error: errorBusqueda } = await supabase
     .from('orders')
-    .select('id, status, order_type')
+    .select('id, status, order_type, delivery_driver_id')
     .eq('id', pedidoId)
     .single();
 
@@ -116,7 +83,20 @@ export const tomarPedidoDeliveryService = async (pedidoId: string, repartidorId:
     throw new Error('El pedido no es de tipo delivery.');
   }
 
-  // Actualizamos el pedido en Supabase
+  if (pedidoExistente.status !== 'ready') {
+    throw new Error(
+      `El pedido no está listo para retirar. Estado actual: ${pedidoExistente.status}`
+    );
+  }
+
+  if (
+    pedidoExistente.delivery_driver_id &&
+    pedidoExistente.delivery_driver_id !== repartidorId
+  ) {
+    throw new Error('Otro repartidor ya tomó este pedido.');
+  }
+
+  // Update atómico: solo asigna si sigue 'ready' y sin repartidor.
   const { data: pedidoActualizado, error: errorUpdate } = await supabase
     .from('orders')
     .update({
@@ -125,6 +105,8 @@ export const tomarPedidoDeliveryService = async (pedidoId: string, repartidorId:
       updated_at: new Date().toISOString(),
     })
     .eq('id', pedidoId)
+    .eq('status', 'ready')
+    .is('delivery_driver_id', null)
     .select(`
       *,
       client:users!client_id(first_name, push_token)
@@ -132,41 +114,35 @@ export const tomarPedidoDeliveryService = async (pedidoId: string, repartidorId:
     .single();
 
   if (errorUpdate || !pedidoActualizado) {
-    throw new Error(`Error al asignar el pedido al repartidor: ${errorUpdate?.message}`);
-  }
-
-  // Desempaquetamos cliente si Supabase lo devuelve como array
-  const cliente: any = Array.isArray(pedidoActualizado.client)
-    ? pedidoActualizado.client[0]
-    : pedidoActualizado.client;
-
-  // Push Notification al cliente (Punto 29)
-  try {
-  // Buscamos el token push del cliente asociado al pedido
-  const { data: cliente } = await supabase
-    .from('users')
-    .select('push_token')
-    .eq('id', pedidoActualizado.client_id)
-    .single();
-
-  if (cliente?.push_token) {
-    const tituloPush = '🛵 ¡Pedido en camino!';
-    const mensajePush = `El repartidor ya tiene tu pedido y se dirige a ${pedidoActualizado.delivery_address || 'tu domicilio'}.`;
-
-    await enviarPushNotification(
-      cliente.push_token,
-      tituloPush,
-      mensajePush,
-      { 
-        orderId: pedidoActualizado.id, 
-        tipo: 'pedido_en_camino',
-        status: 'on_the_way'
-      }
+    throw new Error(
+      'No se pudo tomar el pedido: otro repartidor pudo haberlo tomado primero.'
     );
   }
-} catch (pushError) {
-  console.error('No se pudo enviar la push de pedido en camino al cliente:', pushError);
-}
+
+  try {
+    const cliente: any = Array.isArray(pedidoActualizado.client)
+      ? pedidoActualizado.client[0]
+      : pedidoActualizado.client;
+
+    if (cliente?.push_token) {
+      await enviarPushNotification(
+        cliente.push_token,
+        '🛵 ¡Pedido en camino!',
+        `El repartidor ya tiene tu pedido y se dirige a ${
+          pedidoActualizado.delivery_address || 'tu domicilio'
+        }.`,
+        {
+          orderId: pedidoActualizado.id,
+          order_id: pedidoActualizado.id,
+          tipo: 'pedido_en_camino',
+          status: 'on_the_way',
+          order_type: 'delivery',
+        }
+      );
+    }
+  } catch (pushError) {
+    console.error('No se pudo enviar la push de pedido en camino al cliente:', pushError);
+  }
 
   return {
     success: true,
@@ -176,21 +152,19 @@ export const tomarPedidoDeliveryService = async (pedidoId: string, repartidorId:
 };
 
 /**
- * Punto 30: El repartidor entrega el pedido, se liquida el cobro,
- * se genera la factura PDF y se envía por correo.
+ * El repartidor confirma que dejó el pedido en el domicilio.
+ * NO cobra ni factura: eso queda para POST /api/pedidos/cobrar una vez que el
+ * cliente confirma la recepción y solicita la cuenta.
  */
-export const entregarYFacturarPedidoService = async (
+export const entregarPedidoDeliveryService = async (
   pedidoId: string,
-  repartidorId: string,
-  metodoPago: string = 'efectivo'
+  repartidorId: string
 ) => {
-  // Busca el pedido completo con ítems y datos del cliente
   const { data: pedido, error: errorBusqueda } = await supabase
     .from('orders')
     .select(`
       *,
-      client:users!client_id(id, first_name, last_name, email, push_token),
-      items:order_items(*, product:products(name, price))
+      client:users!client_id(id, first_name, push_token)
     `)
     .eq('id', pedidoId)
     .single();
@@ -199,66 +173,47 @@ export const entregarYFacturarPedidoService = async (
     throw new Error('El pedido especificado no existe.');
   }
 
+  if (pedido.order_type !== 'delivery') {
+    throw new Error('El pedido no es de tipo delivery.');
+  }
+
   if (pedido.status !== 'on_the_way') {
     throw new Error(`El pedido no está en camino. Estado actual: ${pedido.status}`);
   }
 
-  // Calculo de los totales finales para la factura
-  const totalBase = Number(pedido.total_amount) || 0;
-  const propina = Number(pedido.tip_amount) || 0;
-  const descuento = Number(pedido.discount_amount) || 0;
-  const totalFinal = Number(pedido.final_total) || (totalBase + propina - descuento);
+  if (pedido.delivery_driver_id !== repartidorId) {
+    throw new Error('Solo el repartidor asignado puede confirmar esta entrega.');
+  }
 
-  // Simulacion / generacion de la URL de la factura PDF guardada en Supabase Storage
-  // (O la URL pública estática de la factura generada)
-  const urlFactura = pedido.invoice_pdf_url || `https://jardin-imperial.storage.supabase.co/invoices/factura_${pedido.id}.pdf`;
-
-  // Actualiza el estado del pedido a 'delivered' o 'paid'
   const { data: pedidoActualizado, error: errorUpdate } = await supabase
     .from('orders')
     .update({
-      status: 'delivered', 
-      invoice_pdf_url: urlFactura,
-      final_total: totalFinal,
+      status: 'delivered',
       updated_at: new Date().toISOString(),
     })
     .eq('id', pedidoId)
+    .eq('status', 'on_the_way')
     .select()
     .single();
 
   if (errorUpdate || !pedidoActualizado) {
-    throw new Error(`Error al finalizar el pedido: ${errorUpdate?.message}`);
+    throw new Error(`Error al confirmar la entrega: ${errorUpdate?.message}`);
   }
 
-  // Desempaquetacion del cliente si Supabase lo devuelve como array
-  const cliente: any = Array.isArray(pedido.client) ? pedido.client[0] : pedido.client;
-
-  // Envío de Correo con la Factura  (Punto 30)
-  if (cliente?.email) {
-    try {
-      const nombreCliente = `${cliente.first_name || ''} ${cliente.last_name || ''}`.trim() || 'Cliente';
-      
-      await enviarFacturaPorEmail(
-        cliente.email,
-        nombreCliente,
-        urlFactura
-      );
-    } catch (emailErr) {
-      console.error('❌ Error enviando mail de factura por Brevo:', emailErr);
-    }
-  }
-
-  // Push Notification al cliente (Punto 30)
   try {
+    const cliente: any = Array.isArray(pedido.client) ? pedido.client[0] : pedido.client;
+
     if (cliente?.push_token) {
       await enviarPushNotification(
         cliente.push_token,
-        '🎉 ¡Pedido Entregado!',
-        '¡Tu pedido ha sido entregado con éxito! Enviamos la factura a tu correo electrónico.',
+        '📦 ¡Pedido entregado!',
+        'El repartidor confirmó la entrega. Ingresá a la app para confirmar la recepción y pagar tu cuenta.',
         {
           orderId: pedido.id,
-          status: 'paid',
+          order_id: pedido.id,
+          status: 'delivered',
           tipo: 'pedido_entregado',
+          order_type: 'delivery',
         }
       );
     }
@@ -268,7 +223,7 @@ export const entregarYFacturarPedidoService = async (
 
   return {
     success: true,
-    mensaje: 'Pedido entregado, cobrado y facturado exitosamente.',
+    mensaje: 'Entrega confirmada. Esperando la confirmación del cliente.',
     pedido: pedidoActualizado,
   };
 };

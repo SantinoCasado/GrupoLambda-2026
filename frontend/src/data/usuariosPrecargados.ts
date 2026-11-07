@@ -5,6 +5,7 @@ export type PerfilUsuario =
   | "mozo"
   | "cocinero"
   | "cantinero"
+  | "repartidor"
   | "cliente_registrado"
   | "cliente_anonimo";
 

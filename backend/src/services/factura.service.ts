@@ -23,6 +23,8 @@ export interface DetallePreciosFactura {
     precioFinal: number;
     porcentajePropina: number;
     porcentajeDescuento?: number;
+    /** Cambia el pie del comprobante: visita (salón) o pedido (delivery). */
+    orderType?: 'dine_in' | 'delivery';
 }
 
 export interface ItemFactura {
@@ -373,7 +375,9 @@ const construirPdf = (
                 .fontSize(8)
                 .fillColor('#777777')
                 .text(
-                    'Gracias por su visita. Conserve este comprobante.',
+                    detallePrecios.orderType === 'delivery'
+                        ? 'Gracias por su pedido. Conserve este comprobante.'
+                        : 'Gracias por su visita. Conserve este comprobante.',
                     50,
                     doc.page.height - 70,
                     { width: anchoContenido, align: 'center' }

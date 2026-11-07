@@ -25,6 +25,7 @@ const ROLE_MAPPING: Record<string, 'owner' | 'supervisor' | 'cook' | 'bartender'
   mozo: "waiter",
   metre: "maitre",
   delivery: "delivery",
+  repartidor: "delivery",
 };
 
 export async function registrarEmpleado(

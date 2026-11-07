@@ -17,6 +17,11 @@ interface CarritoScreenProps {
   pedidoIdEnEdicion?: string | null;
   motivoRechazo?: string | null;
   onCerrarEdicion?: () => void;
+  /** Cuando es true, el carrito crea un pedido a domicilio (sin mesa). */
+  modoEntrega?: boolean;
+  deliveryAddress?: string | null;
+  deliveryLat?: number | null;
+  deliveryLng?: number | null;
 }
 
 export function CarritoScreen({
@@ -27,6 +32,10 @@ export function CarritoScreen({
   pedidoIdEnEdicion,
   motivoRechazo,
   onCerrarEdicion,
+  modoEntrega = false,
+  deliveryAddress,
+  deliveryLat,
+  deliveryLng,
 }: CarritoScreenProps) {
   const {
     carrito,
@@ -151,15 +160,35 @@ export function CarritoScreen({
         orden = res.pedido;
         pedidoId = orden.id;
       } else {
-        const resBackend: any = await crearPedidoApi({
-          id_cliente: clienteId,
-          numero_mesa: Number(numeroMesa),
-          productos: productosPayload,
-          order_type: "dine_in",
-        });
+        if (modoEntrega) {
+          if (!deliveryAddress || deliveryLat == null || deliveryLng == null) {
+            throw new Error(
+              "Falta la dirección de entrega. Volvé al menú y elegí tu domicilio en el mapa."
+            );
+          }
 
-        orden = resBackend?.pedido || resBackend;
-        pedidoId = orden.id;
+          const resBackend: any = await crearPedidoApi({
+            id_cliente: clienteId,
+            productos: productosPayload,
+            order_type: "delivery",
+            delivery_address: deliveryAddress,
+            delivery_latitude: deliveryLat,
+            delivery_longitude: deliveryLng,
+          });
+
+          orden = resBackend?.pedido || resBackend;
+          pedidoId = orden.id;
+        } else {
+          const resBackend: any = await crearPedidoApi({
+            id_cliente: clienteId,
+            numero_mesa: Number(numeroMesa),
+            productos: productosPayload,
+            order_type: "dine_in",
+          });
+
+          orden = resBackend?.pedido || resBackend;
+          pedidoId = orden.id;
+        }
       }
 
       if (!pedidoId) {
@@ -354,7 +383,7 @@ export function CarritoScreen({
       {/* Encabezado */}
       <View className="relative flex-row items-center justify-between mb-5 border-b border-mostaza/20 pb-5">
         <Text style={{ fontFamily: "LaOriental" }} className="absolute inset-x-0 z-10 text-center text-xl uppercase text-vino pointer-events-none pb-3">
-          {modoEdicion ? "Reenviar pedido" : `Pedido Mesa #${numeroMesa}`}
+          {modoEdicion ? "Reenviar pedido" : modoEntrega ? "Pedido a Domicilio" : `Pedido Mesa #${numeroMesa}`}
         </Text>
         {carrito.length > 0 ? (
           <TouchableOpacity onPress={() => setConfirmandoVaciar(true)} className="ml-auto h-8 items-center justify-center rounded-xl bg-terracota/10 px-3 active:bg-terracota/20 z-20">
@@ -364,6 +393,20 @@ export function CarritoScreen({
           <View className="ml-auto h-8" />
         )}
       </View>
+
+      {/* Dirección de entrega (pedido a domicilio) */}
+      {modoEntrega && !modoEdicion && (
+        <View className="mb-3 flex-row items-center rounded-xl border border-mostaza/50 bg-white px-3 py-2">
+          <Image
+            source={require("../../assets/images/audit-car.png")}
+            className="h-7 w-7"
+            resizeMode="contain"
+          />
+          <Text className="ml-2 flex-1 text-[11px] font-semibold text-stone-600" numberOfLines={2}>
+            Enviar a: {deliveryAddress || "Dirección no elegida"}
+          </Text>
+        </View>
+      )}
 
       {/* Lista de productos en la comanda */}
       <FlatList
@@ -418,7 +461,7 @@ export function CarritoScreen({
                   resizeMode="contain"
                 />
                 <Text style={{ fontFamily: "LaOriental" }} className="mx-5 text-center text-l uppercase tracking-wider text-mostaza">
-                  {modoEdicion ? "Reenviar Comanda al Mozo" : "Enviar Pedido al Mozo"}
+                  {modoEdicion ? "Reenviar Comanda al Mozo" : modoEntrega ? "Confirmar Pedido a Domicilio" : "Enviar Pedido al Mozo"}
                 </Text>
                 <Image
                   source={require("../../assets/images/sello.png")}
@@ -443,10 +486,22 @@ export function CarritoScreen({
               Esperando confirmación
             </Text>
             <Text className="mt-2 text-center text-xs text-amber-100/90 leading-relaxed">
-              Su pedido para la <Text className="font-bold text-mostaza">Mesa #{numeroMesa}</Text> fue recibido.
+              {modoEntrega ? (
+                <>
+                  Su pedido a domicilio fue recibido y está pendiente de aprobación por la
+                  administración.
+                </>
+              ) : (
+                <>
+                  Su pedido para la{" "}
+                  <Text className="font-bold text-mostaza">Mesa #{numeroMesa}</Text> fue recibido.
+                </>
+              )}
             </Text>
             <Text className="mt-2 text-center text-[11px] text-amber-200/70">
-              El pedido necesita la confirmación del mozo para comenzar a ser preparado.
+              {modoEntrega
+                ? "Le enviaremos una notificación con el tiempo estimado de entrega cuando sea aceptado."
+                : "El pedido necesita la confirmación del mozo para comenzar a ser preparado."}
             </Text>
           </View>
         </View>

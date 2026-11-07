@@ -46,6 +46,12 @@ import { EncuestaScreen } from "./src/screens/encuestaScreen";
 import { CuentaScreen } from "./src/screens/cuentaScreen";
 import { TransaccionesScreen } from "./src/screens/transaccionesScreen";
 import { EstadisticasScreen } from "./src/screens/estadisticasScreen";
+import {
+  DeliveryAddressScreen,
+  DireccionEntrega,
+} from "./src/screens/deliveryAddressScreen";
+import { PedidosDomicilioScreen } from "./src/screens/pedidosDomicilioScreen";
+import { RepartidorScreen } from "./src/screens/repartidorScreen";
 
 
 const NO_PHOTO = require("./assets/images/no-photo.jpg");
@@ -78,7 +84,10 @@ type VistaPrivada =
   | "encuesta"
   | "transacciones"
   | "estadisticas"
-  | "cuenta";
+  | "cuenta"
+  | "delivery_address"
+  | "pedidos_domicilio"
+  | "repartidor";
 
 export default function App() {
   return (
@@ -106,6 +115,20 @@ function AppInterna() {
   // Pedido rechazado que el cliente está corrigiendo en el carrito
   const [idPedidoEnEdicion, setIdPedidoEnEdicion] = useState<string | null>(null);
   const [motivoRechazoEdicion, setMotivoRechazoEdicion] = useState<string | null>(null);
+
+  // Contexto de pedido a domicilio (cliente registrado, sin mesa)
+  const [modoEntrega, setModoEntrega] = useState(false);
+  const [deliveryAddress, setDeliveryAddress] = useState<string | null>(null);
+  const [deliveryLat, setDeliveryLat] = useState<number | null>(null);
+  const [deliveryLng, setDeliveryLng] = useState<number | null>(null);
+
+  // Conversación de delivery abierta desde el seguimiento o el panel del repartidor
+  const [chatDelivery, setChatDelivery] = useState<{
+    orderId: string;
+    direccion: string;
+    createdAt: string | null;
+  } | null>(null);
+
   const [notifNuevoClientePendiente, setNotifNuevoClientePendiente] = useState(false);
   const [rolTickets, setRolTickets] = useState<"cocinero" | "cantinero">("cocinero");
   const [propinaSeleccionada, setPropinaSeleccionada] = useState<number | null>(null);
@@ -131,6 +154,7 @@ function AppInterna() {
   const pendienteComandaRef = useRef<any | null>(null);
   const pendientePedidoRef = useRef<any | null>(null);
   const pendienteChatRef = useRef<any | null>(null);
+  const pendienteRepartidorRef = useRef<any | null>(null);
 
   // Réplica del cliente anónimo para el listener de notificaciones
   const clienteAnonimoRef = useRef(clienteAnonimo);
@@ -172,10 +196,37 @@ function AppInterna() {
       pendiente?.tipo === "nuevo_pedido" ||
       pendiente?.tipo === "pedido_modificado"
     ) {
+      const esDelivery = pendiente?.order_type === "delivery";
+
+      if (esDelivery) {
+        if (usuario.perfil === "dueño" || usuario.perfil === "supervisor") {
+          setVistaPrivada("pedidos_domicilio");
+          return true;
+        }
+        return false;
+      }
+
       if (usuario.perfil === "mozo" || usuario.perfil === "dueño" || usuario.perfil === "supervisor") {
         setVistaPrivada("comandas");
         return true;
       }
+    }
+
+    return false;
+  };
+
+  const procesarPendienteRepartidor = (usuario: UsuarioSeed): boolean => {
+    const pendiente = pendienteRepartidorRef.current;
+    pendienteRepartidorRef.current = null;
+
+    if (
+      usuario.perfil === "repartidor" &&
+      (pendiente?.tipo === "delivery_listo" ||
+        (pendiente?.tipo === "bill_requested" &&
+          pendiente?.order_type === "delivery"))
+    ) {
+      setVistaPrivada("repartidor");
+      return true;
     }
 
     return false;
@@ -203,8 +254,60 @@ function AppInterna() {
   // Abre el chat y recuerda desde qué pantalla se llegó, para que el botón
   // "volver" del header regrese de verdad al origen (carta, chat_mesas, etc.)
   const abrirChatMozo = () => {
+    setChatDelivery(null);
     setVistaOrigenChat(vistaPrivada === "chat_mozo" ? null : vistaPrivada);
     setVistaPrivada("chat_mozo");
+  };
+
+  // Abre el chat de un pedido a domicilio. Si falta la dirección o la fecha del
+  // pedido (por ejemplo al tocar una notificación), las completa desde Supabase.
+  const abrirChatDelivery = async (
+    pedidoId: string,
+    direccion: string,
+    createdAt: string | null
+  ) => {
+    let fecha = createdAt;
+    let dir = direccion;
+
+    if (!fecha || !dir) {
+      const { data } = await supabase
+        .from("orders")
+        .select("created_at, delivery_address")
+        .eq("id", pedidoId)
+        .maybeSingle();
+
+      if (data) {
+        fecha = fecha ?? data.created_at ?? null;
+        dir = dir || data.delivery_address || "";
+      }
+    }
+
+    const perfil = usuarioActualRef.current?.perfil;
+    setChatDelivery({
+      orderId: pedidoId,
+      direccion: dir,
+      createdAt: fecha,
+    });
+    setVistaOrigenChat(
+      perfil === "repartidor"
+        ? "repartidor"
+        : perfil?.startsWith("cliente")
+        ? "estado_pedido"
+        : null
+    );
+    setVistaPrivada("chat_mozo");
+  };
+
+  const cerrarChat = () => {
+    const origen =
+      vistaOrigenChat ??
+      (esPerfilPersonal(usuarioActual?.perfil)
+        ? "chat_mesas"
+        : usuarioActual?.perfil === "repartidor"
+        ? "repartidor"
+        : "home");
+    setChatDelivery(null);
+    setVistaPrivada(origen);
   };
 
   // Abre la pantalla de juegos y recuerda desde dónde se llegó (home,
@@ -304,6 +407,33 @@ function AppInterna() {
     const pendiente = pendienteChatRef.current;
     pendienteChatRef.current = null;
 
+    if (pendiente?.tipo === "chat_delivery") {
+      const orderId =
+        typeof pendiente.order_id === "string"
+          ? pendiente.order_id
+          : typeof pendiente.orderId === "string"
+          ? pendiente.orderId
+          : null;
+
+      if (!orderId) return false;
+
+      if (
+        usuario.perfil === "repartidor" ||
+        usuario.perfil === "cliente_registrado"
+      ) {
+        await abrirChatDelivery(
+          orderId,
+          typeof pendiente.delivery_address === "string"
+            ? pendiente.delivery_address
+            : "",
+          null
+        );
+        return true;
+      }
+
+      return false;
+    }
+
     if (pendiente?.tipo !== "chat_mesa") return false;
 
     const tableId = typeof pendiente.table_id === "string" ? pendiente.table_id : null;
@@ -368,13 +498,22 @@ function AppInterna() {
         return;
 
       case "nuevo_pedido":
-      case "pedido_modificado":
-        if (usuario && (usuario.perfil === "mozo" || esAdmin)) {
+      case "pedido_modificado": {
+        const esDelivery = datos.order_type === "delivery";
+
+        if (usuario && esDelivery && esAdmin) {
+          setVistaPrivada("pedidos_domicilio");
+        } else if (
+          usuario &&
+          !esDelivery &&
+          (usuario.perfil === "mozo" || esAdmin)
+        ) {
           setVistaPrivada("comandas");
         } else if (!usuario) {
           pendienteComandaRef.current = datos;
         }
         return;
+      }
 
       case "estado_pedido":
         if (usuario && (esClienteRegistrado || usuario.perfil === "cliente_anonimo")) {
@@ -398,6 +537,72 @@ function AppInterna() {
           setVistaPrivada("tickets");
         }
         return;
+
+      case "delivery_listo":
+        if (usuario?.perfil === "repartidor") {
+          setVistaPrivada("repartidor");
+        } else if (!usuario) {
+          pendienteRepartidorRef.current = datos;
+        }
+        return;
+
+      case "bill_requested":
+        if (usuario?.perfil === "repartidor") {
+          setVistaPrivada("repartidor");
+        } else if (usuario && (esAdmin || usuario.perfil === "mozo")) {
+          setVistaPrivada("transacciones");
+        } else if (!usuario && datos.order_type === "delivery") {
+          pendienteRepartidorRef.current = datos;
+        }
+        return;
+
+      case "pedido_en_camino":
+      case "pedido_entregado": {
+        const orderId =
+          typeof datos.orderId === "string"
+            ? datos.orderId
+            : typeof datos.order_id === "string"
+            ? datos.order_id
+            : null;
+
+        if (!orderId) return;
+
+        if (
+          usuario &&
+          (esClienteRegistrado || usuario.perfil === "cliente_anonimo")
+        ) {
+          setIdPedidoActivo(orderId);
+          setVistaPrivada("estado_pedido");
+        } else if (!usuario) {
+          pendientePedidoRef.current = { ...datos, orderId };
+        }
+        return;
+      }
+
+      case "chat_delivery": {
+        const orderId =
+          typeof datos.order_id === "string"
+            ? datos.order_id
+            : typeof datos.orderId === "string"
+            ? datos.orderId
+            : null;
+
+        if (!orderId) return;
+
+        if (!usuario) {
+          pendienteChatRef.current = datos;
+          return;
+        }
+
+        void abrirChatDelivery(
+          orderId,
+          typeof datos.delivery_address === "string"
+            ? datos.delivery_address
+            : "",
+          null
+        );
+        return;
+      }
 
       case "chat_mesa": {
         const chatTableId = typeof datos.table_id === "string" ? datos.table_id : null;
@@ -502,6 +707,57 @@ function AppInterna() {
     }
   };
 
+  // El cliente registrado confirma su domicilio y pasa a armar el pedido sin
+  // mesa. Si estaba anotado en la lista de espera, se lo quita y libera
+  // cualquier mesa que el metre le hubiera asignado.
+  const confirmarDireccionEntrega = async (direccion: DireccionEntrega) => {
+    setDeliveryAddress(direccion.address);
+    setDeliveryLat(direccion.lat);
+    setDeliveryLng(direccion.lng);
+    setModoEntrega(true);
+    setNumeroMesaCliente(null);
+    setIdMesaCliente(null);
+    setMesaCliente("S/N");
+    setIdPedidoActivo(null);
+    setEnEsperaRegistrado(false);
+
+    const clienteId = usuarioActual?.id;
+    if (clienteId) {
+      try {
+        const { data: esperas } = await supabase
+          .from("waiting_list")
+          .select("id, assigned_table_id")
+          .eq("user_id", clienteId);
+
+        const mesaIds = Array.from(
+          new Set(
+            (esperas ?? [])
+              .map((entrada) => entrada.assigned_table_id)
+              .filter((id): id is string => Boolean(id))
+          )
+        );
+
+        for (const mesaId of mesaIds) {
+          await supabase
+            .from("restaurant_tables")
+            .update({ availability: "free" })
+            .eq("id", mesaId);
+        }
+
+        if (esperas && esperas.length > 0) {
+          await supabase.from("waiting_list").delete().eq("user_id", clienteId);
+        }
+      } catch (err: any) {
+        console.warn(
+          "⚠️ No se pudo limpiar la lista de espera para delivery:",
+          err?.message
+        );
+      }
+    }
+
+    setVistaPrivada("home");
+  };
+
   const manejarRespuestaNotificacion = (respuesta?: NotificationResponse | null) => {
     const datos = parsearDatosNotificacion(respuesta?.notification?.request?.content?.data);
     if (datos) navegarConDatos(datos);
@@ -603,6 +859,11 @@ function AppInterna() {
       setIdPedidoEnEdicion(null);
       setMotivoRechazoEdicion(null);
       setPropinaSeleccionada(null);
+      setModoEntrega(false);
+      setDeliveryAddress(null);
+      setDeliveryLat(null);
+      setDeliveryLng(null);
+      setChatDelivery(null);
       setVistaPrivada("home");
       setVistaPublica("login");
     }
@@ -715,6 +976,7 @@ function AppInterna() {
             // 1. Manejo de pendientes por notificaciones push (si las hubiera)
             if (procesarPendienteListaEspera(usuario)) return;
             if (procesarPendienteComanda(usuario)) return;
+            if (procesarPendienteRepartidor(usuario)) return;
             if (procesarPendientePedido(usuario)) return;
             if (await procesarPendienteChat(usuario)) return;
 
@@ -732,14 +994,31 @@ function AppInterna() {
               const estado = await recuperarEstadoActivoCliente(usuario.id);
 
               if (estado.pantallaDestino !== "inicio") {
-                // Restauramos los datos de la mesa y el pedido
-                if (estado.numeroMesa) {
-                  setNumeroMesaCliente(Number(estado.numeroMesa) || null);
-                  setMesaCliente(estado.numeroMesa);
+                const esDelivery = estado.orderType === "delivery";
+
+                if (esDelivery) {
+                  setModoEntrega(true);
+                  setDeliveryAddress(estado.deliveryAddress ?? null);
+                  setDeliveryLat(estado.deliveryLat ?? null);
+                  setDeliveryLng(estado.deliveryLng ?? null);
+                  setNumeroMesaCliente(null);
+                  setIdMesaCliente(null);
+                  setMesaCliente(estado.deliveryAddress ?? "Domicilio");
+                } else {
+                  setModoEntrega(false);
+                  setDeliveryAddress(null);
+                  setDeliveryLat(null);
+                  setDeliveryLng(null);
+
+                  if (estado.numeroMesa) {
+                    setNumeroMesaCliente(Number(estado.numeroMesa) || null);
+                    setMesaCliente(estado.numeroMesa);
+                  }
+                  if (estado.mesaId) {
+                    setIdMesaCliente(estado.mesaId);
+                  }
                 }
-                if (estado.mesaId) {
-                  setIdMesaCliente(estado.mesaId);
-                }
+
                 if (estado.pedidoId) {
                   setIdPedidoActivo(estado.pedidoId);
                 }
@@ -759,6 +1038,10 @@ function AppInterna() {
               setNumeroMesaCliente(null);
               setIdMesaCliente(null);
               setIdPedidoActivo(null);
+              setModoEntrega(false);
+              setDeliveryAddress(null);
+              setDeliveryLat(null);
+              setDeliveryLng(null);
               setEnEsperaRegistrado(true);
               setVistaPrivada("home");
             } else {
@@ -791,6 +1074,11 @@ function AppInterna() {
             status: "door",
           }}
           onSalir={cerrarSesion}
+          puedePedirDelivery={usuarioActual.perfil === "cliente_registrado"}
+          onPedirDelivery={() => {
+            setEnEsperaRegistrado(false);
+            setVistaPrivada("delivery_address");
+          }}
           onMesaConfirmada={async (numMesa) => {
             setNumeroMesaCliente(numMesa);
             const { data: mesaData } = await supabase
@@ -866,6 +1154,8 @@ function AppInterna() {
             onVerEstadoPedido={() => setVistaPrivada("estado_pedido")}
             onAbrirChatMozo={esCliente ? abrirChatMozoDesdeHome : undefined}
             onIrAJuegos={() => abrirJuegos("home")}
+            modoEntrega={modoEntrega}
+            deliveryAddress={deliveryAddress}
           />
         </View>
       </SafeAreaView>
@@ -874,7 +1164,7 @@ function AppInterna() {
 
   // 4. Validación de Acceso a Vistas Privadas
   const accesoValido =
-    vistaPrivada === "empleados" || vistaPrivada === "mesas" || vistaPrivada === "clientes" || vistaPrivada === "estadisticas"
+    vistaPrivada === "empleados" || vistaPrivada === "mesas" || vistaPrivada === "clientes" || vistaPrivada === "estadisticas" || vistaPrivada === "pedidos_domicilio"
       ? esAdmin
       : vistaPrivada === "producto" || vistaPrivada === "preparacion"
       ? esProducto
@@ -884,9 +1174,11 @@ function AppInterna() {
       ? usuarioActual.perfil === "metre" || esAdmin
       : vistaPrivada === "comandas" || vistaPrivada === "chat_mesas" || vistaPrivada === "pedidos_listos" || vistaPrivada === "transacciones"
       ? usuarioActual.perfil === "mozo" || esAdmin
+      : vistaPrivada === "repartidor"
+      ? usuarioActual.perfil === "repartidor" || esAdmin
       : vistaPrivada === "carta"
       ? esProducto || esCliente
-      : vistaPrivada === "carrito" || vistaPrivada === "estado_pedido" || vistaPrivada === "juegos" || vistaPrivada === "bolita" || vistaPrivada === "puzzle"
+      : vistaPrivada === "carrito" || vistaPrivada === "estado_pedido" || vistaPrivada === "juegos" || vistaPrivada === "bolita" || vistaPrivada === "puzzle" || vistaPrivada === "delivery_address"
       ? esCliente
       : true;
 
@@ -904,6 +1196,8 @@ function AppInterna() {
             onVerEstadoPedido={() => setVistaPrivada("estado_pedido")}
             onAbrirChatMozo={esCliente ? abrirChatMozoDesdeHome : undefined}
             onIrAJuegos={() => abrirJuegos("home")}
+            modoEntrega={modoEntrega}
+            deliveryAddress={deliveryAddress}
           />
         </View>
       </SafeAreaView>
@@ -1012,6 +1306,10 @@ function AppInterna() {
               setPropinaSeleccionada(null);
               setVistaPrivada("estado_pedido");
             }}
+            modoEntrega={modoEntrega}
+            deliveryAddress={deliveryAddress}
+            deliveryLat={deliveryLat}
+            deliveryLng={deliveryLng}
           />
         )}
 
@@ -1022,6 +1320,7 @@ function AppInterna() {
             pedidoId={idPedidoActivo || ""}
             onVolver={volverAlInicio}
             onIrAJuegos={() => abrirJuegos("estado_pedido")}
+            onAbrirChatRepartidor={abrirChatDelivery}
             onConfirmarRecepcion={(_id, mesa) => {
               setMesaCliente(mesa);
               setVistaPrivada("pedido_recibido" as any);
@@ -1032,6 +1331,35 @@ function AppInterna() {
               setMotivoRechazoEdicion(motivo);
               setVistaPrivada("carrito");
             }}
+          />
+        )}
+
+        {/* Elección de domicilio para pedidos a domicilio */}
+        {vistaPrivada === "delivery_address" && (
+          <DeliveryAddressScreen
+            onVolver={() => {
+              if (deliveryAddress) {
+                setVistaPrivada("home");
+              } else {
+                setModoEntrega(false);
+                setEnEsperaRegistrado(true);
+                setVistaPrivada("home");
+              }
+            }}
+            onDireccionConfirmada={confirmarDireccionEntrega}
+          />
+        )}
+
+        {/* Aprobación de pedidos a domicilio (Dueño / Supervisor) */}
+        {vistaPrivada === "pedidos_domicilio" && (
+          <PedidosDomicilioScreen usuarioActual={usuarioActual} />
+        )}
+
+        {/* Panel del Repartidor */}
+        {vistaPrivada === "repartidor" && (
+          <RepartidorScreen
+            usuarioActual={usuarioActual}
+            onAbrirChatRepartidor={abrirChatDelivery}
           />
         )}
 
@@ -1161,20 +1489,25 @@ function AppInterna() {
           />
         )}
 
-        {/* Chat con el Mozo */}
-        {vistaPrivada === "chat_mozo" && (
-          <ChatScreen
-            tableId={idMesaCliente || ""}
-            numeroMesa={numeroMesaCliente || 1}
-            usuarioActual={usuarioActual}
-            onVolver={() =>
-              setVistaPrivada(
-                vistaOrigenChat ??
-                  (esPerfilPersonal(usuarioActual.perfil) ? "chat_mesas" : "home")
-              )
-            }
-          />
-        )}
+        {/* Chat: mesa (mozo/cliente) o entrega (repartidor/cliente) */}
+        {vistaPrivada === "chat_mozo" &&
+          (chatDelivery ? (
+            <ChatScreen
+              orderId={chatDelivery.orderId}
+              modoDelivery
+              direccionEntrega={chatDelivery.direccion}
+              fechaPedido={chatDelivery.createdAt}
+              usuarioActual={usuarioActual}
+              onVolver={cerrarChat}
+            />
+          ) : (
+            <ChatScreen
+              tableId={idMesaCliente || ""}
+              numeroMesa={numeroMesaCliente || 1}
+              usuarioActual={usuarioActual}
+              onVolver={cerrarChat}
+            />
+          ))}
       </View>
     </SafeAreaView>
   );

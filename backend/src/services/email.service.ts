@@ -249,13 +249,23 @@ export const enviarFacturaPorEmail = async (
     emailDestino: string, 
     nombreCliente: string, 
     urlFactura: string,
-    adjunto?: { buffer: Buffer; fileName: string }
+    adjunto?: { buffer: Buffer; fileName: string },
+    orderType: 'dine_in' | 'delivery' = 'dine_in'
 ) => {
+    const esDelivery = orderType === 'delivery';
     const asunto = '🧾 Tu factura de Jardín Imperial';
     const contenidoHtml = `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
-            <h2 style="color: #780116; text-align: center;">¡Gracias por tu visita, ${nombreCliente}!</h2>
-            <p style="color: #333; font-size: 16px;">Esperamos que hayas disfrutado tu comida en Jardín Imperial.</p>
+            <h2 style="color: #780116; text-align: center;">${
+                esDelivery
+                    ? `¡Gracias por tu pedido, ${nombreCliente}!`
+                    : `¡Gracias por tu visita, ${nombreCliente}!`
+            }</h2>
+            <p style="color: #333; font-size: 16px;">${
+                esDelivery
+                    ? 'Esperamos que hayas disfrutado tu pedido de Jardín Imperial.'
+                    : 'Esperamos que hayas disfrutado tu comida en Jardín Imperial.'
+            }</p>
             <p style="color: #333; font-size: 16px;">Adjuntamos tu comprobante en formato PDF. También podés descargarlo desde el siguiente enlace:</p>
             
             <div style="text-align: center; margin: 30px 0;">

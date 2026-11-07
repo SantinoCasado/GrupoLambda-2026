@@ -18,11 +18,13 @@ import { FeedbackModal } from "../components/FeedbackModal";
 
 interface TransaccionPendiente {
   pedidoId: string;
-  mesaId: string;
+  mesaId: string | null;
   numeroMesa: string | number;
   total: number;
   propina: number;
   createdAt: string | null;
+  orderType: string;
+  direccionEntrega: string | null;
 }
 
 const formatearMonto = (monto: number) =>
@@ -50,7 +52,7 @@ export function TransaccionesScreen() {
   const [altoPagina, setAltoPagina] = useState(0);
   const [cuentaSeleccionada, setCuentaSeleccionada] = useState<{
     detalle: DetalleCuenta;
-    mesaId: string;
+    mesaId: string | null;
   } | null>(null);
   const [confirmando, setConfirmando] = useState(false);
 
@@ -77,7 +79,9 @@ export function TransaccionesScreen() {
 
       const { data: pedidos, error } = await supabase
         .from("orders")
-        .select("id, table_id, total_amount, tip_amount, status, created_at")
+        .select(
+          "id, table_id, total_amount, tip_amount, status, created_at, order_type, delivery_address"
+        )
         .eq("status", "bill_requested")
         .order("created_at", { ascending: false });
 
@@ -86,9 +90,12 @@ export function TransaccionesScreen() {
       const items: TransaccionPendiente[] = [];
 
       for (const p of pedidos || []) {
-        let numMesa: string | number = "S/N";
+        const esDelivery = p.order_type === "delivery";
+        let numMesa: string | number = esDelivery
+          ? p.delivery_address || "Domicilio"
+          : "S/N";
 
-        if (p.table_id) {
+        if (!esDelivery && p.table_id) {
           const { data: mesa } = await supabase
             .from("restaurant_tables")
             .select("table_number")
@@ -102,11 +109,13 @@ export function TransaccionesScreen() {
 
         items.push({
           pedidoId: p.id,
-          mesaId: p.table_id,
+          mesaId: p.table_id ?? null,
           numeroMesa: numMesa,
           total: Number(p.total_amount || 0),
           propina: Number(p.tip_amount || 0),
           createdAt: p.created_at ?? null,
+          orderType: p.order_type ?? "dine_in",
+          direccionEntrega: esDelivery ? p.delivery_address ?? null : null,
         });
       }
 
@@ -177,7 +186,12 @@ export function TransaccionesScreen() {
 
       abrirAviso(
         "Cobro Registrado",
-        `La Mesa #${cuentaSeleccionada.detalle.numeroMesa} quedó liberada correctamente.`,
+        cuentaSeleccionada.detalle.orderType === "delivery"
+          ? `El pedido a domicilio en ${
+              cuentaSeleccionada.detalle.direccionEntrega ||
+              cuentaSeleccionada.detalle.numeroMesa
+            } quedó pagado y se envió la factura al cliente.`
+          : `La Mesa #${cuentaSeleccionada.detalle.numeroMesa} quedó liberada correctamente.`,
         "exito"
       );
 
@@ -212,10 +226,18 @@ export function TransaccionesScreen() {
           <View className="items-center rounded-xl bg-mostaza/15 px-4 py-4">
             <Text
               style={{ fontFamily: "LaOriental" }}
-              className="text-center text-2xl text-mostaza uppercase"
+              className={`text-center text-mostaza uppercase ${
+                cuentaSeleccionada?.detalle.orderType === "delivery"
+                  ? "text-lg"
+                  : "text-2xl"
+              }`}
+              numberOfLines={2}
             >
               {cuentaSeleccionada
-                ? `Mesa #${cuentaSeleccionada.detalle.numeroMesa}`
+                ? cuentaSeleccionada.detalle.orderType === "delivery"
+                  ? cuentaSeleccionada.detalle.direccionEntrega ||
+                    cuentaSeleccionada.detalle.numeroMesa
+                  : `Mesa #${cuentaSeleccionada.detalle.numeroMesa}`
                 : "Transacciones"}
             </Text>
             <Text className="mt-1 text-center text-xs font-semibold text-amber-100">
@@ -406,10 +428,15 @@ export function TransaccionesScreen() {
                 <View className="flex-1 rounded-2xl border-2 border-caramelo bg-[#FFFDF9] p-4">
                   <View className="mb-2 flex-row items-center justify-between">
                     <Text
-                      className="text-2xl text-vino"
+                      className={`text-vino ${
+                        item.orderType === "delivery" ? "text-lg" : "text-2xl"
+                      }`}
                       style={{ fontFamily: "LaOriental" }}
+                      numberOfLines={2}
                     >
-                      Mesa #{item.numeroMesa}
+                      {item.orderType === "delivery"
+                        ? item.direccionEntrega || "Pedido a Domicilio"
+                        : `Mesa #${item.numeroMesa}`}
                     </Text>
                     <Text className="text-sm font-semibold text-stone-500">
                       {formatearFecha(item.createdAt)}

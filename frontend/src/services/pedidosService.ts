@@ -9,41 +9,63 @@ export interface ItemPedidoPayload {
 
 export interface CrearPedidoPayload {
   id_cliente: string;
-  numero_mesa: number;
+  numero_mesa?: number | null;
   productos: ItemPedidoPayload[];
   order_type?: "dine_in" | "takeaway" | "delivery";
+  delivery_address?: string;
+  delivery_latitude?: number;
+  delivery_longitude?: number;
 }
 
 export type PedidoStatus =
   | "pending"
   | "in_preparation"
   | "ready"
+  | "on_the_way"
   | "delivered"
   | "received"
+  | "bill_requested"
+  | "paid"
   | "cancelled";
 
 export interface Pedido {
   id: string;
-  table_id: string;
+  table_id: string | null;
   client_id: string;
   waiter_id?: string | null;
+  delivery_driver_id?: string | null;
+  order_type?: "dine_in" | "takeaway" | "delivery";
+  delivery_address?: string | null;
+  delivery_lat?: number | null;
+  delivery_lng?: number | null;
   status: PedidoStatus;
   total_amount: string | number;
+  tip_amount?: string | number | null;
+  discount_amount?: string | number | null;
   estimated_delivery_time: number;
   created_at: string;
   rejection_reason?: string | null;
 }
 
 export const crearPedidoApi = async (payload: CrearPedidoPayload): Promise<Pedido> => {
+  const body: Record<string, unknown> = {
+    id_cliente: payload.id_cliente,
+    productos: payload.productos,
+    order_type: payload.order_type || "dine_in",
+  };
+
+  if (payload.order_type === "delivery") {
+    body.delivery_address = payload.delivery_address;
+    body.delivery_latitude = payload.delivery_latitude;
+    body.delivery_longitude = payload.delivery_longitude;
+  } else {
+    body.numero_mesa = Number(payload.numero_mesa);
+  }
+
   const res = await fetch(`${API_BASE_URL}/pedidos`, {
     method: "POST",
     headers: await headersConToken({ "Content-Type": "application/json" }),
-    body: JSON.stringify({
-      id_cliente: payload.id_cliente,
-      numero_mesa: Number(payload.numero_mesa),
-      productos: payload.productos,
-      order_type: payload.order_type || "dine_in",
-    }),
+    body: JSON.stringify(body),
   });
 
   if (!res.ok) {
@@ -100,7 +122,7 @@ export interface ModificarPedidoRechazadoResponse {
 
 export const confirmarPedidoPorMozoApi = async (
   pedidoId: string,
-  waiterId: string,
+  waiterId: string | null,
   estado: "confirmed" | "in_preparation" | "cancelled",
   rejectionReason?: string
 ) => {
@@ -157,10 +179,30 @@ export const marcarPedidoEntregadoApi = async (pedidoId: string): Promise<void> 
   }
 };
 
+/**
+ * El cliente confirma que recibió su pedido a domicilio. Habilita el pago de
+ * la cuenta por parte del repartidor.
+ */
+export const confirmarRecepcionPedidoApi = async (pedidoId: string): Promise<void> => {
+  const res = await fetch(`${API_BASE_URL}/pedidos/${pedidoId}/recibir`, {
+    method: "PATCH",
+    headers: await headersConToken({ "Content-Type": "application/json" }),
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(
+      errorData.error || `HTTP ${res.status} al confirmar la recepción del pedido`
+    );
+  }
+};
+
 export interface TicketsPedido {
   id: string;
   created_at: string;
   status: string;
+  order_type?: string | null;
+  delivery_address?: string | null;
   restaurant_tables?: { table_number: number } | null;
   order_items?: {
     id: string;

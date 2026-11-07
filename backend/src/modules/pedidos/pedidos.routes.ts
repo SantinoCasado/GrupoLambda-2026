@@ -63,7 +63,12 @@ router.patch('/:id/recibir',
 router.patch('/:id/solicitar-cuenta', verificarAutenticacion, solicitarCuenta);
 
 // La ruta que para que el mozo cobre (Paso 2)
-router.post('/cobrar', verificarAutenticacion, cobrarPedido);
+router.post(
+    '/cobrar',
+    verificarAutenticacion,
+    requerirRol(['delivery', 'waiter', 'owner', 'supervisor']),
+    cobrarPedido
+);
 
 // GET del resumen de precios
 router.get('/:id/resumen-precios', obtenerResumenPrecios);

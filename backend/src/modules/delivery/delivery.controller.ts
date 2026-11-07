@@ -1,15 +1,22 @@
-import { Request, Response } from 'express';
-import { tomarPedidoDeliveryService, 
-  obtenerTodosPedidosDeliveryService, 
+import { Response } from 'express';
+import { AuthRequest } from '../../middleware/auth.middleware';
+import {
+  tomarPedidoDeliveryService,
+  obtenerTodosPedidosDeliveryService,
   obtenerPedidoDeliveryPorIdService,
-  entregarYFacturarPedidoService
+  entregarPedidoDeliveryService,
 } from './delivery.service';
 
-export const tomarPedidoDelivery = async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { repartidor_id } = req.body;
+const resolverRepartidorId = (req: AuthRequest): string | null => {
+  const delToken = req.user?.id;
+  const delBody = typeof req.body?.repartidor_id === 'string' ? req.body.repartidor_id : null;
+  return delToken || delBody;
+};
 
-    // 1. Verifica que 'id' exista y sea de tipo string
+export const tomarPedidoDelivery = async (req: AuthRequest, res: Response) => {
+  const { id } = req.params;
+  const repartidor_id = resolverRepartidorId(req);
+
   if (!id || typeof id !== 'string') {
     return res.status(400).json({
       error: 'El ID del pedido es obligatorio y debe ser un texto válido.',
@@ -18,7 +25,7 @@ export const tomarPedidoDelivery = async (req: Request, res: Response) => {
 
   if (!repartidor_id) {
     return res.status(400).json({
-      error: 'Se requiere el ID del repartidor (repartidor_id).',
+      error: 'No se pudo identificar al repartidor autenticado.',
     });
   }
 
@@ -46,7 +53,7 @@ export const tomarPedidoDelivery = async (req: Request, res: Response) => {
  * - GET /api/delivery?status=ready,on_the_way    -> Trae los que están listos o en camino (Para el Repartidor)
  * - GET /api/delivery?status=pending             -> Trae pendientes (Para el Dueño/Supervisor)
  */
-export const obtenerPedidosDelivery = async (req: Request, res: Response) => {
+export const obtenerPedidosDelivery = async (req: AuthRequest, res: Response) => {
   const { status, repartidor_id } = req.query;
 
   try {
@@ -72,7 +79,7 @@ export const obtenerPedidosDelivery = async (req: Request, res: Response) => {
 /**
  * GET /api/delivery/:id
  */
-export const obtenerPedidoDeliveryPorId = async (req: Request, res: Response) => {
+export const obtenerPedidoDeliveryPorId = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
 
   if (!id || typeof id !== 'string') {
@@ -99,11 +106,12 @@ export const obtenerPedidoDeliveryPorId = async (req: Request, res: Response) =>
 
 /**
  * PATCH /api/delivery/:id/entregar
- * El repartidor confirma la entrega del pedido en el domicilio
+ * El repartidor confirma la entrega del pedido en el domicilio.
+ * El cobro y la factura se resuelven después con POST /api/pedidos/cobrar.
  */
-export const entregarPedidoDelivery = async (req: Request, res: Response) => {
+export const entregarPedidoDelivery = async (req: AuthRequest, res: Response) => {
   const { id } = req.params;
-  const { repartidor_id, metodo_pago } = req.body;
+  const repartidor_id = resolverRepartidorId(req);
 
   if (!id || typeof id !== 'string') {
     return res.status(400).json({
@@ -111,18 +119,14 @@ export const entregarPedidoDelivery = async (req: Request, res: Response) => {
     });
   }
 
-  if (!repartidor_id || typeof repartidor_id !== 'string') {
+  if (!repartidor_id) {
     return res.status(400).json({
-      error: 'El ID del repartidor (repartidor_id) es obligatorio.',
+      error: 'No se pudo identificar al repartidor autenticado.',
     });
   }
 
   try {
-    const resultado = await entregarYFacturarPedidoService(
-      id,
-      repartidor_id,
-      metodo_pago || 'efectivo'
-    );
+    const resultado = await entregarPedidoDeliveryService(id, repartidor_id);
 
     return res.status(200).json({
       status: 'OK',
