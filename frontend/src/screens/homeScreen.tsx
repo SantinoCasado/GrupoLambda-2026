@@ -20,7 +20,9 @@ export type HomeDestino =
   | "pedidos_listos"
   | "estadisticas"
   | "transacciones"
-  | "preparacion";
+  | "preparacion"
+  | "reservas_cliente"
+  | "reservas_admin";
 
 const PERFILES_EMPLEADO = [
   { id: "cocinero", label: "Cocinero", imagen: require("../../assets/images/chef-y.png") },
@@ -30,10 +32,6 @@ const PERFILES_EMPLEADO = [
   { id: "supervisor", label: "Supervisor", imagen: require("../../assets/images/supervisor-y.png") },
 ];
 
-// Alto de referencia del bloque de botones: lo que queda libre una vez que el
-// encabezado fijo (logo + marco chino) y, en clientes, el pie de "Mi Pedido"
-// consumieron su parte. Todos los tamaños de la zona de botones se derivan de
-// esta constante para conservar las proporciones entre pantallas distintas.
 const ALTO_REFERENCIA = 560;
 
 interface Props {
@@ -47,17 +45,20 @@ interface Props {
   onIrAJuegos?: () => void;
 }
 
-export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicitarMesa, pedidoActivoId, onVerEstadoPedido, onAbrirChatMozo, onIrAJuegos }: Props) {
+export default function HomeScreen({
+  usuario,
+  onNavigate,
+  numeroMesa,
+  onSolicitarMesa,
+  pedidoActivoId,
+  onVerEstadoPedido,
+  onAbrirChatMozo,
+  onIrAJuegos,
+}: Props) {
   const [modalPerfilVisible, setModalPerfilVisible] = useState(false);
   const { carrito } = useCart();
 
-  // El pedido activo solo habilita "Juegos" una vez que el mozo lo aprobó
-  // (pasó de 'pending'). Se consulta una vez al cargar la pantalla.
   const pedidoAprobado = usePedidoAprobado(pedidoActivoId);
-
-  // La zona de botones se mide con onLayout porque es la única forma exacta de
-  // saber cuánto alto sobra después del encabezado fijo y del pie de cliente:
-  // depende del dispositivo, de la orientación y del propio contenido del pie.
   const [altoArea, setAltoArea] = useState(0);
 
   const onLayoutArea = (e: LayoutChangeEvent) => {
@@ -65,19 +66,10 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
     if (height > 0 && Math.abs(height - altoArea) > 1) setAltoArea(height);
   };
 
-  // Antes del primer onLayout no hay medición real: se usa el alto de referencia
-  // para que el primer render ya salga con las proporciones correctas.
   const area = altoArea || ALTO_REFERENCIA;
   const k = Math.min(1.3, Math.max(0.6, area / ALTO_REFERENCIA));
 
-  // px(base, tope): escala un tamaño base de la referencia. El segundo argumento
-  // es el máximo permitido como fracción del alto disponible, así ningún icono
-  // puede desbordar el botón en una pantalla muy baja.
   const px = (base: number, tope: number) => Math.round(Math.min(base * k, area * tope));
-
-  // Los textos tienen piso de 11 px: son de una sola línea y por debajo de ese
-  // tamaño dejan de leerse, así que prefieren un desborde leve antes que ser
-  // ilegibles.
   const texto = (base: number, tope: number) => Math.max(11, px(base, tope));
 
   const navegar = (destino: HomeDestino, parametro?: string) => {
@@ -87,7 +79,6 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
 
   const perfil = usuario.perfil;
 
-  // ---- Configuración de roles ----
   const esAdmin = perfil === "dueño" || perfil === "supervisor";
   const esProducto = perfil === "cocinero" || perfil === "cantinero";
   const esCliente = perfil === "cliente_registrado" || perfil === "cliente_anonimo";
@@ -123,84 +114,102 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
         <View className="flex-1 px-6 pt-6" onLayout={onLayoutArea}>
           {/* 1. GESTIÓN ADMIN */}
           {esAdmin && (
-            <View className="flex-1 gap-y-4">
+            <View className="flex-1 gap-y-3">
               <Text className="mb-1 text-xs font-bold text-vino uppercase">Gestión del Restaurante</Text>
 
-              {/* Acción principal: absorbe la altura sobrante para que los tres
-                  botones de abajo queden pegados al final de la sección. */}
+              {/* Aprobación de Clientes */}
               <TouchableOpacity
                 onPress={() => navegar("clientes")}
-                className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza bg-vino px-6 active:bg-terracota"
-                style={{ minHeight: px(220, 0.55) }}
+                className="items-center justify-center rounded-2xl border-2 border-mostaza bg-vino px-6 active:bg-terracota"
+                style={{ flex: 1.5, minHeight: px(140, 0.3) }}
               >
                 <Image
                   source={require("../../assets/images/userAprovation-y.png")}
-                  style={{ height: px(128, 0.34), width: px(128, 0.34) }}
+                  style={{ height: px(70, 0.2), width: px(70, 0.2) }}
                   resizeMode="contain"
                 />
                 <Text
-                  style={{ fontFamily: "LaOriental", fontSize: texto(24, 0.07) }}
-                  className="mt-3 text-center uppercase tracking-wider text-mostaza"
+                  style={{ fontFamily: "LaOriental", fontSize: texto(20, 0.06) }}
+                  className="mt-2 text-center uppercase tracking-wider text-mostaza"
                 >
                   Aprobación de Clientes
                 </Text>
               </TouchableOpacity>
 
-              {/* Segunda acción: Estadísticas */}
+              {/* Punto 25: Gestión de Reservas */}
               <TouchableOpacity
-                onPress={() => navegar("estadisticas")}  // <--- Cambiado aquí
-                className="flex-row items-center justify-center rounded-2xl border-2 border-mostaza bg-vino px-6 active:bg-terracota"
-                style={{ paddingVertical: px(16, 0.06) }}
+                onPress={() => navegar("reservas_admin")}
+                className="flex-row items-center justify-center rounded-2xl border-2 border-mostaza bg-vino px-4 active:bg-terracota"
+                style={{ paddingVertical: px(12, 0.05) }}
               >
                 <Image
                   source={require("../../assets/images/audit-y.png")}
-                  style={{ height: px(48, 0.12), width: px(48, 0.12) }}
+                  style={{ height: px(38, 0.09), width: px(38, 0.09) }}
                   resizeMode="contain"
                 />
                 <Text
-                  style={{ fontFamily: "LaOriental", fontSize: texto(18, 0.055) }}
-                  className="ml-4 uppercase tracking-wider text-mostaza"
+                  style={{ fontFamily: "LaOriental", fontSize: texto(16, 0.05) }}
+                  className="ml-3 uppercase tracking-wider text-mostaza"
+                >
+                  Gestión de Reservas
+                </Text>
+              </TouchableOpacity>
+
+              {/* Estadísticas */}
+              <TouchableOpacity
+                onPress={() => navegar("estadisticas")}
+                className="flex-row items-center justify-center rounded-2xl border-2 border-mostaza bg-vino px-4 active:bg-terracota"
+                style={{ paddingVertical: px(12, 0.05) }}
+              >
+                <Image
+                  source={require("../../assets/images/audit-y.png")}
+                  style={{ height: px(38, 0.09), width: px(38, 0.09) }}
+                  resizeMode="contain"
+                />
+                <Text
+                  style={{ fontFamily: "LaOriental", fontSize: texto(16, 0.05) }}
+                  className="ml-3 uppercase tracking-wider text-mostaza"
                 >
                   Estadísticas
                 </Text>
               </TouchableOpacity>
 
               {/* Acciones secundarias */}
-              <View className="mb-5 flex-row gap-2">
+              <View className="mb-4 flex-row gap-2">
                 <TouchableOpacity
                   onPress={() => {
                     Vibration.vibrate([0, 40]);
                     setModalPerfilVisible(true);
                   }}
                   className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota"
-                  style={{ padding: px(12, 0.05) }}
+                  style={{ padding: px(10, 0.045) }}
                 >
                   <Image
                     source={require("../../assets/images/employeeRegistration-y.png")}
-                    style={{ height: px(40, 0.1), width: px(40, 0.1) }}
+                    style={{ height: px(36, 0.08), width: px(36, 0.08) }}
                     resizeMode="contain"
                   />
                   <Text
-                    style={{ fontFamily: "LaOriental", fontSize: texto(12, 0.04) }}
-                    className="mt-2 text-center uppercase tracking-wide text-mostaza"
+                    style={{ fontFamily: "LaOriental", fontSize: texto(11, 0.035) }}
+                    className="mt-1 text-center uppercase tracking-wide text-mostaza"
                   >
-                    Alta de Empleados
+                    Alta Empleados
                   </Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
                   onPress={() => navegar("mesas")}
                   className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota"
-                  style={{ padding: px(12, 0.05) }}
+                  style={{ padding: px(10, 0.045) }}
                 >
                   <Image
                     source={require("../../assets/images/table-y.png")}
-                    style={{ height: px(40, 0.1), width: px(40, 0.1) }}
+                    style={{ height: px(36, 0.08), width: px(36, 0.08) }}
                     resizeMode="contain"
                   />
                   <Text
-                    style={{ fontFamily: "LaOriental", fontSize: texto(12, 0.04) }}
-                    className="mt-2 text-center uppercase tracking-wide text-mostaza"
+                    style={{ fontFamily: "LaOriental", fontSize: texto(11, 0.035) }}
+                    className="mt-1 text-center uppercase tracking-wide text-mostaza"
                   >
                     Mesas Y QR
                   </Text>
@@ -213,7 +222,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
           {esProducto && (
             <View className="flex-1 gap-y-4 pb-2">
               <Text className="text-xs font-bold text-vino uppercase">Gestión de Carta</Text>
-              
+
               <TouchableOpacity
                 onPress={() => navegar("preparacion")}
                 className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza bg-vino px-6 active:bg-terracota"
@@ -233,7 +242,6 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
               </TouchableOpacity>
 
               <View className="mb-5 flex-row gap-2">
-                {/* Botón 1: Alta */}
                 <TouchableOpacity
                   onPress={() => navegar("producto")}
                   className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota"
@@ -254,7 +262,6 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                   </View>
                 </TouchableOpacity>
 
-                {/* Botón 2: Ver Carta */}
                 <TouchableOpacity
                   onPress={() => navegar("carta", perfil === "cocinero" ? "comida" : "bebida")}
                   className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota"
@@ -278,7 +285,7 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
             </View>
           )}
 
-          {/* 3. CLIENTE (Platos, Bebidas y Carrito) */}
+          {/* 3. CLIENTE (Platos, Bebidas, Carrito y Reservas) */}
           {esCliente && (
             <View className="flex-1 gap-y-4">
               <View className="mb-1 flex-row items-center justify-between">
@@ -290,8 +297,6 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                         Vibration.vibrate([0, 40]);
                         onAbrirChatMozo();
                       }}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Abrir chat con el mozo, mesa ${numeroMesa}`}
                       className="flex-row items-center rounded-lg border border-vino bg-mostaza px-2 py-1.5 active:bg-mostaza/70"
                     >
                       <Text className="text-sm font-bold text-vino">MESA #{numeroMesa}</Text>
@@ -316,35 +321,70 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
 
               {!numeroMesa ? (
                 /* ESTADO 1: SIN MESA ASIGNADA */
-                <TouchableOpacity
-                  onPress={onSolicitarMesa}
-                  className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota"
-                  style={{ padding: px(16, 0.06) }}
-                >
-                  <Image
-                    source={require("../../assets/images/guest-c.png")}
-                    style={{ height: px(32, 0.09), width: px(32, 0.09), marginRight: px(12, 0.045) }}
-                    resizeMode="contain"
-                  />
-                  <View className="flex-1">
-                    <Text
-                      style={{ fontFamily: "LaOriental", fontSize: texto(16, 0.05) }}
-                      className="uppercase tracking-wider text-mostaza font-bold"
+                <View className="gap-y-3">
+                  <TouchableOpacity
+                    onPress={onSolicitarMesa}
+                    className="flex-row items-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota"
+                    style={{ padding: px(16, 0.06) }}
+                  >
+                    <Image
+                      source={require("../../assets/images/guest-c.png")}
+                      style={{ height: px(32, 0.09), width: px(32, 0.09), marginRight: px(12, 0.045) }}
+                      resizeMode="contain"
+                    />
+                    <View className="flex-1">
+                      <Text
+                        style={{ fontFamily: "LaOriental", fontSize: texto(16, 0.05) }}
+                        className="uppercase tracking-wider text-mostaza font-bold"
+                      >
+                        Ir a la Entrada / Puerta
+                      </Text>
+                      <Text style={{ fontSize: texto(11, 0.035), fontWeight: "600" }} className="text-amber-100">
+                        Escanear QR de puerta o gestionar tus reservas
+                      </Text>
+                    </View>
+                    <Image
+                      source={require("../../assets/images/right-arrow-y.png")}
+                      style={{ height: px(24, 0.07), width: px(24, 0.07) }}
+                      resizeMode="contain"
+                    />
+                  </TouchableOpacity>
+
+                  {/* Punto 24: Agendar Reserva (Solo Clientes Registrados) */}
+                  {perfil === "cliente_registrado" && (
+                    <TouchableOpacity
+                      onPress={() => navegar("reservas_cliente")}
+                      className="flex-row items-center rounded-2xl border-2 border-vino bg-mostaza active:bg-mostaza/80"
+                      style={{ padding: px(16, 0.06) }}
                     >
-                      Solicitar Mesa en Puerta
-                    </Text>
-                    <Text style={{ fontSize: texto(11, 0.035), fontWeight: "600" }} className="text-amber-100">
-                      Escaneá el QR de la entrada para anotarte en la lista de espera
-                    </Text>
-                  </View>
-                  <Image
-                    source={require("../../assets/images/right-arrow-y.png")}
-                    style={{ height: px(24, 0.07), width: px(24, 0.07) }}
-                    resizeMode="contain"
-                  />
-                </TouchableOpacity>
+                      <Image
+                        source={require("../../assets/images/serving-y.png")}
+                        style={{ height: px(32, 0.09), width: px(32, 0.09), marginRight: px(12, 0.045) }}
+                        className="tint-vino"
+                        resizeMode="contain"
+                      />
+                      <View className="flex-1">
+                        <Text
+                          style={{ fontFamily: "LaOriental", fontSize: texto(16, 0.05) }}
+                          className="uppercase tracking-wider text-vino font-bold"
+                        >
+                          Agendar Reserva
+                        </Text>
+                        <Text style={{ fontSize: texto(11, 0.035), fontWeight: "600" }} className="text-stone-800">
+                          Reservá una mesa para una fecha y horario futuro
+                        </Text>
+                      </View>
+                      <Image
+                        source={require("../../assets/images/right-arrow-v.png")}
+                        style={{ height: px(24, 0.07), width: px(24, 0.07) }}
+                        className="tint-vino"
+                        resizeMode="contain"
+                      />
+                    </TouchableOpacity>
+                  )}
+                </View>
               ) : pedidoActivoId ? (
-                /* ESTADO 2A: CON MESA Y CON PEDIDO CONFIRMADO (Se ocultan las cartas) */
+                /* ESTADO 2A: CON MESA Y CON PEDIDO CONFIRMADO */
                 <View className="flex-1 gap-y-4 pb-2">
                   <TouchableOpacity
                     onPress={onVerEstadoPedido}
@@ -352,28 +392,23 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                     style={{ minHeight: px(250, 0.5) }}
                   >
                     <Image 
-                    source={require("../../assets/images/cart-y.png")} 
-                    style={{ height: px(120, 0.25), width: px(120, 0.25) }}
+                      source={require("../../assets/images/cart-y.png")} 
+                      style={{ height: px(120, 0.25), width: px(120, 0.25) }}
                     />
-                    
                     <Text 
                       style={{ fontFamily: "LaOriental", fontSize: texto(28, 0.065) }}
                       className="mt-3 text-center uppercase tracking-wider text-mostaza"
                     >
                       Ver Estado de mi Pedido
                     </Text>
-                    
                   </TouchableOpacity>
 
-                  {/* Juegos: solo si el mozo ya aprobó la comanda */}
                   {pedidoAprobado && onIrAJuegos && (
                     <TouchableOpacity
                       onPress={() => {
                         Vibration.vibrate([0, 40]);
                         onIrAJuegos();
                       }}
-                      accessibilityRole="button"
-                      accessibilityLabel="Ir a los juegos de la mesa"
                       className="flex-1 items-center justify-center rounded-2xl border-2 border-vino bg-mostaza px-6 active:bg-terracota"
                       style={{ minHeight: px(120, 0.4) }}
                     >
@@ -384,20 +419,16 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                       />
                       <Text
                         style={{ fontFamily: "LaOriental", fontSize: texto(30, 0.065) }}
-                        className=" text-center uppercase tracking-wider text-vino"
+                        className="text-center uppercase tracking-wider text-vino"
                       >
                         Juegos
                       </Text>
                     </TouchableOpacity>
                   )}
-                  
                 </View>
               ) : (
-                /* ESTADO 2B: CON MESA PERO SIN PEDIDO ACTIVO (Se muestran las cartas
-                   como acciones principales y "Mi Pedido" queda al pie como
-                   acceso secundario) */
+                /* ESTADO 2B: CON MESA PERO SIN PEDIDO ACTIVO */
                 <View className="flex-1 gap-y-4 pb-2">
-                  {/* Carta de Platos: acción principal */}
                   <TouchableOpacity
                     onPress={() => navegar("carta", "comida")}
                     className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza bg-vino px-6 active:bg-terracota"
@@ -416,7 +447,6 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                     </Text>
                   </TouchableOpacity>
 
-                  {/* Carta de Bebidas: acción principal */}
                   <TouchableOpacity
                     onPress={() => navegar("carta", "bebida")}
                     className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza bg-vino px-6 active:bg-terracota"
@@ -444,7 +474,6 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
             <View className="flex-1 gap-y-2 pb-2">
               <Text className="mb-1 text-xs font-bold text-vino uppercase">Operación del Salón</Text>
 
-              {/* Botón 1: Gestión de Mesas y Espera */}
               <TouchableOpacity
                 onPress={() => navegar("metre")}
                 className="items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota"
@@ -463,7 +492,6 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                 </Text>
               </TouchableOpacity>
 
-              {/* Botón 2: Registrar Cliente en Puerta */}
               <TouchableOpacity
                 onPress={() => navegar("registro_metre")}
                 className="items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota"
@@ -486,12 +514,9 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
 
           {/* 5. MOZO */}
           {perfil === "mozo" && (
-            <View 
-              className="flex-1" 
-            >
+            <View className="flex-1">
               <Text className="text-xs font-bold text-vino uppercase mb-2">Operación de Salón</Text>
 
-              {/* Botón Principal: Comandas */}
               <TouchableOpacity
                 onPress={() => navegar("comandas")}
                 className="items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota mb-2.5 py-5"
@@ -509,7 +534,6 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                 </Text>
               </TouchableOpacity>
 
-              {/* Pedidos Listos */}
               <TouchableOpacity
                 onPress={() => navegar("pedidos_listos")}
                 className="items-center justify-center rounded-2xl border-2 border-mostaza bg-vino active:bg-terracota mb-2.5 py-3 px-4"
@@ -527,7 +551,6 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
                 </Text>
               </TouchableOpacity>
 
-              {/* Chat Mesas + Transacciones en una fila */}
               <View className="flex-row gap-2">
                 <TouchableOpacity
                   onPress={() => navegar("chat_mesas")}
@@ -570,7 +593,6 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
           {!esAdmin && !esProducto && !esCliente && perfil !== "metre" && perfil !== "mozo" && (
             <View className="flex-1 items-center justify-center rounded-2xl border border-dashed border-mostaza/60 bg-white/70 p-8">
               <Text className="text-4xl mb-2">📭</Text>
-
               <Text
                 style={{ fontFamily: "LaOriental" }}
                 className="text-base uppercase text-vino text-center"
@@ -585,75 +607,74 @@ export default function HomeScreen({ usuario, onNavigate, numeroMesa, onSolicita
         </View>
       </View>
 
-      {/* Botón fijo al pie: Mi Pedido, o Ver Estado si hay pedido activo (solo clientes) */}
+      {/* Botón fijo al pie: Mi Pedido */}
       {esCliente && (
         <View className="px-6 pb-6 pt-2">
-          {!pedidoActivoId ? (
+          {!pedidoActivoId && (
             <TouchableOpacity
               onPress={() => navegar("carrito")}
               className="flex-row items-center rounded-2xl border-2 border-vino bg-mostaza px-3 py-2.5 active:bg-mostaza/80"
             >
               <Image source={require("../../assets/images/cart-v.png")} className="h-12 w-12 mr-2" resizeMode="contain" />
               <View className="flex-1">
-                <Text style={{ fontFamily: "LaOriental"}} className="uppercase mt-2 tracking-wider ml-2 text-lg text-vino">
+                <Text style={{ fontFamily: "LaOriental" }} className="uppercase mt-2 tracking-wider ml-2 text-lg text-vino">
                   Mi Pedido ({carrito.length})
                 </Text>
               </View>
               <Image source={require("../../assets/images/right-arrow-v.png")} className="h-7 w-7 tint-vino" resizeMode="contain" />
             </TouchableOpacity>
-          ) : ("")}
+          )}
         </View>
       )}
 
-      {/* MODAL: Selección de Puesto / Rol. Montado solo al abrirlo: en Android
-          cada Modal crea una ventana nativa aunque visible={false}. */}
+      {/* Modal Alta de Empleados */}
       {modalPerfilVisible && (
-      <Modal visible transparent animationType="fade">
-        <View className="flex-1 items-center justify-center bg-black/50 px-6">
-          <ChineseFrame className="w-full max-w-sm bg-vino shadow-2xl p-3">
-            <View className="px-2 pb-3 pt-5">
-              <Text
-                style={{ fontFamily: "LaOriental" }}
-                className="mb-1 text-xl uppercase tracking-wider text-mostaza text-center"
-              >
-                Nuevo Empleado
-              </Text>
-              <Text className="mb-5 text-center text-sm font-semibold text-amber-100">
-                Seleccione el puesto que ocupará el empleado:
-              </Text>
-
-              <View className="flex-row flex-wrap justify-between gap-y-5">
-                {PERFILES_EMPLEADO.map((rol) => (
-                  <TouchableOpacity
-                    key={rol.id}
-                    onPress={() => {
-                      Vibration.vibrate([0, 40]);
-                      setModalPerfilVisible(false);
-                      onNavigate("empleados", rol.id);
-                    }}
-                    className="w-[48%] items-center rounded-2xl border-2 border-mostaza/70 bg-calabaza/30 p-3 active:bg-calabaza/60"
-                  >
-                    <Image source={rol.imagen} className="mb-1 h-9 w-9" resizeMode="contain" />
-                    <Text className="text-sm font-extrabold text-mostaza">{rol.label.toUpperCase()}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              <TouchableOpacity
-                onPress={() => setModalPerfilVisible(false)}
-                className="mt-5 rounded-2xl bg-mostaza py-2.5 active:bg-calabaza/60"
-              >
+        <Modal visible transparent animationType="fade">
+          <View className="flex-1 items-center justify-center bg-black/50 px-6">
+            <ChineseFrame className="w-full max-w-sm bg-vino shadow-2xl p-3">
+              <View className="px-2 pb-3 pt-5">
                 <Text
                   style={{ fontFamily: "LaOriental" }}
-                  className="text-center uppercase tracking-wider text-vino"
+                  className="mb-1 text-xl uppercase tracking-wider text-mostaza text-center"
                 >
-                  Cancelar
+                  Nuevo Empleado
                 </Text>
-              </TouchableOpacity>
-            </View>
-          </ChineseFrame>
-        </View>
-      </Modal>
+                <Text className="mb-5 text-center text-sm font-semibold text-amber-100">
+                  Seleccione el puesto que ocupará el empleado:
+                </Text>
+
+                <View className="flex-row flex-wrap justify-between gap-y-5">
+                  {PERFILES_EMPLEADO.map((rol) => (
+                    <TouchableOpacity
+                      key={rol.id}
+                      onPress={() => {
+                        Vibration.vibrate([0, 40]);
+                        setModalPerfilVisible(false);
+                        onNavigate("empleados", rol.id);
+                      }}
+                      className="w-[48%] items-center rounded-2xl border-2 border-mostaza/70 bg-calabaza/30 p-3 active:bg-calabaza/60"
+                    >
+                      <Image source={rol.imagen} className="mb-1 h-9 w-9" resizeMode="contain" />
+                      <Text className="text-sm font-extrabold text-mostaza">{rol.label.toUpperCase()}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <TouchableOpacity
+                  onPress={() => setModalPerfilVisible(false)}
+                  className="mt-5 rounded-2xl bg-mostaza py-2.5 active:bg-calabaza/60"
+                >
+                  <Text
+                    style={{ fontFamily: "LaOriental" }}
+                    className="text-center uppercase tracking-wider text-vino"
+                  >
+                    Cancelar
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </ChineseFrame>
+          </View>
+        </Modal>
       )}
     </>
   );
