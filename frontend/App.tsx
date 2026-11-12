@@ -100,7 +100,7 @@ function AppInterna() {
   const [perfilAltaEmpleado, setPerfilAltaEmpleado] = useState<string | null>(null);
   const [tipoCartaSeleccionada, setTipoCartaSeleccionada] = useState<"comida" | "bebida" | "todo">("comida");
   const [numeroMesaCliente, setNumeroMesaCliente] = useState<number | null>(null);
-  const [enEsperaRegistrado, setEnEsperaRegistrado] = useState(false);
+  const [enEsperaRegistrado, setEnEsperaRegistrado] = useState(true);
   const [idMesaCliente, setIdMesaCliente] = useState<string | null>(null);
   const [idPedidoActivo, setIdPedidoActivo] = useState<string | null>(null);
   const [mesaCliente, setMesaCliente] = useState<string | number>("S/N");
@@ -607,9 +607,10 @@ function AppInterna() {
 
   const volverAlInicio = () => {
     Vibration.vibrate([0, 40]);
-    // Si está editando una comanda rechazada, la casita lo lleva a la carta
-    // para que pueda seguir sumando o viendo platos sin bloquearse
-    
+    // Si el cliente no tiene mesa asignada, lo devolvemos a la pantalla de puerta/espera
+    if (!numeroMesaCliente) {
+      setEnEsperaRegistrado(true);
+    }
     setVistaPrivada("home");
   };
 
@@ -716,10 +717,13 @@ function AppInterna() {
 
             // 2. RECUPERACIÓN DE SESIÓN ACTIVA (Si es cliente registrado o anónimo)
             if (usuario.perfil === "cliente_registrado" || usuario.perfil === "cliente_anonimo") {
+              // Arranca asumiendo puerta/espera para que nunca flashee la carta mientras consulta
+              setEnEsperaRegistrado(true);
+              setNumeroMesaCliente(null);
+
               const estado = await recuperarEstadoActivoCliente(usuario.id);
 
               if (estado.pantallaDestino !== "inicio") {
-                // Restauramos los datos de la mesa y el pedido
                 if (estado.numeroMesa) {
                   setNumeroMesaCliente(Number(estado.numeroMesa) || null);
                   setMesaCliente(estado.numeroMesa);
@@ -734,22 +738,18 @@ function AppInterna() {
                   setPropinaSeleccionada(estado.propina);
                 }
 
-                // Desactivamos la puerta/espera porque ya tiene estadía activa
+                // Desactivamos la puerta/espera porque sí tiene estadía activa
                 setEnEsperaRegistrado(false);
-
-                // Lo mandamos directo a la pantalla que le corresponde
                 setVistaPrivada(estado.pantallaDestino as any);
                 return;
               }
 
-              // Si no tiene mesa ni comanda activa previa, hace el flujo normal de puerta
-              setNumeroMesaCliente(null);
+              // Si no tiene mesa ni comanda activa previa, ya quedó en puerta/espera
               setIdMesaCliente(null);
               setIdPedidoActivo(null);
               setEnEsperaRegistrado(true);
               setVistaPrivada("home");
             } else {
-              // Empleados, mozos, metre, cocinero, etc.
               setVistaPrivada("home");
             }
           }}
