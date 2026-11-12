@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, ComponentRef } from "react";
 import {
   View,
   Text,
@@ -48,7 +48,7 @@ export function EncuestaScreen({ pedidoId, userId, userRole = "cliente_registrad
   const [enviando, setEnviando] = useState(false);
 
   // Carrusel horizontal del formulario (0: calificaciones, 1: comentario y envío)
-  const carouselRef = useRef<ScrollView>(null);
+  const carouselRef = useRef<ComponentRef<typeof ScrollView>>(null);
   const [paso, setPaso] = useState(0);
   // Se bloquea el deslizamiento del carrusel mientras se arrastra el slider
   // de comodidad, para que el gesto no cambie de página.
@@ -442,8 +442,8 @@ export function EncuestaScreen({ pedidoId, userId, userRole = "cliente_registrad
             ) : tipoGrafico === "barras" ? (
               /* GRÁFICO 1: BARRAS - Sabor, Atención, Comodidad */
               <View className="w-full items-center">
-                <Text style={{ fontFamily: "LaOriental" }} className="text-2xl uppercase text-vino mb-1">
-                  Promedio individual
+                <Text style={{ fontFamily: "LaOriental" }} className="text-xl uppercase text-vino mb-1">
+                  Promedio de satisfacción por área
                 </Text>
                 <Text className="text-base text-stone-500 mb-4">Total de encuestas: {totalRespuestas}</Text>
 
@@ -467,10 +467,10 @@ export function EncuestaScreen({ pedidoId, userId, userRole = "cliente_registrad
               /* GRÁFICO 3: LINEAL */
               <View className="w-full items-center">
                 <Text style={{ fontFamily: "LaOriental" }} className="text-2xl uppercase text-vino mb-1">
-                  Evolución Reciente
+                  Evolución de Satisfacción
                 </Text>
                 <Text className="text-base text-stone-500 mb-12">
-                  Promedio diario (1 a 5) · un punto por día
+                  Promedio diario (1 a 5 Estrellas)
                 </Text>
 
                 <GraficoLineal puntos={resumen.dias} width={anchoGrafico} />

@@ -147,7 +147,7 @@ export function EstadisticasScreen({ onVolver, esModal = false }: Props) {
         }}
         showsVerticalScrollIndicator={false}
       >
-        <View className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza/70 bg-amber-50 p-4">
+        <View className="flex-1 items-center justify-center rounded-2xl border-2 border-mostaza/70 bg-amber-50 p-2">
           {cargando ? (
             <View className="items-center py-16">
               <ActivityIndicator size="large" color="#8f0018" />
@@ -167,9 +167,9 @@ export function EstadisticasScreen({ onVolver, esModal = false }: Props) {
             <View className="w-full items-center">
               <Text
                 style={{ fontFamily: "LaOriental" }}
-                className="mb-1 text-center text-2xl uppercase text-vino"
+                className="mb-1 text-center text-xl uppercase text-vino"
               >
-                Promedio individual
+                Promedio de satisfacción por área
               </Text>
               <Text className="mb-4 text-center text-base text-stone-500">
                 Total de encuestas: {resumen.total}
@@ -184,14 +184,61 @@ export function EstadisticasScreen({ onVolver, esModal = false }: Props) {
               >
                 Distribución de Satisfacción
               </Text>
-              <Text className="text-center text-base text-stone-500">
-                Promedio general de valoracion
+              <Text className="mb-3 text-center text-base text-stone-500">
+                Promedio general de valoracion por estrellas
               </Text>
-              <GraficoTorta
-                valores={resumen.distribucionSatisfaccion}
-                colores={COLORES_TORTA}
-                size={tamanoTorta}
-              />
+
+              <View
+                style={{
+                  position: "relative",
+                  justifyContent: "center",
+                  alignItems: "center",
+                }}
+              >
+                <GraficoTorta
+                  valores={resumen.distribucionSatisfaccion}
+                  colores={COLORES_TORTA}
+                  size={tamanoTorta}
+                />
+
+                {/* Etiqueta rectangular con puntas redondeadas bien centrada */}
+                <View
+                  pointerEvents="none"
+                  style={{
+                    position: "absolute",
+                    backgroundColor: "#FFFBEB",
+                    borderWidth: 1.5,
+                    borderColor: "#D9B978",
+                    borderRadius: 12,
+                    paddingHorizontal: 14,
+                    paddingVertical: 6,
+                    alignItems: "center",
+                    justifyContent: "center",
+                    elevation: 3,
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: "#785A32",
+                      fontSize: 10,
+                      fontWeight: "800",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Total:
+                  </Text>
+                  <Text
+                    style={{
+                      fontFamily: "LaOriental",
+                      color: "#780116",
+                      fontSize: 10,
+                      lineHeight: 10,
+                    }}
+                  >
+                    {resumen.total}
+                  </Text>
+                </View>
+              </View>
             </View>
           ) : (
             <View className="w-full items-center">
@@ -199,10 +246,10 @@ export function EstadisticasScreen({ onVolver, esModal = false }: Props) {
                 style={{ fontFamily: "LaOriental" }}
                 className="mb-1 text-center text-2xl uppercase text-vino"
               >
-                Evolución Reciente
+                Evolución de Satisfacción
               </Text>
-              <Text className="mb-12 text-center text-base text-stone-500">
-                Promedio diario (1 a 5) · un punto por día
+              <Text className="mb-6 text-center text-base text-stone-500">
+                Promedio diario (1 a 5 Estrellas)
               </Text>
               <GraficoLineal puntos={resumen.dias} width={anchoGrafico} />
             </View>
