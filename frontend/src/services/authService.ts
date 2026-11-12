@@ -179,7 +179,7 @@ export async function loginConGoogle(): Promise<UsuarioSeed | null> {
     throw new Error(sessionError?.message || "Fallo al establecer la sesión del usuario.");
   }
 
-  // 6. Enviar al endpoint que armó tu compañero
+  // 6. Enviar al endpoint
   const response = await fetch(`${API_URL}/api/auth/google`, {
     method: "POST",
     headers: {
@@ -188,16 +188,25 @@ export async function loginConGoogle(): Promise<UsuarioSeed | null> {
     body: JSON.stringify({ access_token: sesionData.session.access_token }),
   });
 
-  const body = await response.json();
+  const textoRespuesta = await response.text();
+
+  // Si el backend devolvió HTML (404 Not Found o 500 Server Error)
+  if (textoRespuesta.trim().startsWith("<")) {
+    console.error("📄 Respuesta HTML del backend:\n", textoRespuesta);
+    await client.auth.signOut();
+    throw new Error(`Error en el servidor (HTTP ${response.status}). Verificá que la ruta exista en el backend o que la base de datos no haya fallado.`);
+  }
+
+  const body = JSON.parse(textoRespuesta);
 
   if (!response.ok) {
     // Si da 401 o 400: limpiar sesión en Supabase y lanzar el error exacto del back
     await client.auth.signOut();
-    throw new Error(body.error || "No autorizado para ingresar.");
+    throw new Error(body.error || body.message || "No autorizado para ingresar.");
   }
 
   // 7. Mapear el usuario devuelto
-  const u = body.usuario || {};
+  const u = body.usuario || body.user || {};
   const rolRaw = (u.role || u.perfil || "").trim().toLowerCase();
   const perfilUsuario: PerfilUsuario =
     ROLE_TO_PERFIL[rolRaw] || (rolRaw as PerfilUsuario) || "cliente_registrado";

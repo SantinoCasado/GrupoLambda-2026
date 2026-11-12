@@ -45,19 +45,31 @@ export const loginGoogleService = async ({ access_token }: GoogleLoginDTO) => {
     // Valida el token con Supabase Auth
     const { data: { user }, error: authError } = await supabase.auth.getUser(access_token);
 
-    if (authError || !user) {
+    if (authError || !user || !user.email) {
         throw new Error('Token de Google inválido o expirado.');
     }
 
-    // Supabase vincula la cuenta de Google con el usuario existente si el correo coincide
-    const { data: userProfile, error: profileError } = await supabase
+    const emailGoogle = user.email.trim().toLowerCase();
+
+    // 1. Intentar buscar por ID de Auth o por Email
+    let { data: userProfile, error: profileError } = await supabase
         .from('users')
         .select('*')
-        .eq('id', user.id)
+        .or(`id.eq.${user.id},email.ilike.${emailGoogle}`)
         .maybeSingle();
 
     if (profileError || !userProfile) {
         throw new Error('Este correo de Google no está registrado en Jardín Imperial.');
+    }
+
+    // 2. Si el perfil existía por email pero tenía un ID diferente (creado manualmente antes), vinculamos el ID de Supabase Auth
+    if (userProfile.id !== user.id) {
+        await supabase
+            .from('users')
+            .update({ id: user.id })
+            .eq('email', userProfile.email);
+            
+        userProfile.id = user.id;
     }
 
     // Los clientes anónimos no inician sesión
@@ -65,7 +77,7 @@ export const loginGoogleService = async ({ access_token }: GoogleLoginDTO) => {
         throw new Error('Los clientes anónimos no pueden ingresar con Google.');
     }
 
-    // Mismas reglas de aprobación que el ingreso con correo y contraseña
+    // Mismas reglas de aprobación
     if (userProfile.status === 'pending') {
         throw new Error('Tu cuenta está pendiente de aprobación por parte de un dueño o supervisor.');
     }

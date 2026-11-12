@@ -46,7 +46,8 @@ import { EncuestaScreen } from "./src/screens/encuestaScreen";
 import { CuentaScreen } from "./src/screens/cuentaScreen";
 import { TransaccionesScreen } from "./src/screens/transaccionesScreen";
 import { EstadisticasScreen } from "./src/screens/estadisticasScreen";
-
+import ReservasClienteScreen from "./src/screens/reservaClienteScreen";
+import ReservasAdminScreen from "./src/screens/reservaAdminScreen";
 
 const NO_PHOTO = require("./assets/images/no-photo.jpg");
 
@@ -78,6 +79,8 @@ type VistaPrivada =
   | "encuesta"
   | "transacciones"
   | "estadisticas"
+  | "reservas_cliente"
+  | "reservas_admin"
   | "cuenta";
 
 export default function App() {
@@ -99,7 +102,7 @@ function AppInterna() {
   const [perfilAltaEmpleado, setPerfilAltaEmpleado] = useState<string | null>(null);
   const [tipoCartaSeleccionada, setTipoCartaSeleccionada] = useState<"comida" | "bebida" | "todo">("comida");
   const [numeroMesaCliente, setNumeroMesaCliente] = useState<number | null>(null);
-  const [enEsperaRegistrado, setEnEsperaRegistrado] = useState(false);
+  const [enEsperaRegistrado, setEnEsperaRegistrado] = useState(true);
   const [idMesaCliente, setIdMesaCliente] = useState<string | null>(null);
   const [idPedidoActivo, setIdPedidoActivo] = useState<string | null>(null);
   const [mesaCliente, setMesaCliente] = useState<string | number>("S/N");
@@ -356,6 +359,13 @@ function AppInterna() {
           setVistaPrivada("clientes");
         } else {
           setNotifNuevoClientePendiente(true);
+        }
+        return;
+      
+      // Push notification de nueva reserva para Dueño / Supervisor (Punto 25)
+      case "nueva_reserva":
+        if (usuario && esAdmin) {
+          setVistaPrivada("reservas_admin");
         }
         return;
 
@@ -620,9 +630,10 @@ function AppInterna() {
 
   const volverAlInicio = () => {
     Vibration.vibrate([0, 40]);
-    // Si está editando una comanda rechazada, la casita lo lleva a la carta
-    // para que pueda seguir sumando o viendo platos sin bloquearse
-    
+    // Si el cliente no tiene mesa asignada, lo devolvemos a la pantalla de puerta/espera
+    if (!numeroMesaCliente) {
+      setEnEsperaRegistrado(true);
+    }
     setVistaPrivada("home");
   };
 
@@ -729,10 +740,13 @@ function AppInterna() {
 
             // 2. RECUPERACIÓN DE SESIÓN ACTIVA (Si es cliente registrado o anónimo)
             if (usuario.perfil === "cliente_registrado" || usuario.perfil === "cliente_anonimo") {
+              // Arranca asumiendo puerta/espera para que nunca flashee la carta mientras consulta
+              setEnEsperaRegistrado(true);
+              setNumeroMesaCliente(null);
+
               const estado = await recuperarEstadoActivoCliente(usuario.id);
 
               if (estado.pantallaDestino !== "inicio") {
-                // Restauramos los datos de la mesa y el pedido
                 if (estado.numeroMesa) {
                   setNumeroMesaCliente(Number(estado.numeroMesa) || null);
                   setMesaCliente(estado.numeroMesa);
@@ -747,22 +761,18 @@ function AppInterna() {
                   setPropinaSeleccionada(estado.propina);
                 }
 
-                // Desactivamos la puerta/espera porque ya tiene estadía activa
+                // Desactivamos la puerta/espera porque sí tiene estadía activa
                 setEnEsperaRegistrado(false);
-
-                // Lo mandamos directo a la pantalla que le corresponde
                 setVistaPrivada(estado.pantallaDestino as any);
                 return;
               }
 
-              // Si no tiene mesa ni comanda activa previa, hace el flujo normal de puerta
-              setNumeroMesaCliente(null);
+              // Si no tiene mesa ni comanda activa previa, ya quedó en puerta/espera
               setIdMesaCliente(null);
               setIdPedidoActivo(null);
               setEnEsperaRegistrado(true);
               setVistaPrivada("home");
             } else {
-              // Empleados, mozos, metre, cocinero, etc.
               setVistaPrivada("home");
             }
           }}
@@ -777,11 +787,11 @@ function AppInterna() {
     );
   }
 
-  // 1.1 Si el cliente registrado está en espera o en la puerta
-  if (usuarioActual && usuarioActual.perfil === "cliente_registrado" && enEsperaRegistrado) {
-    return (
-      <>
-        <ScreenBackground />
+// 1.1 Si el cliente registrado está en espera o en la puerta
+if (usuarioActual && usuarioActual.perfil === "cliente_registrado" && enEsperaRegistrado) {
+  return (
+    <>
+      <ScreenBackground />
         <EsperaMesaScreen
           cliente={{
             id: usuarioActual.id,
@@ -789,6 +799,11 @@ function AppInterna() {
             client_name: `${usuarioActual.nombres} ${usuarioActual.apellidos}`,
             client_photo: usuarioActual.foto || "",
             status: "door",
+          }}
+          esClienteRegistrado={true}
+          onIrAReservar={() => {
+            setEnEsperaRegistrado(false); // 👈 Apaga la espera para que App.tsx deje pasar a reservas
+            setVistaPrivada("reservas_cliente");
           }}
           onSalir={cerrarSesion}
           onMesaConfirmada={async (numMesa) => {
@@ -801,8 +816,6 @@ function AppInterna() {
             if (mesaData?.id) setIdMesaCliente(mesaData.id);
             setEnEsperaRegistrado(false);
 
-            // Consulta si tiene comanda activa en preparación, igual que el login normal.
-            // Sin esto el footer del home muestra "Mi Pedido" aunque haya pedido en curso.
             const { data: pedidoEnCurso } = await supabase
               .from("orders")
               .select("id")
@@ -816,9 +829,9 @@ function AppInterna() {
             setVistaPrivada("home");
           }}
         />
-      </>
-    );
-  }
+    </>
+  );
+}
 
   // 2. Clasificación de roles
   const esAdmin = usuarioActual.perfil === "dueño" || usuarioActual.perfil === "supervisor";
@@ -874,21 +887,23 @@ function AppInterna() {
 
   // 4. Validación de Acceso a Vistas Privadas
   const accesoValido =
-    vistaPrivada === "empleados" || vistaPrivada === "mesas" || vistaPrivada === "clientes" || vistaPrivada === "estadisticas"
-      ? esAdmin
-      : vistaPrivada === "producto" || vistaPrivada === "preparacion"
-      ? esProducto
-      : vistaPrivada === "tickets"
-      ? usuarioActual.perfil === "cocinero" || usuarioActual.perfil === "cantinero"
-      : vistaPrivada === "registro_metre" || vistaPrivada === "metre"
-      ? usuarioActual.perfil === "metre" || esAdmin
-      : vistaPrivada === "comandas" || vistaPrivada === "chat_mesas" || vistaPrivada === "pedidos_listos" || vistaPrivada === "transacciones"
-      ? usuarioActual.perfil === "mozo" || esAdmin
-      : vistaPrivada === "carta"
-      ? esProducto || esCliente
-      : vistaPrivada === "carrito" || vistaPrivada === "estado_pedido" || vistaPrivada === "juegos" || vistaPrivada === "bolita" || vistaPrivada === "puzzle"
-      ? esCliente
-      : true;
+      vistaPrivada === "empleados" || vistaPrivada === "mesas" || vistaPrivada === "clientes" || vistaPrivada === "estadisticas" || vistaPrivada === "reservas_admin"
+        ? esAdmin
+        : vistaPrivada === "reservas_cliente"
+        ? usuarioActual.perfil === "cliente_registrado"
+        : vistaPrivada === "producto" || vistaPrivada === "preparacion"
+        ? esProducto
+        : vistaPrivada === "tickets"
+        ? usuarioActual.perfil === "cocinero" || usuarioActual.perfil === "cantinero"
+        : vistaPrivada === "registro_metre" || vistaPrivada === "metre"
+        ? usuarioActual.perfil === "metre" || esAdmin
+        : vistaPrivada === "comandas" || vistaPrivada === "chat_mesas" || vistaPrivada === "pedidos_listos" || vistaPrivada === "transacciones"
+        ? usuarioActual.perfil === "mozo" || esAdmin
+        : vistaPrivada === "carta"
+        ? esProducto || esCliente
+        : vistaPrivada === "carrito" || vistaPrivada === "estado_pedido" || vistaPrivada === "juegos" || vistaPrivada === "bolita" || vistaPrivada === "puzzle"
+        ? esCliente
+        : true;
 
   if (!accesoValido) {
     return (
@@ -1174,6 +1189,24 @@ function AppInterna() {
               )
             }
           />
+        )}
+
+        {/* Punto 24: Reservas del Cliente */}
+        {vistaPrivada === "reservas_cliente" && (
+          <ReservasClienteScreen
+            onVolver={() => {
+              // Si el cliente no tiene mesa asignada, regresa a la puerta
+              if (!numeroMesaCliente) {
+                setEnEsperaRegistrado(true);
+              }
+              setVistaPrivada("home");
+            }}
+          />
+        )}
+
+        {/* Punto 25: Aprobación y Rechazo de Reservas por Dueño / Supervisor */}
+        {vistaPrivada === "reservas_admin" && (
+          <ReservasAdminScreen onVolver={volverAlInicio} />
         )}
       </View>
     </SafeAreaView>

@@ -11,4 +11,4 @@ const hostUri =
 
 const localIp = hostUri ? hostUri.split(":")[0] : "localhost";
 
-export const API_BASE_URL = urlProduccion ?? `http://${localIp}:3000/api`;
+export const API_BASE_URL = urlProduccion ?? `http://${localIp}:3000`;

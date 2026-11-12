@@ -33,6 +33,7 @@ export async function headersConToken(
   extra?: Record<string, string>
 ): Promise<Record<string, string>> {
   const token = await obtenerTokenValido();
+  console.log("🔑 [headersConToken] Token obtenido:", token ? `Presente (${token.slice(0, 15)}...)` : "NULL / NO HAY SESIÓN");
   const headers: Record<string, string> = { ...extra };
   if (token) headers.Authorization = `Bearer ${token}`;
   return headers;
