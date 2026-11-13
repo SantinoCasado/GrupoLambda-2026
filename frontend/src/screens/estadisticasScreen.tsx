@@ -42,7 +42,7 @@ export function EstadisticasScreen({ onVolver, esModal = false }: Props) {
   const [resumen, setResumen] = useState<ResumenEncuestas>(() => calcularResumenEncuestas([]));
 
   // Los SVG se ajustan al ancho interno del card (pantalla - padding - bordes)
-  const anchoGrafico = Math.min(300, screenWidth - 80);
+  const anchoGrafico = Math.min(300, screenWidth - 90);
   const tamanoTorta = Math.min(210, anchoGrafico);
 
   // En el modal no hay SafeAreaView que cubra el notch: lo compensamos acá.
@@ -169,12 +169,18 @@ export function EstadisticasScreen({ onVolver, esModal = false }: Props) {
                 style={{ fontFamily: "LaOriental" }}
                 className="mb-1 text-center text-2xl uppercase text-vino"
               >
-                Promedio individual
+                Promedio de reseñas   por categoría
               </Text>
               <Text className="mb-4 text-center text-base text-stone-500">
-                Total de encuestas: {resumen.total}
+                Total de encuestas completas: {resumen.total}
               </Text>
-              <GraficoBarras data={barrasPromedios} width={anchoGrafico} />
+              <GraficoBarras
+                data={barrasPromedios}
+                width={anchoGrafico}
+                height={240}
+                xAxisLabel="Categorías"
+                yAxisLabel="Promedio de valoración"
+              />
             </View>
           ) : tipoGrafico === "torta" ? (
             <View className="w-full items-center">
@@ -182,10 +188,10 @@ export function EstadisticasScreen({ onVolver, esModal = false }: Props) {
                 style={{ fontFamily: "LaOriental" }}
                 className="mb-1 text-center text-2xl uppercase text-vino"
               >
-                Distribución de Satisfacción
+                Distribución de las reseñas
               </Text>
-              <Text className="text-center text-base text-stone-500">
-                Promedio general de valoracion
+              <Text className="mb-[-15px] text-center text-base text-stone-500">
+                Cuantas reseñas de cada nivel de                          satisfacción (de 1 a 5 estrelals) se registraron
               </Text>
               <GraficoTorta
                 valores={resumen.distribucionSatisfaccion}
@@ -199,12 +205,18 @@ export function EstadisticasScreen({ onVolver, esModal = false }: Props) {
                 style={{ fontFamily: "LaOriental" }}
                 className="mb-1 text-center text-2xl uppercase text-vino"
               >
-                Evolución Reciente
+                Evolución Reciente de las reseñas
               </Text>
-              <Text className="mb-12 text-center text-base text-stone-500">
-                Promedio diario (1 a 5) · un punto por día
+              <Text className="mb-1 text-center text-base text-stone-500">
+                Promedio del total de reseñas del día siendo 1 las menos favorables y 5 las más favorables
               </Text>
-              <GraficoLineal puntos={resumen.dias} width={anchoGrafico} />
+              <GraficoLineal
+                puntos={resumen.dias}
+                width={anchoGrafico}
+                height={230}
+                xAxisLabel="Fecha"
+                yAxisLabel="Promedio de valoración"
+              />
             </View>
           )}
         </View>

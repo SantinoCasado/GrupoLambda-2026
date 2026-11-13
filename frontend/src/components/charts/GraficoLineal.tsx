@@ -16,6 +16,9 @@ interface Props {
   lineColor?: string;
   dotFill?: string;
   dotStroke?: string;
+  xAxisLabel?: string; // título del eje X (debajo de las fechas)
+  yAxisLabel?: string; // título del eje Y (vertical, de abajo hacia arriba)
+  axisLabelColor?: string;
   emptyText?: string;
   emptyTextColor?: string;
   width?: number;
@@ -32,6 +35,9 @@ export function GraficoLineal({
   lineColor = "#780116",
   dotFill = "#eab308",
   dotStroke = "#780116",
+  xAxisLabel,
+  yAxisLabel,
+  axisLabelColor = "#db7c26", // calabaza (tailwind.config.js)
   emptyText = "Sin fechas registradas",
   emptyTextColor = "#78716c",
   width = 300,
@@ -40,19 +46,36 @@ export function GraficoLineal({
   // Todo el dibujo (fuentes, grosores, puntos) escala con el alto
   const e = height / 170;
 
-  const AXIS_X = 20;
   const AXIS_TOP = Math.round(15 * e);
   const PLOT_TOP = Math.round(25 * e);
-  const PLOT_BOTTOM = height - Math.round(35 * e);
-  const PLOT_LEFT = 50;
-  const PLOT_RIGHT = width - 20;
-  const AXIS_RIGHT = width - 15;
-  const DATE_Y = height - Math.round(20 * e);
   const GROSOR_EJE = Math.max(2, Math.round(2 * e));
   const FUENTE_TICK = Math.round(10 * e);
   const FUENTE_VALOR = Math.round(11 * e);
   const FUENTE_FECHA = Math.round(10 * e);
+  const FUENTE_EJE = Math.round(10 * e);
   const RADIO_PUNTO = Math.round(5 * e);
+
+  // El título del eje Y va rotado: su alto (ascendentes + tildes) crece hacia
+  // la izquierda, así que reservamos ese espacio más el de los ticks y corremos
+  // el eje lo necesario para que no se recorte contra el borde.
+  const EJE_Y_X = Math.round(1.2 * FUENTE_EJE) + 2;
+  const ANCHO_TICKS = Math.round(0.6 * FUENTE_TICK) + Math.round(5 * e);
+  const AXIS_X = yAxisLabel
+    ? Math.max(20, Math.round(EJE_Y_X + 0.35 * FUENTE_EJE + 8 * e + ANCHO_TICKS))
+    : 20;
+
+  // El título del eje X necesita su propia línea debajo de las fechas
+  const MARGEN_INFERIOR = Math.round((xAxisLabel ? 40 : 35) * e);
+  const PLOT_BOTTOM = height - MARGEN_INFERIOR;
+  const PLOT_LEFT = yAxisLabel ? Math.max(50, AXIS_X + Math.round(8 * e)) : 50;
+  const PLOT_RIGHT = width - 20;
+  const AXIS_RIGHT = width - 15;
+  const DATE_Y = height - Math.round(20 * e);
+
+  // Posiciones de los títulos de los ejes
+  const EJE_X_CENTRO = (PLOT_LEFT + PLOT_RIGHT) / 2;
+  const EJE_X_Y = height - Math.round(6 * e);
+  const EJE_Y_Y = (AXIS_TOP + PLOT_BOTTOM) / 2;
 
   const clampRating = (v: number) => Math.min(5, Math.max(1, v));
   const valoracionY = (v: number) =>
@@ -63,6 +86,36 @@ export function GraficoLineal({
       {/* Ejes */}
       <Line x1={AXIS_X} y1={AXIS_TOP} x2={AXIS_X} y2={PLOT_BOTTOM} stroke={axisColor} strokeWidth={GROSOR_EJE} />
       <Line x1={AXIS_X} y1={PLOT_BOTTOM} x2={AXIS_RIGHT} y2={PLOT_BOTTOM} stroke={axisColor} strokeWidth={GROSOR_EJE} />
+
+      {/* Título del eje X, debajo de las fechas */}
+      {xAxisLabel ? (
+        <SvgText
+          x={EJE_X_CENTRO}
+          y={EJE_X_Y}
+          fontSize={FUENTE_EJE}
+          fontWeight="bold"
+          fill={axisLabelColor}
+          textAnchor="middle"
+        >
+          {xAxisLabel.toUpperCase()}
+        </SvgText>
+      ) : null}
+
+      {/* Título del eje Y, rotado para leerse de abajo hacia arriba */}
+      {yAxisLabel ? (
+        <SvgText
+          x={EJE_Y_X}
+          y={EJE_Y_Y}
+          fontSize={FUENTE_EJE}
+          fontWeight="bold"
+          fill={axisLabelColor}
+          textAnchor="middle"
+          rotation={-90}
+          origin={[EJE_Y_X, EJE_Y_Y]}
+        >
+          {yAxisLabel.toUpperCase()}
+        </SvgText>
+      ) : null}
 
       {/* Escala vertical: 1 abajo, 5 arriba */}
       {[2, 3, 4, 5].map((v) => (
