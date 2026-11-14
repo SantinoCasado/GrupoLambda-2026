@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   Image,
   Modal,
+  ScrollView,
   ImageSourcePropType,
   LayoutChangeEvent,
 } from "react-native";
@@ -364,7 +365,7 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada, puedePedi
   };
 
   return (
-    <View className="flex-1 pt-4">
+    <View className="flex-1 pt-4" style={{ paddingBottom: insets.bottom }}>
       {/* Salir del local */}
       <TouchableOpacity
         onPress={() => setModalSalir(true)}
@@ -379,172 +380,197 @@ export function EsperaMesaScreen({ cliente, onSalir, onMesaConfirmada, puedePedi
       </TouchableOpacity>
 
       {/* Cabecera */}
-      <View className="flex-1 mt-28">
-        <View className="mb-4">
+      <View className="flex-1 mt-20">
+        <View className="mb-3">
           <Image
             source={require("../../assets/images/logo-name.png")}
-            className="h-20 w-auto self-center"
+            style={{ height: px(64, 0.11) }}
+            className="w-auto self-center"
             resizeMode="contain"
           />
           <Image
             source={require("../../assets/images/separator.png")}
-            className="my-2 h-6 w-full"
+            style={{ height: px(16, 0.03) }}
+            className="my-1 w-full"
             resizeMode="contain"
           />
         </View>
         <View className="flex-1 px-6" onLayout={onLayoutArea}>
-          <ChineseFrame className="bg-vino/90 shadow-2xl" color="#f7b538">
-          <View className="items-center p-6">
-            {/* Foto y Nombre */}
-            {cliente?.client_photo ? (
-              <Image
-                source={{ uri: cliente.client_photo }}
-                className="h-24 w-24 rounded-full border-2 border-mostaza"
-              />
-            ) : (
-              <Image
-                source={require("../../assets/images/no-photo.jpg")}
-                className="h-24 w-24 rounded-full border-2 border-mostaza"
-                resizeMode="cover"
-              />
-            )}
-            <Text style={{ fontFamily: "LaOriental" }} className="mt-3 text-2xl text-mostaza">
-              Hola, {cliente?.client_name || "Invitado"}
-            </Text>
-            <Text className="text-center text-sm text-amber-100/70 mt-1">
-              Estado: {mesaAsignada ? `Mesa #${mesaAsignada.numero} Asignada` : "En lista de espera"}
-            </Text>
-
-            {/* Estado actual */}
-            <View className="mt-3 w-full rounded-xl bg-[#FAE9DF] p-3">
-              <View className="flex-row items-center justify-center">
-                {qrEntradaEscaneado && !mesaAsignada && (
+          <ChineseFrame className="flex-1 bg-vino/90 shadow-2xl mb-5 " color="#f7b538">
+            <ScrollView
+              style={{ flex: 1 }}
+              contentContainerStyle={{ flexGrow: 1 }}
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+            >
+              <View className="items-center p-4 pb-6" style={{ flexGrow: 1 }}>
+                {/* Foto y Nombre */}
+                {cliente?.client_photo ? (
                   <Image
-                    source={require("../../assets/images/sand-clock-cal.png")}
-                    className="mr-2 h-4 w-4"
-                    resizeMode="contain"
+                    source={{ uri: cliente.client_photo }}
+                    style={{ height: px(80, 0.13), width: px(80, 0.13) }}
+                    className="rounded-full border-2 border-mostaza"
+                  />
+                ) : (
+                  <Image
+                    source={require("../../assets/images/no-photo.jpg")}
+                    style={{ height: px(80, 0.13), width: px(80, 0.13) }}
+                    className="rounded-full border-2 border-mostaza"
+                    resizeMode="cover"
                   />
                 )}
-                <Text className="text-center text-sm text-calabaza">
-                  {mesaAsignada
-                    ? `Mesa asignada: #${mesaAsignada.numero}. Por favor, escanee su código QR para ver el menú.`
-                    : qrEntradaEscaneado
-                    ? "Esperando asignación de mesa..."
-                    : "Escanee el QR de la entrada para anunciar su llegada."}
-                </Text>
-              </View>
-            </View>
-
-            <View className="my-5 w-full border-t border-mostaza/20" />
-
-            {/* 1. Botón QR Entrada (solo antes de escanear la puerta) */}
-            {!qrEntradaEscaneado && (
-              <TouchableOpacity
-                onPress={() => abrirEscaner("entrada")}
-                className="w-full flex-1 items-center justify-center rounded-2xl bg-mostaza py-3.5 active:bg-mostaza/80"
-                style={{ minHeight: px(220, 0.5), padding: px(12, 0.05) }}
-              >
-                <Image
-                  source={require("../../assets/images/camera-v.png")}
-                  className="h-36 w-36 mb-2"
-                  resizeMode="contain"
-                />
-                <View className="flex-2">
-                  <Text style={{ fontFamily: "LaOriental" }} className="text-3xl text-vino">
-                    Escanear QR
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            )}
-
-            {/* 2. Botón Entrega a Domicilio (solo clientes registrados) */}
-            {puedePedirDelivery && (
-              <TouchableOpacity
-                onPress={onPedirDelivery}
-                className="mt-3 w-full flex-row items-center justify-center rounded-2xl border-2 border-mostaza bg-vino py-3 px-4 active:bg-terracota"
-                style={{ minHeight: px(78, 0.16), padding: px(12, 0.05) }}
-              >
-                <Image
-                  source={require("../../assets/images/audit-car.png")}
-                  style={{ height: px(44, 0.1), width: px(44, 0.1), marginRight: px(12, 0.03) }}
-                  resizeMode="contain"
-                />
-                <View className="flex-1">
-                  <Text
-                    style={{ fontFamily: "LaOriental", fontSize: px(18, 0.05) }}
-                    className="uppercase tracking-wider text-mostaza"
-                  >
-                    Entrega a Domicilio
-                  </Text>
-                  <Text className="text-[11px] font-semibold text-amber-100">
-                    Pedí desde tu casa y seguí el envío en el mapa
-                  </Text>
-                </View>
-                <Image
-                  source={require("../../assets/images/right-arrow-y.png")}
-                  style={{ height: px(24, 0.07), width: px(24, 0.07) }}
-                  resizeMode="contain"
-                />
-              </TouchableOpacity>
-            )}
-
-            {/* 3. Cartel de Espera (después de escanear puerta, antes de que el metre asigne mesa) */}
-            {qrEntradaEscaneado && !mesaAsignada && (
-              <View
-                className="w-full gap-2 items-center rounded-2xl bg-emerald-950/60 p-3 border border-emerald-500/40"
-                style={{ minHeight: px(135, 0.35), padding: px(12, 0.05) }}
-              >
-                <Text className="text-emerald-400 font-bold text-center text-[60px]">
-                  ✓
-                </Text>
-                <Text className="text-emerald-400 font-bold text-center uppercase text-xl">
-                  Ingreso confirmado en puerta
-                </Text>
-              </View>
-            )}
-
-            {/* 4. Botón QR Mesa (ÚNICO: solo visible cuando el Metre asignó mesa) */}
-            {mesaAsignada && (
-              <TouchableOpacity
-                onPress={() => abrirEscaner("mesa")}
-                className="mt-3 w-full flex-1 items-center justify-center rounded-2xl bg-emerald-600 py-3.5 shadow-md active:bg-emerald-700"
-                style={{ minHeight: px(140, 0.35), padding: px(12, 0.05) }}
-              >
-                <Image
-                  source={require("../../assets/images/table-w.png")}
-                  className="h-20 w-20"
-                  resizeMode="contain"
-                />
-                <View className="flex-1 mt-1">
-                  <Text style={{ fontFamily: "LaOriental" }} className="text-xl text-center uppercase text-white">
-                    Escanear QR en la Mesa #{mesaAsignada.numero}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            )}
-
-            {/* 5. Estadísticas (visible tras escanear el QR de entrada) */}
-            {qrEntradaEscaneado && (
-              <TouchableOpacity
-                onPress={() => setModalEncuestas(true)}
-                className="mt-4 w-full flex-row items-center justify-center rounded-2xl border border-mostaza/60 bg-vino py-3.5 px-4 shadow-md active:bg-terracota/30"
-                style={{ minHeight: px(65, 0.35) }}
-              >
-                <Image
-                  source={require("../../assets/images/rating-y.png")}
-                  className="h-6 w-12 mr-4"
-                  resizeMode="contain"
-                />
                 <Text
-                  style={{ fontFamily: "LaOriental" }}
-                  className="text-base mt-1 text-mostaza tracking-wide uppercase text-center flex-shrink"
+                  style={{ fontFamily: "LaOriental", fontSize: px(20, 0.035) }}
+                  className="mt-3 text-mostaza"
                 >
-                  Ver Reseñas
+                  Hola, {cliente?.client_name || "Invitado"}
                 </Text>
-              </TouchableOpacity>
-            )}
+                <Text className="text-center text-xs text-amber-100/70 mt-1">
+                  Estado: {mesaAsignada ? `Mesa #${mesaAsignada.numero} Asignada` : "En lista de espera"}
+                </Text>
 
-          </View>
+                {/* Estado actual */}
+                <View className="mt-2 w-full rounded-xl bg-[#FAE9DF] p-2">
+                  <View className="flex-row items-center justify-center">
+                    {qrEntradaEscaneado && !mesaAsignada && (
+                      <Image
+                        source={require("../../assets/images/sand-clock-cal.png")}
+                        className="mr-2 h-4 w-4"
+                        resizeMode="contain"
+                      />
+                    )}
+                    <Text className="text-center text-xs text-calabaza">
+                      {mesaAsignada
+                        ? `Mesa asignada: #${mesaAsignada.numero}. Por favor, escanee su código QR para ver el menú.`
+                        : qrEntradaEscaneado
+                        ? "Esperando asignación de mesa..."
+                        : "Escanee el QR de la entrada para anunciar su llegada."}
+                    </Text>
+                  </View>
+                </View>
+
+                <View className="my-2 w-full border-t border-mostaza/20" />
+
+                {/* 1. Botón QR Entrada (solo antes de escanear la puerta) */}
+                {!qrEntradaEscaneado && (
+                  <TouchableOpacity
+                    onPress={() => abrirEscaner("entrada")}
+                    className="w-full items-center justify-center rounded-2xl bg-mostaza px-3 py-2 active:bg-mostaza/80"
+                    style={{ flexGrow: 1, flexBasis: "auto", maxHeight: px(320, 0.5) }}
+                  >
+                    <Image
+                      source={require("../../assets/images/camera-v.png")}
+                      style={{
+                        flex: 1,
+                        width: "100%",
+                        maxHeight: px(110, 0.22),
+                        minHeight: px(48, 0.1),
+                        marginBottom: 6,
+                      }}
+                      resizeMode="contain"
+                    />
+                    <Text
+                      style={{ fontFamily: "LaOriental", fontSize: px(24, 0.045) }}
+                      className="text-vino"
+                    >
+                      Escanear QR
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* 2. Botón Entrega a Domicilio (solo clientes registrados) */}
+                {puedePedirDelivery && (
+                  <TouchableOpacity
+                    onPress={onPedirDelivery}
+                    className="mt-2 w-full items-center justify-center rounded-2xl border-2 border-mostaza bg-vino px-3 active:bg-terracota"
+                    style={{ minHeight: px(64, 0.11), padding: px(8, 0.02) }}
+                  >
+                    <Image
+                      source={require("../../assets/images/delivery-y.png")}
+                      style={{
+                        height: px(36, 0.08),
+                        width: px(36, 0.08),
+                        marginBottom: 2,
+                      }}
+                      resizeMode="contain"
+                    />
+                    <Text
+                      style={{ fontFamily: "LaOriental", fontSize: px(16, 0.03) }}
+                      className="text-center uppercase tracking-wider text-mostaza"
+                    >
+                      Entrega a Domicilio
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* 3. Cartel de Espera (después de escanear puerta, antes de que el metre asigne mesa) */}
+                {qrEntradaEscaneado && !mesaAsignada && (
+                  <View
+                    className="mt-2 w-full gap-2 items-center rounded-2xl bg-emerald-950/60 p-3 border border-emerald-500/40"
+                    style={{ minHeight: px(110, 0.25) }}
+                  >
+                    <Text
+                      className="text-center font-bold text-emerald-400"
+                      style={{ fontSize: px(44, 0.09) }}
+                    >
+                      ✓
+                    </Text>
+                    <Text
+                      className="text-center font-bold uppercase text-emerald-400"
+                      style={{ fontSize: px(16, 0.03) }}
+                    >
+                      Ingreso confirmado en puerta
+                    </Text>
+                  </View>
+                )}
+
+                {/* 4. Botón QR Mesa (ÚNICO: solo visible cuando el Metre asignó mesa) */}
+                {mesaAsignada && (
+                  <TouchableOpacity
+                    onPress={() => abrirEscaner("mesa")}
+                    className="mt-2 w-full items-center justify-center rounded-2xl bg-emerald-600 py-3 shadow-md active:bg-emerald-700"
+                    style={{ minHeight: px(120, 0.25), padding: px(10, 0.03) }}
+                  >
+                    <Image
+                      source={require("../../assets/images/table-w.png")}
+                      style={{ height: px(64, 0.12), width: px(64, 0.12) }}
+                      resizeMode="contain"
+                    />
+                    <Text
+                      style={{ fontFamily: "LaOriental", fontSize: px(18, 0.04) }}
+                      className="mt-1 text-center uppercase text-white"
+                    >
+                      Escanear QR en la Mesa #{mesaAsignada.numero}
+                    </Text>
+                  </TouchableOpacity>
+                )}
+
+                {/* 5. Estadísticas (visible tras escanear el QR de entrada) */}
+                {qrEntradaEscaneado && (
+                  <TouchableOpacity
+                    onPress={() => setModalEncuestas(true)}
+                    className="mt-3 w-full flex-row items-center justify-center rounded-2xl border border-mostaza/60 bg-vino px-4 shadow-md active:bg-terracota/30"
+                    style={{ minHeight: px(56, 0.1) }}
+                  >
+                    <Image
+                      source={require("../../assets/images/rating-y.png")}
+                      style={{
+                        height: px(20, 0.04),
+                        width: px(40, 0.07),
+                        marginRight: px(12, 0.03),
+                      }}
+                      resizeMode="contain"
+                    />
+                    <Text
+                      style={{ fontFamily: "LaOriental", fontSize: px(15, 0.028) }}
+                      className="mt-1 text-center uppercase tracking-wide text-mostaza flex-shrink"
+                    >
+                      Ver Reseñas
+                    </Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </ScrollView>
           </ChineseFrame>
         </View>
 

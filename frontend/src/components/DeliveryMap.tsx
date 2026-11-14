@@ -1,10 +1,49 @@
-import React, { useMemo } from "react";
-import { View } from "react-native";
+import React, { useEffect, useMemo, useState } from "react";
+import { ActivityIndicator, View } from "react-native";
 import { WebView, WebViewMessageEvent } from "react-native-webview";
+import { Asset } from "expo-asset";
+import { File } from "expo-file-system";
 import {
   RESTAURANTE_LAT,
   RESTAURANTE_LNG,
 } from "../config/delivery";
+
+/**
+ * Convierte un asset local en un data URI para poder incrustarlo en el HTML
+ * del WebView. Las rutas locales (`file://`, `asset://`) no son confiables
+ * dentro del WebView de Android; base64 funciona igual en dev y producción.
+ */
+const leerAssetComoDataUri = async (modulo: number): Promise<string> => {
+  const asset = Asset.fromModule(modulo);
+  await asset.downloadAsync();
+  const uri = asset.localUri ?? asset.uri;
+  const base64 = await new File(uri).base64();
+  return `data:image/png;base64,${base64}`;
+};
+
+interface IconosMapa {
+  casa: string | null;
+  repartidor: string | null;
+}
+
+// La carga se cachea a nivel de módulo: el mapa se monta varias veces (picker,
+// seguimiento, panel del repartidor) y no queremos releer los PNG cada vez.
+let iconosPromesa: Promise<IconosMapa> | null = null;
+
+const cargarIconosMapa = (): Promise<IconosMapa> => {
+  if (!iconosPromesa) {
+    iconosPromesa = Promise.all([
+      leerAssetComoDataUri(require("../../assets/images/home-y.png")),
+      leerAssetComoDataUri(require("../../assets/images/delivery-y.png")),
+    ])
+      .then(([casa, repartidor]) => ({ casa, repartidor }))
+      .catch((error) => {
+        console.warn("No se pudieron cargar los íconos del mapa:", error);
+        return { casa: null, repartidor: null };
+      });
+  }
+  return iconosPromesa;
+};
 
 export interface DeliveryMapProps {
   /**
@@ -27,9 +66,12 @@ export interface DeliveryMapProps {
 const construirHtml = (
   mode: "picker" | "route",
   latitude: number,
-  longitude: number
+  longitude: number,
+  iconos: IconosMapa
 ) => {
   const destino = [latitude, longitude].join(",");
+  const iconoCasa = JSON.stringify(iconos.casa ?? "");
+  const iconoRepartidor = JSON.stringify(iconos.repartidor ?? "");
 
   return `<!DOCTYPE html>
 <html lang="es">
@@ -44,10 +86,15 @@ const construirHtml = (
       border-radius: 50% 50% 50% 0;
       transform: rotate(-45deg);
       display: flex; align-items: center; justify-content: center;
-      border: 3px solid #ffffff;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.35);
+      border: 3px solid #f7b538;
     }
     .pin span { transform: rotate(45deg); font-size: 16px; line-height: 1; }
+    .pin img {
+      width: 68%; height: 68%;
+      object-fit: contain;
+      transform: rotate(45deg);
+      pointer-events: none;
+    }
     .info {
       position: absolute; top: 10px; left: 10px; right: 10px; z-index: 999;
       background: rgba(255,255,255,0.96);
@@ -66,7 +113,7 @@ const construirHtml = (
   <div id="map"></div>
   <div class="info" id="info">${
     mode === "picker"
-      ? "Tocá el mapa o arrastrá el marcador"
+      ? "Tocá el mapa o arrastrá el marcador."
       : "Calculando la ruta..."
   }</div>
 
@@ -75,6 +122,8 @@ const construirHtml = (
     var MODE = '${mode}';
     var DEST = [${latitude}, ${longitude}];
     var ORIGIN = [${RESTAURANTE_LAT}, ${RESTAURANTE_LNG}];
+    var ICONO_CASA = ${iconoCasa};
+    var ICONO_REPARTIDOR = ${iconoRepartidor};
 
     var map = L.map('map', { zoomControl: true, attributionControl: true })
       .setView(DEST, 16);
@@ -84,10 +133,14 @@ const construirHtml = (
       attribution: '© OpenStreetMap'
     }).addTo(map);
 
-    function crearIcono(emoji, color) {
+    function crearIcono(emoji, color, imagen) {
+      var contenido = imagen
+        ? '<img src="' + imagen + '" alt="" />'
+        : '<span>' + emoji + '</span>';
+
       return L.divIcon({
         className: '',
-        html: '<div class="pin" style="background:' + color + '"><span>' + emoji + '</span></div>',
+        html: '<div class="pin" style="background:' + color + '">' + contenido + '</div>',
         iconSize: [34, 42],
         iconAnchor: [17, 42],
         popupAnchor: [0, -38]
@@ -100,9 +153,13 @@ const construirHtml = (
       }
     }
 
+    var iconoDestino = MODE === 'route'
+      ? crearIcono('🏠', '#780116', ICONO_CASA)
+      : crearIcono('📍', '#780116', ICONO_REPARTIDOR);
+
     var destMarker = L.marker(DEST, {
       draggable: MODE === 'picker',
-      icon: crearIcono(MODE === 'route' ? '🏠' : '📍', '#780116')
+      icon: iconoDestino
     }).addTo(map);
 
     if (MODE === 'picker') {
@@ -177,6 +234,18 @@ export function DeliveryMap({
   onPick,
   height = 260,
 }: DeliveryMapProps) {
+  const [iconos, setIconos] = useState<IconosMapa | null>(null);
+
+  useEffect(() => {
+    let activo = true;
+    cargarIconosMapa().then((res) => {
+      if (activo) setIconos(res);
+    });
+    return () => {
+      activo = false;
+    };
+  }, []);
+
   // `centerKey` controla cuándo se reconstruye el HTML. En modo picker no
   // incluimos lat/lng en las dependencias para no recargar el mapa en cada
   // arrastre del marcador (el WebView avisa el cambio por postMessage). En
@@ -186,8 +255,14 @@ export function DeliveryMap({
   const routeLng = mode === "route" ? longitude : 0;
 
   const html = useMemo(
-    () => construirHtml(mode, latitude, longitude),
-    [mode, centerKey, routeLat, routeLng]
+    () =>
+      construirHtml(
+        mode,
+        latitude,
+        longitude,
+        iconos ?? { casa: null, repartidor: null }
+      ),
+    [mode, centerKey, routeLat, routeLng, iconos]
   );
 
   const handleMessage = (event: WebViewMessageEvent) => {
@@ -206,6 +281,17 @@ export function DeliveryMap({
 
   if (!seguro) {
     return <View style={{ height }} />;
+  }
+
+  if (!iconos) {
+    return (
+      <View
+        style={{ height }}
+        className="items-center justify-center overflow-hidden rounded-2xl border-2 border-mostaza/60 bg-stone-100"
+      >
+        <ActivityIndicator color="#780116" />
+      </View>
+    );
   }
 
   return (
