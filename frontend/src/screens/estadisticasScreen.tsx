@@ -191,7 +191,7 @@ export function EstadisticasScreen({ onVolver, esModal = false }: Props) {
                 Distribución de las reseñas
               </Text>
               <Text className="mb-[-15px] text-center text-base text-stone-500">
-                Cuantas reseñas de cada nivel de                          satisfacción (de 1 a 5 estrelals) se registraron
+                Cuantas reseñas de cada nivel de                          satisfacción (de 1 a 5 estrellas) se registraron
               </Text>
               <GraficoTorta
                 valores={resumen.distribucionSatisfaccion}
@@ -208,7 +208,7 @@ export function EstadisticasScreen({ onVolver, esModal = false }: Props) {
                 Evolución Reciente de las reseñas
               </Text>
               <Text className="mb-1 text-center text-base text-stone-500">
-                Promedio del total de reseñas del día siendo 1 las menos favorables y 5 las más favorables
+                Promedio del total de reseñas por día
               </Text>
               <GraficoLineal
                 puntos={resumen.dias}
